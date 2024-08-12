@@ -1,0 +1,94 @@
+0.85
+(ZA)QJQ /GQFQ /DQSQ /DQFQ /
+(XA)QJQ /GQFQ /DQSQ /DQF  /
+(CA)QJQ /GQFQ /DQSQ /DQFQ /
+(VA)QJQ /GQFQ /      /      /
+
+
+(AE)QJQ /(GE)QFQ /(DE)  /E T /
+SQJQ /(GR) E /      /  G /
+(DE)QJQ /(GE)QFQ /(DE)  /E R /
+FQJQ /G   /      /  B /
+
+(AE)QJQ /(GE)QFQ /(DE)  /E T /
+DQJQ /(GR) E /      /R T /
+FQJQ /GQFQ /D QQ/ W Q/
+AQJQ /G Q / FGQ /  E /
+
+(NSFR) RQ/RS(FE)R / (QR)  /(SF) E /
+(BADR) RG/RC(SE)R / (JE)  /(CAS) Q /
+(XNQ)WQ(NSW) / (VW)(NS)/W(NS)QW /V E /
+(CME)  /  S(DJ) /      /      /
+
+(AF) H /H J /(SGJ) GG/ E E /
+(DH)  /      /E RE /(SG)Q  /
+(AFQ) /      /(SGQ) JQ/ E E /
+(DH)  /      /      /(XB)  /
+
+
+(VAD) H /(ADH) (VJ) /(BSGJ) GG/(BS)EBE /
+(NDG)  /(DG) N /(ADE) (NR)T/SQBT /
+(VAD)  /(AD)R(VR)E /(BSG) RE/  Q /
+(AFHQ)  /(FH)JQ /(SGQ)  /J   /
+
+(ZVN)  /(FH)JQ /(BSQ)  /(GQW)  /
+
+
+(ZE)QJQ /(GE)QFQ /(DE)  /E T /
+XQJQ /(GR) E /     /  G /
+(CE)QJQ /(GE)QFQ /(DE)  /E R /
+VQJQ /F   /      /      /
+
+(ZE)QJQ /(GE)QFQ /(DE)  /E T /
+XQJQ /(GR) E /      /R T /
+VQJQ /GQFQ /D QQ/ W Q /
+ZGWQ /EGWQ /      /AS(DE)G /
+
+(NSFR) R /R (NSFE)R/ RN /(SF) E /
+(BADR) R /R (BADE)R/ EB /(AD) Q /
+(XNQ)WQ(NSW) / (VW)(NS)/W(NS)QW /V E /
+(CME)  /      /RTE /(JW)  /
+
+      /  (AQ) /(MJ) (AQ) (SW) /      /
+
+
+(ZVN) H /(NADH) (VJ) /(XBMJ) GG/(MS)EBE /
+(CNA)  /(AD) N /(ADE) (NR)E/(XM)QB /
+(ZVNQ)  /(NAD) (VQ)Q/(XBM) JQ/(MSG)EBE /
+(CNA)  /(AD) N /(AD)W(NE)W /(XM) (BQ) /
+
+(ZVN) H /(NADH) (VJ) /(XBMJ) GG/(MS)EBE /
+(CNA)  /(AD) N /(ADE) (NR)T/(XM)QBT /
+(ZVN)  (AD)/ R(VR)E/(XBM) R(SGE)/ BQ /
+
+
+(ZVNQ) W /W E /(XBME) W /W H /
+(VNA) E /E R /(BMSR) E /Q W /
+(ZV) (AQ) /T (VADR) /E  Q/(VF) G /
+(XBAQ) /  (BSGW) /      /      /
+
+Q   /  (JW) /     /      /
+
+
+
+(AF) H /H J /(DGJ) GG/ E E /
+(NAG)  /      /E RE/(AG)Q  /
+(ZVQ)AGA /HA(GQ)(AQ) /(XB)A(DJ)(AQ) /G(AE)D(AE) /
+(CN)ADA /GADA /(CN)A(DGT)A /(XB)A(DGE)A /
+
+
+(ZVN) H /(NADH) (VJ) /(XBMJ) GG/(MSG)EBE /
+(CNA)  /(AD) N /(ADE) (NR)T/(XM)QBT /
+(ZVN)  (AD)/ R(VR)E/(XBM) R(SGE)/ B  /
+      /      /      /J   /
+
+
+
+(AQ)QJQ /GQFQ /DQSQ /DQFQ /
+SQJQ /(GT)Q(FR)Q /(DE)  /J   /
+(DQ)QJQ (GT)Q(FR)Q /(DE)Q(SW)Q /(DE)Q(FR)Q /
+FQJQ /(GT) (FR) /  F /T R /
+
+
+
+  F /T R /      /      / 

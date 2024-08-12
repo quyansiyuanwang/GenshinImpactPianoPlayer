@@ -1,0 +1,235 @@
+1.1
+ARPEGGIO_INTERVAL=0.05
+INTERVAL_RATING=0.15
+SPACE_INTERVAL_RATING=1
+------
+(DZ) G /W Q /W Q /G Q/
+D G /W Q /W Q /G Q/
+(SB) (GA) /W Q /W Q /G Q/
+S G /W Q /W Q /G Q/
+
+(ND) (CH) /W (QN) /W Q /H Q/
+(ND) (CH) /W (QN) /W Q /H Q/
+(FV) (GZ) /W (QV) /W Q /(GN) Q/
+(FV) (GZ) /W (QV) /WQJG /(JN)QWT/
+
+(JZ) (QGB) /(GQA) B /(GQD) B /A (QGB)/
+(JZ) (QGB) /A (WGB) /D (QGB) /A (QGB)/
+(JV) (GQZ) /V /(GQN) /(GQA) (GQ)/
+(JV) (FQZ) /V /(FWN) /(FQ) (FJV) (FQ)/
+(HN) C /N C /A / /
+
+N C /N C /(DQA) (JC) /(GN) G/
+V (HZ) /V Z /N/ /
+V Z /V Z /N / /
+(JZ) (QGB) /A (QGB) /D B /(GQA) (QGB)/
+(GJZ) (GJB) /(GQA) (WGB) /D (QGB) /A B/
+
+(JV) (GQZ) /V /(GQN) /(GQA) (GQ)/
+(JV) (FQZ) /V /(FWN) /(FQ) (FJV) (FQ)/
+(DHN) C /N A/ / /
+N C /N A /(DQA) (JC) /(GN) G/
+V (HZ) /V Z /N / /
+
+V Z /V Z /N Z /V (QZ)/
+(JZ) (QB) /(QZ) (QZCB) /Q /(QZCB) Q/
+(JB) (QX) /B /(WBMS) /Q (QBMS) Q/
+(QN) (QC) /(WN) /(CNA) /Q Q (QCNA) Q/
+(TZ) (RB) /A (EB) /(BAD) /W (EBA) W/
+
+(QEV) (WZ) /(EV) (WZ) /(EN) (WZ) /(QV) Z/
+(WGB) (GWX) /(WGB) (GWX) /M (QX) /B (RX)/
+N (QEC) /N C /A C /N C/
+V V /(FQEV) (FQEV) /B (QGB) /B B/
+(GQZ) (GQ) /(RZC) /(CBA) /E (WCBA) Q/
+
+(QZ) W /(WZC) (QCBA) /E (QCBA) /W/
+(QGB) /(WBM) (BMS) /E /(BMS) W/
+(QB) W /(WBM) Q /E Q /(WBMS)/
+(HQN) /(WZC) (QCNA) /E (CNA) /W/
+(HQN) W /(WZC) Q /E Q /(WZCN)/
+(QV) Q /(WVNA) /E W /(EVNA)/
+
+
+
+(EB) (WB) /(EB) B /(EB) /Q/
+
+(DZ) G /(WBA) Q /W Q /(GBA) Q/
+
+(DZ) G /(WBA) Q /W Q /(GBA) Q/
+
+(JZ) (QGB) /(GQA) B /(GQS) B /D (QGB)/
+
+(JZ) (QGB) /A (WGB) /S (QGB) /D (QGB)/
+
+
+
+(JB) (GQX) /B (GQX) /M X /(QGB) (GQX)/
+
+(JB) (GQX) /B (GWX) /M (GQX) /(JB) (GQX)/
+
+(DHN) C /N C /M C /A C/
+
+N C /N C /(DQM) (JC) /(GA) (GC)/
+
+V (HZ) /V Z /N Z /V (JZ)/
+
+
+
+B X /B (GQEX) /M (EX) /(WB) (QX)/
+
+(JZ) (QGB) /(GQZ) (GQZCB) /(GQ) /(GQZCB) (GQ)/
+
+(JB) (QX) /B /(WBMS) /Q (QBMS) Q/
+
+(DQN) (DQC) /(WN) (CNA) /(DQ) (DQ) /(DQCNA) (DQ)/
+
+(GQTZ) (GQRB) /A (GQEB)/ (BAD) W /(EBA) W/
+
+
+
+(EV) (WZ) /(EV) (WZ) /(EN) (WZ) /(QV) Z
+
+(GJWB) (GJWX) /(GJWB) (GJWX) /M (QX) /B (RX)/
+
+N (HQEC) /N C /A C /N C/
+
+V V /(FQEV) (FQEV)/ B (QGB) /B B/
+
+(GQZ) (GQ) /(GQRZC) (CBA) /E (WCBA) /Q/
+
+
+
+(GQZ) (GW) /(GWZC) (GQCBA) /(GE) (QCBA) /W/
+
+(QGB) /(WGBM) (BMS) /(GE) (BMS) /(GW)/
+
+(QGB) (GW) /(WGBM) (GQ) /(GE) (GQ) /(WGBMS)/
+
+(DHQN) /(WZC) (QCNA) /E (CNA) /W/
+
+(DHQN) W /(WZC) Q /E Q /(WZCN)/
+
+(FHQV) (FHQ) /(WVNA) /E W /(EVNA)/
+
+
+
+(JEB) W /(JEBM) /(JE) /(QBMS)/
+
+(QZ) (QB) /(RA) B /(ES) (WB) /(QD) (QB)/
+
+(QZ) (WB) /(WA) (QB) /(ES) (QB) /(WD) B/
+
+B (QX) /(WB) X /(EM) (EX) /(WB) X/
+
+B (QX) /(WB) (QX) /(TM) X /(WB) X/
+
+
+
+(QN) C /(WN) (QC) /(EM) C /(WA) C/
+
+(QN) (WC) /(WN) (QC) /(EM) C /(WA) C/
+
+(QV) (QZ) /(WV) Z /(EN) (WZ) /(EV) Z/
+
+(EBB) (WBB) /(EBB) (BB) /(EBB) /Q/
+
+ET(EZ) B /Z C /B (WA) /B (QC)/
+
+
+
+(QZ) B /Z C /B A /(WB) (QC) /
+
+ET(EB) X /B M /S (WG) /S (QM)/
+
+(QB) X /B M/ S M /(WB) (QX)/
+
+(GJN) (GQC) /(TN) A /D H /D (QA)/
+
+
+
+(GJV) (GQZ) /(YV) N /A F /A (QN)/
+
+(JZ) (QB) /(UZ) C /(TQB) (TA) /(TWB) (TEC)/
+
+(WB)U(TX)W /(WB)J(GM)S /(DA) S /A M/
+
+(MN) C /N /A/ /
+
+
+
+V Z /V /N A /A A/
+
+(SZ) (DB) /(DZ) (DC) /(DB) F /C D/
+
+(SB) X /B (AM) /D A /M M/
+
+(MN) C /N /S /A/
+
+V Z /V N /A /A A/
+
+
+
+(SZ) (DB) /(DZ) (DC) /(GB) /(MS) (MS)/
+
+(SMXB)GJW /TUWU /W /Q /
+
+(QZ) (QB) /(RA) B /(ES) (WB) /(QD) B/
+
+(GQZ) (WGB) /(GWA) (QGB) /(GES) (QGB) /(GWD) B/
+
+
+
+(QB) X /(WB) X /(EM) X /(WB) X/
+
+(QGB) (GWX) /(WGB) (GQX) /(GEM) (GQX) /(WGB) (GWX)/
+
+(HQN) C /(WN) (QC) /(HEM) C /(WA) (QC)/
+
+(HQN) C /(WN) (QC) /(HEM) C /(WA) C/
+
+(FHQV) V /(WV) (QV) /(EV) V /(WV) V/
+
+
+
+(QGB) B /(WB) (QVB) /(EB) E /W/
+
+(GQZ) (QGB) /(GQRZ) B /(EX) (WB) /(WC) (QB)/
+
+(GQZ) (WB) /(WZ) (QB) /(EX) (QB) /(WC) B/
+
+(QGB) X /(WB) X /(EM) X /(WB) X/
+
+(GTB) X /(EB) (WX) /(WM) (GQX) /(QGB) (GQX)/
+
+
+
+(HQN) C /(WN) (QC) /(EM) C /(WA) C/
+
+(HQN) C /(WN) (QC) /(EM) C /(WA) C/
+
+{FHQV} (QZ) /(WV) Z /(EN) (WZ) /(EV) Z/
+
+{GQEB} (WX) /(EB) X /(EM) (WX) /B X/
+
+
+
+Z {DQGB}/ Z B /C B /Z B/
+
+Z B/ Z (GB) /C (GEB) /Z (WGB)/
+
+ (GEX)/ B X/ M X/ B X/
+
+ X /B X /M (GQEX) /B (GWX)/
+
+
+
+(WN) (DCH) /N A /D A /N C/
+
+N C /N A /D A /N C/
+
+(FJV) (FQZ) /(FQV) (FQN) /(FQA) F /A (FQN)/
+
+(GJB) (QX) /B (GJWM) /S M /B X/
+
+{QZCBA} /

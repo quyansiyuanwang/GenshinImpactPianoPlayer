@@ -1,0 +1,54 @@
+0.85
+ARPEGGIO_INTERVAL=0.05
+INTERVAL_RATING=0.15
+SPACE_INTERVAL_RATING=1
+------
+(CNA) D /D GG/(ZV)A  /      /
+(ZB) DD/D DD/(XB) S /      /
+(CNA) D /D GG/(ZV) A /A G /
+(ZB) HG/G DD/(XB)S  /      /
+
+(CNA) D /D GG/(ZV)Q  /H G /
+(ZB) HG/G DG/(XB)DS / DSA/
+(VA)  /      /   N/AG  /
+(XBG)  /   D /S   /(XB)   /
+
+(CN) (CD) /(AD) (CG)G/VAZ /N V /
+Z (BD)D/(AD) (BD)D/B (XS) /M X /
+(CN) (CD) /(AD) (CG)G/V (ZA) /(NA) (VG) /
+Z (BH)G/(AG) (BD)G/BD(XS) /M X /
+
+(CN) (CD) /(AD) (CG)G/VQZ /(NH) (VG) /
+Z (BH)G/(AG) (BD)G/BD(XS) /MD(XS)A /
+(VBA) Z /V B /  ZN/(VA)GB /
+(XBAG) X /B (XBAG) /  X /(XBD)G  /
+
+(NQ) C /(AD) (CH)G/(VG) ZG/(NG) (VA)D/
+ZDB /AF(BD) /(BS) X /(MD) (XG) /
+(NQ) C /(AD) (CH)G/(VG) ZG/(DQ) (VG)Q/
+Z (BQ) /(DQ)WBW /B X /(SGQ)Q(XW)Q /
+
+(NQE) (CQE) /(ADQE) (CQT)(QT)/VQZ /(AD)Q(VW)Q /
+(ZE) (BE) /(AE) (BR)E/B (XW) /(SG)E(XW)Q /
+(VGQ) A /F G /  A /GEWQ /
+(BSGW) A /S G /      /(XB)   /
+
+(NDT)QTQ /TQTQ /(VAT)QTQ /TQTQ /
+(ZBT)QTQ /TQJQ /(BSG)JQG /(XB) B /
+(NDT)QTQ /TQTQ /(BAT)QTQ /TQTQ /
+(ZBT)QTQ /TQJQ /(BSG)JQG /(XB) B /
+
+(CN) (CD) /(AD) (CG)G/VAZ /N V /
+Z (BD)D/(AD) (BD)D/B (XS) /M X /
+(CN) (CD) /(AD) (CG)G/V (ZA) /(NA) (VG) /
+Z (BH)G/(AG) (BD)G/BD(XS) /M X /
+
+(CN) (CD) /(AD) (CG)G/VQZ /(NH) (VG) /
+Z (BH)G/(AG) (BD)G/BD(XS) /MD(XS)A /
+(VA) Z /V B /(ZV) ZN/(VA)GB /
+(XBG) X /B (XBAG) /(XB) X /(XBD)G  /
+
+(CNQ) C /(AD) (CH)G/(ZG) ZG/(NG) (VA)D/
+(ZB)DB /AF(BD) /(XBS) X /(MD) (XG) /
+(CNQ) C /(AD) (CH)G/(ZG) ZG/(DQ) (VG)Q/
+(ZB) (BQ) /(DQ)WBW /(XB) X /(SGQ)Q(XW)Q /

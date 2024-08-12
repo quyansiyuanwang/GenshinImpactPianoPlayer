@@ -1,0 +1,7 @@
+0.822
+ARPEGGIO_INTERVAL=0.05
+INTERVAL_RATING=0.15
+SPACE_INTERVAL_RATING=0.001
+------
+D (NH) D A J Q A (NJ) A G A H A N D H J Q D (NJ) A G A H A (VH) D A J Q A (BJ) S H S G S (NJ) Q H D A B N A D X C D (NH) D A J Q A (NJ) A G A H A N D H J Q D (NJ) A G A H A (VH) D A J Q A (BW) D Q D J D (NJ) Q H D A B N A (DH) J Q W (VE) A H A E A (BW) Q J D W D (NQ) J H D A B N A (DH) J Q W (VE) A H A E A (BW) Q J D W D (NQ) W E D M D N D H J Q W (VE) A H A E A (BW) D Q D W D (VE) R E D A (CW) E W D A (XQ) W Q D A (CJ) Q J Q J G (NJ) Q J Q JH D A B N A D H D X C N A D A (NH)
+D (NH) D A J Q A (NJ) A G A H A N D H J Q D (NJ) A G A H A (VH) D A J Q A (BJ) S H S G S (NJ) Q H D A B N A D X C D (NH) D A J Q A (NJ) A G A H A N D H J Q D (NJ) A G A H A (VH) D A J Q A (BW) D Q D J D (NJ) Q H D A B N A (DH) J Q W (VE) A H A E A (BW) Q J D W D (NQ) J H D A B N A (DH) J Q W (VE) A H A E A (BW) Q J D W D (NQ) W E D M D N D H J Q W (VE) A H A E A (BW) D Q D W D (VE) R E D A (CW) E W D A (XQ) W Q D A (CJ) Q J QJG (NJ) Q J QJHD A B N A D H D X C N A D A (NH)

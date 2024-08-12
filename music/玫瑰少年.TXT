@@ -1,0 +1,55 @@
+1
+ARPEGGIO_INTERVAL=0.05
+INTERVAL_RATING=0.15
+SPACE_INTERVAL_RATING=1
+------
+(NDHQ) /     /     /(NDHQ) /
+(BSGJ) /    /    /(BSGJ) /
+(CMSG) /    /    /(CMSG) /
+(VADH) /    /    /(VN) /
+
+(NAD) /(AD) WW/(ADW) W /(ADW) (NQ) /
+(BMS) /(MS) WW/(MSW) E /(MSH) (BH) /
+(CBM) /(BM) WW/(BMW) W /(BMW) (CQ) /
+(VNAW)WWW/(NAW) E /(NAH) H /(NA) (VQ) /
+
+(NAD) /(ADY)TTT/(ADT) EE/(ADE) (NW) /
+(BMS) /(MSY)TTT/(MST) EE/(MSE) (BW) /
+(CBM) /(BME) HH/(BME) W /(BM) C /
+(VNA)  H/(NAE) HH/(NAE) W /(BS)  /
+
+(NAD) /(ADH)HQW/(ADW) E /(AD) N /
+(BMS) /(MSG)QWW/(MSW) Q /(MS) B /
+(CBM) /(BMT)EWQ/(BMH) G /(BM) C /
+(VNA) GH/(NAE)EWQ/H W /(BS) E /
+
+(NAD) /(ADH)HQW/(ADW) E /(AD) N /
+(BMS) /(MSG)QWW/(MSW) Q /(MS) B /
+(CBM)  G/(BMT)TEW/(BMW) Q /(BM) C /
+    GH/TEEW/W E /(XBM) A /
+
+(NADQ)  N/(ADU) N /T N /(ADE) N /
+(BMSW) EB/(MST) BE/  (BQ)/(MSJ) (BG) /
+(CBM) WE/(BMH) (CW)E/H (CE) /(BME) C /
+(VNA) WE/(NAH) (VW)E/H (VT) /(NAE) V /
+
+(NADQ)  N/(ADU) N /T N /(ADE) N /
+(BMSW) EB/(MST) (BE)/  (BQ)/(MSJ) (BG) /
+(CBM) WE/(BMH) (CW)E/H (CE) /(BME) C /
+(VNA) WE/H WE/H T /(NAE) V /
+
+(NAD)  /(AD)  /(AD)  /(AD) (NW)Q /
+(BMSE) E /(MS) W /(MS) Y /(MST) (BW)E /
+(CBMW)  /(BM)  /(BM)  /(BM) C /
+(VNA)  /(NA)  /(NA) V /(NA)(BS) /
+
+
+(NAD)(NAD)WW/(ADW) WW/W (NW) /(ADE) (NH) /
+(BMSW)(BMSW)E E/(MSH) E /HH(BW)W/(MSE)BH /
+(CBMW)(CBMW)WW/(BMW) W /WW(CW)W/(BMT) (CE) /
+(VNAE)(VNA)HH/(NAE)W /E (VH)H/(NAE)(VW) /
+
+(NAD)(NAD)E /(AD) WW/WW(NE) /(AD) N /
+(BMS)(BMS)WW/(MSW)WWW/WW(BE) /(MS)B /
+(CBM)(CBM)WW/(BMW)WWW/WW(CW)W/(BME) C /
+    WW/WWWW/WWWW/(XBME)(XBM)(XBM)(XBM)/

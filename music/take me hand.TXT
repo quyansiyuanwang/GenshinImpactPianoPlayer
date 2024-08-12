@@ -1,0 +1,55 @@
+1.6
+ARPEGGIO_INTERVAL=0.05
+INTERVAL_RATING=0.15
+SPACE_INTERVAL_RATING=1
+------
+E Q /
+(VW)  /A H /F A /E Q /
+(BW)  /S E /G S /E Q /
+(NW)  /A H /D A /E Q /
+(NW)  /A E /D A /E Q /
+
+(VW)  /A H /F A /E Q /
+(BW)  /S E /G S /E Q /
+(NW)  /A H /D A /E Q /
+(NW)  /A E /H  /     /
+
+V A /T Q /  G /A Q /
+B S /T J /  G /S J /
+N D /T Q /  G /D Q /
+N D /T Q /  W /D E /
+
+V A /T Q /  G /A Q /
+B S /T J /  G /S J /
+N D /T Q /  G /D Q /
+N D /T Q /  W /(DE) Q /
+
+(VW) A /F H /  A /E Q /
+(BW) S /G E /  S /E Q /
+(NW) A /D H /  A /E Q /
+(NW) A /D E /  A /E Q /
+
+(VW) A /F H /  A /E Q /
+(BW) S /G E /  S /E Q /
+(NW) A /D H /  A /E Q /
+(NW) A /D E /  A /E Q /
+
+(VW) Z /N (AH) /  V /E Q /
+(BW) X /M (SE) /  B /E Q /
+(NW) C /A (DH) /  N /E Q /
+(NW) C /A (DE) /  N /E Q /
+
+(VW) Z /N (AH) /  V /E Q /
+(BW) X /M (SE) /  B /E Q /
+(NW) C /A (DH) /  N /E Q /
+(NADW)  /  H /E  /T  /
+
+(VW) Z /N (AH) /  V /E  /
+(BW) X /(MW) (SE) /  B /E Q /
+(NW) C /A (DQ) /  N /E Q /
+(NW) C /(AW) (DQ) /  N /E Q /
+
+(VW) Z /N (AH) /  V /E Q /
+(BW) X /M (SE) /  B /E Q /
+(NW) C /A (DQ) /  N /E Q /
+(NW) C /A (DQ) /  N /      /

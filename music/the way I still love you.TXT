@@ -1,0 +1,113 @@
+1.08
+ARPEGGIO_INTERVAL=0.05
+INTERVAL_RATING=0.15
+SPACE_INTERVAL_RATING=1
+------
+(VJ) AQ/ AG /(BJ) SQ/ SG /
+(NJ) DQ/ DG /     /   QJ/
+(VJ) AQ/ AG /(BJ) SQ/ SG /
+(NJ) DQ/ DG /     /Q   /
+
+(VJ) AQ/ AG /(BJ) SQ/ SG /
+(NJ) DQ/ DG /     /   QJ/
+(VJ) AQ/ AG /(BJ) SQ/ SG /
+(NJ) DQ/ DG /     /QJGD/
+
+
+(VM)  A/TT(BT)T /(BMW) WA/E (BW) /
+(NM)  A/TT(BT)T /W W /E (AW)M/
+(VM)QQ(AQ) /TT(BT)T /(BMW) WA/E B /
+(NMW) W(AW)/ Q(BQ)/     /QJGD/
+
+(VM) QA/TT(BT)T /(BMW)WWA /E B /
+(NM)QQ(AQ) /T (BT)T /W W /E (AW)M/
+(VM)QQ(AQ) /TT(BT)T /(BMW) WA/E BW/
+(NMW)WW(AW) /EQ(BQ) /     /QJ(AG)D/
+
+
+(VA) AV/Q (AQ) /(BJ) HB/G (BA) /
+(NA) AN/Q (DQ) /J HG /(BG) AM/
+(VA) AV/Q (AQ) /(BJ) HB/G B /
+(NS) SN/G (NS)D/SD  /B AM/
+
+(VA) AV/Q (AQ) /(BJ) HB/G (BA) /
+(NA) AN/Q (DQ) /J HG /(BG) AM/
+(VA) AV/Q (AQ) /(BJ) HB/G B /
+(NS) SN/S (NS)D/SD  /B AM/
+
+
+V  A/Q (AJ) /(BG) GB/G (BD) /
+(NH) GD/G D /H G /(BG) AM/
+V A(VA)/Q (AJ) /(BG) GB/GD(BD) /
+(NH) GD/G D /H G /(BG) AM/
+
+V A(VA)/Q (AJ) /(BG) GB/G (BD)S/
+(ND) DN/J (DH)J/H  G/(BD) AM/
+(VM)  (AQ)/T (BT) /(BMT)EEA/ W(BW)Q/
+(NMW) WA/WE(BQ) /     /  AM/
+
+
+(VM)  A/TT(BT)T /(BMW) WA/E (BW) /
+(NM)  (AQ)/TT(BT)T /W W /E A(MQ)/
+(VMT)TT(AT) /TT(BW)W /(BMW)  (AQ)/Q (BQ)Q/
+(NMW) W(AE)/ Q(BQ)/     /  AM/
+
+(VM) E(AT) /T (BT)T /(BMT)EE(AW) /EWB /
+(NM)  A/TT(BT)T /T TY /TR(AE)(MW) /
+(VME)W A/Q BQ/(BMQ)WE((AE)/T BQ/
+(NMT)TT(AE) / W(BW)Q/     /QJ(AG)D/
+
+
+(VA) AV/Q A /(BJ) HB/G (BA) /
+(NA) AN/Q (DQ) /J HG /(BG) AM/
+(VA) AV/Q (AQ) /(BJ) HB/GDB /
+(NS) SN/G (NS)D/SD  /B AM/
+
+(VA) AV/Q (AQ) /(BJ) HB/G (BA) /
+(NA) AN/Q (DQ) /J HG /(BG) AM/
+(VA) AV/Q (AQ) /(BJ) HB/GD B /
+(NG) GN/D (AG)H/G G /(BW) (AQ)M/
+
+
+V  A/Q (AJ) /(BG) GB/G (BD) /
+(NH) GD/G D /H G /(BG) AM/
+V A(VA)/Q (AJ) /(BG) GB/GD(BD) /
+(NH) GD/G D /H G /(BG) AM/
+
+V A(VA)/Q (AJ) /(BG) GB/G (BD)S/
+(ND) DN/J (DH)J/H  G/(BD) AM/
+(VM)  (AQ)/T (BT) /(BMT) E(AE)/ W(BW)Q/
+(NMW) WA/E (BQ) /     /QJG(AD)/
+
+
+(VG)HG(VAH)/  V / GD /(BS) HQ/
+(NQ)W (ADQ)/Q (AD) /J    /(BSG)H /
+(VH) G(VA)/  V /G F /(BSD) F /
+(NG)  (AD)/  (AD) /G F /(BSD) F /
+
+(VG)  (VAG)/F (VG) /     /(BS) G /
+(NG)  (ADQ)/  (ADQ) /  (NG) /(BSG) G /
+(VG) G(VA)/W (VW) /     /(BSQ) WE/
+(NW) W(ADE)/W (ADE) /W (NQ)W/(BSW) Q /
+
+
+(VQ)  A/Q (AJ) /(BG) GB/G (BD) /
+(NH) GD/G D /H G /(BSG) AM/
+V A(VA)/Q (AJ) /(BG) GB/GD(BD) /
+(NH) GD/G D /H G /(BSG) AM/
+
+V A(VA)/Q (AJ) /(BG) GB/G (BD)S/
+(ND) DN/J (DH)J/H  G/(BSD) AM/
+(VM)  (AQ)/T (BT) /(BMT) E(AE)/ (BW)Q/
+(NMW) WA/E (BQ) /     /QJGD/
+
+
+(VJ) AQ/ AG /(BJ) SQ/ SG /
+(NJ) DQ/ DG /     /   QJ/
+(VJ) AQ/ AG /(BJ) SQ/ SG /
+(NJ) DQ/ DG /     /Q   /
+
+(VJ) AQ/ AG /(BJ) SQ/ SG /
+(NJ) DQ/ DG /     /   QJ/
+(VJ) AQ/ AG /(BJ) SQ/ SG /
+(NJ) DQ/ DG /     /QJGD/

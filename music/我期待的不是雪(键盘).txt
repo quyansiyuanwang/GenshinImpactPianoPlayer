@@ -1,0 +1,79 @@
+1.2
+    /  EE/E W /Q J /
+(HV) Z /(HV) (QZ) /(JB) (HX) /(GB) (JX) /
+N (QC) /N (EC)E/(EZ) (WC) /(QN) (JC) /
+
+(HV) Z /(HV) (QZ) /(WB) (QX) /(WB) (TX) /
+N (EC) /N (EC)E/(EA) (TC) /(TN) (EC) /
+
+(YV) Z /(YV) (TZ) /(WB) X /(WB) (QX) /
+(WN) (EC) /(WN) (QC) /(AH) C /(EN) (WC) /
+
+(HV) (HZ) /(HV) (EZ) /(WB) (QX) /(JB) (HX) /
+N C /N C /A C /N C /
+(QV) Z /(HV) Z /(JB) (QX) /(JB) (GX) /
+(HN) (GC)H/N C /A C /N C /
+(QV) Z /(HV) Z /(JB) (QX) /(WB) (GX) /
+(WN) (EC)E/N C /A C /N C /
+
+(YV) (TZ)Y/V (HZ) /(WB) (QX)W/B (HX) /
+(QN) (JC)Q/N (WC) /(AH) (HC) /(EN) (WC) /
+
+(QV) (HZ) /(HV) (EZ) /(WB) (QX) /(JB) (QX) /
+(HN) C /N C /A C /N C /
+(QV) Z /(HV) Z /(JB) (QX) /(JB) (GX) /
+(HN) (GC)H/N C /A C /N C /
+(QV) Z /(HV) Z /(JB) (QX) /(WB) (GX) /
+(WN) (EC)E/N C /A C /N C /
+
+(YV) (TZ)Y/V (HZ) /(WB) (QX)W/B (HX) /
+(QN) (JC)Q/N (WC) /(AH) (HC) /(EN) (WC) /
+(QV) (HZ) /(HV) (EZ) /(WB) (QX) /(JB) (QX) /
+(HN) C /N (EC)E/(EA) (WC) /(QN) (JC) /
+(HV) Z /(HV) (QZ) /(JB) (HX) /(GB) (JX) /
+N (QC) /N (EC)E/(EA) (WC) /(QN) (JC) /
+(HV) Z /(HV) (QZ) /(WB) (QX) /(WB) (TX) /
+N (EC) /N (EC)E/(EA) (TC) /(TN) (EC) /
+(YV) Z /(YV) (TZ) /(WB) X /(WB) (QX) /
+(WN) (EC) /(WN) (QC) /(AH) C /(EN) (WC) /
+(HV) (HZ) /(HV) (EZ) /(WB) (QX) /(JB) (HX) /
+N C /N (EC)E/(EA) (WC) /(QN) (JC) /
+(HV) Z /(HV) (QZ) /(JB) (HX) /(GB) (JX) /
+N (QC) /N (EC)E/(EA) (WC) /(QN) (JC) /
+(HV) Z /(HV) (QZ) /(WB) (QX) /(WB) (TX) /
+N (EC) /N (EC)E/(EA) (TC) /(TN) (EC) /
+(YV) Z /(YV) (TZ) /(WB) X /(WB) (QX) /
+(WN) (EC) /(WN) (QC) /(AH) C /(EN) (WC) /
+(HV) (HZ) /(HV) (EZ) /(WB) (QX) /(JB) (HX) /
+N C /N C /A C /N C /
+(QZV) J /H H /(XB)   /  SA/
+(SCN) G /D D /    /    /
+(QZV) J /H H /(XB)   /  SA/
+(SCN) G /D D /    /    /
+(SZV) G /    /(SXB) J /    /
+(DCN) Q /Q   /    /    /
+(QV) Z /(HV) Z /(JB) (QX) /(JB) (GX) /
+(HN) (GC)H/N C /A C /N C /
+(QV) Z /(HV) Z /(JB) (QX) /(WB) (GX) /
+(WN) (EC)E/N C /A C /N C /
+(YV) (TZ)Y/V (HZ) /(WB) (QX)W/B (HX) /
+(QN) (JC)Q/N (WC) /(AH) (HC) /(EN) (WC) /
+(QV) (HZ) /(HV) (EZ) /(WB) (QX) /(JB) (QX) /
+(HN) C /N (EC)E/(EA) (WC) /(QN) (JC) /
+(HV) Z /(HV) (QZ) /(JB) (HX) /(GB) (JX) /
+N (QC) /N (EC)E/(EA) (WC) /(QN) (JC) /
+(HV) Z /(HV) (QZ) /(WB) (QX) /(WB) (TX) /
+N (EC) /N (EC)E/(EA) (TC) /(TN) (EC) /
+(YV) Z /(YV) (TZ) /(WB) X /(WB) (QX) /
+(WN) (EC) /(WN) (QC) /(AH) C /(EN) (WC) /
+(HV) (HZ) /(HV) (EZ) /(WB) (QX) /(JB) (HX) /
+N C /N (EC)E/(EA) (WC) /(QN) (JC) /
+(HV) Z /(HV) (QZ) /(JB) (HX) /(GB) (JX) /
+N (QC) /N (EC)E/(EA) (WC) /(QN) (JC) /
+(HV) Z /(HV) (QZ) /(WB) (QX) /(WB) (TX) /
+N (EC) /N (EC)E/(EA) (TC) /(TN) (EC) /
+(YV) Z /(YV) (TZ) /(WB) X /(WB) (QX) /
+(WN) (EC) /(WN) (QC) /(AH) C /(EN) (WC) /
+(HV) (HZ) /(HV) (EZ) /(WB) (AX) /(JB) (HX) /
+N C /N C /A C /N C /
+N   /    /    /    /

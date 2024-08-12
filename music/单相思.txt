@@ -1,0 +1,177 @@
+1
+ARPEGGIO_INTERVAL=0.05
+INTERVAL_RATING=0.15
+SPACE_INTERVAL_RATING=1
+------
+   Q/RRE /
+
+ZBAS /QJQ /CMSG /RRE /
+
+NC(AQ)(SQ) / JQ /      /RRE /
+
+VA(DQ)G /QH  /(CG)MSG /  QJ/
+
+(XQ)N(AJ)(SQ) / J(BSHW) /      /RRE /
+
+ZBA(SQ) /QJQ /C(MQ)(SQ)(GQ) /RRE /
+
+NCA(SQ) /QQQY / TT /ERTE /
+
+V(AQ)(DQ)G /  QH/C(MG)SG /  QJ/
+
+(XQ)N(AJ)(SQ) / J(BSW) / Q(BQ)Q/(SR)R(BE) /
+
+ZB(AQ)(SQ) / JQ /C(MQ)(SQ)(GQ) /RRE /
+
+NCA(SQ) /QJQ /   E/RWWW /
+
+(VE)(AR)(DT)(GW) / QQE /C(MR)(ST)G / QQ /
+
+(XQ)N(AJ)(SQ) / J(BSW) / Q(BQ) /(SR)E(BE) /
+
+ZB(AQ)(SQ) / JQ /C(MQ)(SQ)(GQ) /REE /
+
+NC(AQ)S /Q GG /HQ Q /REE /
+
+VA(DQ)(GY) / TT /CM(SQ)(GY) / TT /
+
+XNAS /  (BS) /  B /(SE)TB /
+(ZVY) N /(DQ) (XB)J/J B /(SGQ) (CN) /
+
+E CT/(AD) (NDW)E/  CQ/(XBE)T /
+
+(ZVY) N /(DQ) (XB)J/J B /(SGQ) (CNQ) /
+
+(AQ) (CU) /(ADY) (NDT) /E (CW) /(XBE)T /
+
+(ZVY) N /(DQ) (XB)J/J B /(SGQ) (CN) /
+
+E CT/(AD) (NDW)E/  CQ/(XBE) W Q /
+
+(ZQ) N /(AD) (XB) /      /R E /
+
+
+ZBA(SQ) /QJQ /CMSG /R E /
+
+NCA(SQ) /QJQ /   Q/RRE /
+
+VA(DQ)(GQ) / QQH /C(MG)SG /  QJ/
+
+(XQ)N(AJ)(SQ) / J(BSW) /      /RRE /
+
+Z(BQ)(AQ)(SQ) /Q JQ/C(MQ)(SQ)(GQ) /RRWE /
+
+N(CQ)(AQ)(SQ) / QQQ /Y T /ERTE /
+
+VZD(GQ) /ERTE /C(MQ)S(GQ) / G G /
+
+(XQ)N(AJ)(SQ) / J(BSW) / E(BR)E/(SR)T(BT)E /
+
+ZBA(SQ) /QGGG /(CH)(MQ)S(GQ) /EEE /
+
+NC(AQ)(SQ) /QGGG /HQ  /EW E /
+
+VA(DQ)G /E R T /(CE)M(SQ)(GQ) /   J /
+
+(XQ)N(AJ)(SQ) / E(BSW) /      /R WE/
+
+ZBA(SQ) /QJQ /C(MQ)(SQ)(GQ) /RRE /
+
+NCA(SQ) /QQQW / QQ /REE /
+
+VA(DQ)(GY) / TT /CM(SQ)(GY) / TT /
+
+XNAS /  (BS) /  (BE) /(SE)TB /
+
+(ZVY) N /(DQ) (XB)J/J B /(SGQ) (CN) /
+
+E CT/(AD) (NDW)E/  CQ/(XBE)T /
+
+(ZVY) N /(DQ) (XB)J/J B /(SGQ) (CNQ) /
+
+(AQ) (CU) /(ADY) (NDT) /E (CW) /(XBE)T /
+
+(ZVY) N /(DQ) (XB)U/J B /(SGQ) (CN) /
+
+E CT/(AD) (NDW)E/ CQ /(XBE) W Q /
+
+(ZVW) N /(AD) (XBE) /J B /(SG) (BQ) /
+(ZBGQ) BG/(AD) (ZBG) /  (BS)D/(ADG)JW /
+
+(CBG) CG/(MS) (CBG) /  (CG)H/(MD)SS /
+
+(ZQ) ZQ/(AD) (ZQ) /  (ZG) /(ADH) Q /
+
+(ZQ) ZQ/(SG) (ZQ) /  (ZQ) /(SGQ) Q /
+
+
+(ZBG) BG/(AD) (ZBG) /  (BS)D/(ADG)JW /
+
+(CBG) CG/(MS) (CBG) /  (CG)H/(MD)SS /
+
+(ZQ) ZQ/(AD) (ZQ) /  (ZG) /(ADH) Q /
+
+(ZQ) ZQ/(SG) (ZQ) /  (ZQ) /(SGQ) Q /
+
+
+(ZVF) (VF) /(VAF) (VF) /F (VF) /(VAF) (VF) /
+
+(XBG) (XBG) /(XBG) (XBG) /(XBG) (XBG) /(BR)WE /
+
+
+ZBA(SQ) / J(CSQ) /   Q/RRE /
+
+NC(AQ)(SQ) / J(CBAQ) /      /R E /
+
+VA(DQ)(GQ) / G(CSDH) /G   /  QJ/
+
+(XQ)N(AJ)(SQ) / J(XBW) /      /R E /
+
+
+ZBA(SQ) / J(CSQ) /      /RWE /
+
+NCA(SQ) /QJ(CBAQ) /   H/ERTE /
+
+V(AQ)(DQ)G /  (CSDQ)H/ G  /   J/
+
+(XQ)N(AJ)(SQ) / J(XBW) /  RE/RT E /
+
+
+ZB(AQ)(SQ) / J(CSQ) / EEE /RT E /
+
+N(CQ)(AQ)(SY) / T(CBAT) /      /ERTE /
+
+V(AW)DG /  (CSDQ)H/ G  /   J/
+
+(XQ)N(AJ)(SQ) / J(XBW) /      /R E /
+
+
+ZBA(SQ) /QJ(CSQ) / QQQ /RRE /
+
+NCA(SQ) /QW(CBA)J /Q   /RWE /
+
+VA(DQ)(GY) / T(CSDT) /  QH/ TT /
+
+XN(AQ)(SY) / T(XBT) /      /(XB) (XB) /
+
+(XB) (XB) /(XB) (XB) /(XB) (XB) /ET /
+
+
+(ZVY) N /(DQ) (XB)J/J B /(SGQ) (CN) /
+
+E CT/(AD) (NDW)E/  CQ /(XBE)T /
+
+(ZVY) N /(DQ) (XB)J/J B /(SGQ) (CNQ) /
+
+(AQ) (CU) /(ADY) (NDT) /E (CW) /(XBE)T /
+
+
+(ZVY) N /(DQ) (XB)J/J B /(SGQ) (CN) /
+
+E CT/(AD) (NDW)E/  (CE) /(XBE)T /
+
+(ZVY)  /Q   /(XBJ) /  Q /
+
+Q   /      /      /      /
+
+
