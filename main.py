@@ -51,12 +51,12 @@ class Syllable:
     def __str__(self):
         if self.is_space: return "_"
 
-        if self.is_multitone:
-            return f"({self.word})"
-        elif not self.is_arpeggio:
-            return f"{self.word}"
-        else:
+        if self.is_arpeggio:
             return f"[{self.word}]"
+        elif self.is_multitone:
+            return f"({self.word})"
+        else:
+            return f"{self.word}"
 
     def __repr__(self):
         return self.__str__()
