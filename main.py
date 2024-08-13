@@ -14,81 +14,148 @@ MUSIC_PATH = "music.txt"
 
 class Controller:
     @staticmethod
-    def press(key, is_arpeggio=False):
+    def press(syllable):
+        is_arpeggio = syllable.is_arpeggio
 
-        if key == " ":
-            print("_", end="", flush=True)
-            return
+        print(syllable, end="", flush=True)
+        if syllable.is_space: return
 
-        if len(key) > 1:
-            key_str = f'({key})' if not is_arpeggio else f'[{key}]'
-        else:
-            key_str = key
-
-        print(key_str, end="", flush=True)
-        for _k in key:
+        for _k in syllable.word:
             if is_arpeggio: time.sleep(ARPEGGIO_INTERVAL)
             keyboard.press_and_release(_k.lower())
 
 
-class Flag:
-    def __init__(self):
-        self.running_flag = True
-        self.stop_flag = False
-        self.adjust_interval = 0
+class Connection:
+    def __init__(
+            self, *,
+            running_flag=True,
+            stop_flag=True,
+            progress_adjust_rating=1,
+            adjust_interval=0,
+            adjust_progress=0
+    ):
+        self.running_flag = running_flag
+        self.stop_flag = stop_flag
+        self.adjust_interval = adjust_interval
+        self.adjust_progress = adjust_progress
+        self.pg_ad_rating = progress_adjust_rating
 
 
 class Syllable:
     def __init__(self, word, is_arpeggio=False):
         self.word = word
         self.is_arpeggio = is_arpeggio
+        self.is_space = (word == " ")
+        self.is_multitone = (len(word) > 1)
 
     def __str__(self):
-        return f"'{self.word}'"
+        if self.is_space: return "_"
+
+        if self.is_multitone:
+            return f"({self.word})"
+        elif not self.is_arpeggio:
+            return f"{self.word}"
+        else:
+            return f"[{self.word}]"
 
     def __repr__(self):
-        return f"'{self.word}'"
+        return self.__str__()
 
 
 class PianoPlayer:
-    def __init__(self):
+    def __init__(self, connection):
+        self.conn = connection
         self.syllables = []
         self.interval = 0.5
+        self.idx = 0
+        self.interval_changes = 0
+        self.pg_ad_rating = 1
+
+    @property
+    def length(self):
+        return len(self.syllables)
 
     def add_syllables(self, syllables):
         for syllable in syllables:
             self.syllables.append(syllable)
         return self
 
-    def play(self, flag):
-        interval = self.interval * INTERVAL_RATING
-        total_time = len(self.syllables) * interval
-        length = len(self.syllables)
+    @property
+    def interval_(self):
+        if self.current_syllable.word == " ":
+            return self.r_interval * SPACE_INTERVAL_RATING
+        return self.r_interval
 
-        for idx, syllable in enumerate(self.syllables):
-            if syllable.word == " ":
-                time.sleep(interval * SPACE_INTERVAL_RATING)
-            else:
-                time.sleep(interval)
-            if flag.adjust_interval:
-                interval += flag.adjust_interval
-                flag.adjust_interval = 0
+    @property
+    def r_interval(self):
+        return self.interval * INTERVAL_RATING + self.interval_changes
 
-            if not flag.running_flag: return
+    @interval_.setter
+    def interval_(self, value):
+        self.interval = value
 
-            while flag.stop_flag:
-                if not flag.running_flag: return
-                os.system("title stopping")
+    @property
+    def percentage(self):
+        return (self.idx + 1) / self.length
 
-            Controller.press(syllable.word, is_arpeggio=syllable.is_arpeggio)
+    @property
+    def current_syllable(self):
+        return self.syllables[self.idx]
 
-            percent = (idx + 1) / length
-            os.system(
-                f"title "
-                f"{percent * 100:.2f}%"
-                f"({total_time * percent:.2f}/ {total_time:.2f}s)"
-                f"ITV[{interval:.4f}s - {1 / (interval / INTERVAL_RATING):.3f}Hz]"
-            )
+    def display_title(self):
+        percent = self.percentage
+        interval = self.r_interval
+        os.system(
+            f"title "
+            f"{percent * 100:.2f}%  "
+            f"{'Running' if self.conn.stop_flag else 'Stopped'}  "
+            f"[{self.interval:.4f}s - {1 / (interval / INTERVAL_RATING):.3f}Hz]  "
+            f"APR:{self.pg_ad_rating}  "
+            f"{self.current_syllable}"
+        )
+
+    def sleep(self):
+        time.sleep(self.interval_)
+
+    def change_args(self):
+        if self.conn.pg_ad_rating:
+            self.pg_ad_rating *= self.conn.pg_ad_rating
+            self.conn.pg_ad_rating = 0
+
+        if self.conn.adjust_interval:
+            self.interval_changes += self.conn.adjust_interval
+            self.conn.adjust_interval = 0
+
+        if self.conn.adjust_progress:
+            self.idx += int(self.conn.adjust_progress * self.pg_ad_rating)
+            self.display_music(self.idx)
+            self.conn.adjust_progress = 0
+
+    def display_music(self, end):
+        os.system("cls")
+        display_default_info()
+        print("".join(map(str, self.syllables[:end])), end="", flush=True)
+
+    def check_stop(self):
+        if not self.conn.running_flag: return True
+        while self.conn.stop_flag:
+            if not self.conn.running_flag: return True
+            self.change_args()
+            self.display_title()
+        return False
+
+    def play(self):
+        while self.idx < self.length:
+
+            self.change_args()
+            self.display_title()
+            self.sleep()
+
+            if self.check_stop(): return
+
+            Controller.press(self.current_syllable)
+
+            self.idx += 1
 
     def __str__(self):
         syllables = ".".join([str(syllable) for syllable in self.syllables])
@@ -96,10 +163,11 @@ class PianoPlayer:
 
 
 class FileAnalyzer:
-    def __init__(self, filename):
+    def __init__(self, filename, connection):
         self.filename = filename
         self.syllables = []
         self.content = None
+        self.conn = connection
 
     def read_content(self):
         with open(self.filename, "r", encoding='utf8') as file:
@@ -113,12 +181,12 @@ class FileAnalyzer:
         idx = 0
         while idx < length:
             if content[idx] == "/":
-                idx += 1
-                continue
+                pass
 
-            elif content[idx] in ["(", "[", "{"]:
+            elif content[idx] in ("(", "[", "{"):
                 left_quote = idx
-                while idx < length and content[idx] not in [")", "]", "}"]: idx += 1
+                while idx < length and content[idx] not in (")", "]", "}"): idx += 1
+
                 syllables.append(Syllable(
                     content[left_quote + 1:idx],
                     is_arpeggio=bool(content[idx] != ")")
@@ -132,7 +200,7 @@ class FileAnalyzer:
         return syllables
 
     def analyze(self):
-        song_player = PianoPlayer()
+        song_player = PianoPlayer(self.conn)
         song_player.interval = 1 / float(self.content[0])
 
         for syllable in self.content[MUSIC_START_LINE:]:
@@ -154,16 +222,28 @@ def user_enter_monitor():
 
 
 class Monitor(Thread):
-    def __init__(self, flag):
+    def __init__(self, conn):
         super().__init__()
-        self.flag = flag
+        self.conn = conn
 
     def run(self):
         while (res_k := user_enter_monitor()) != "f2":
-            if res_k == "f1": self.flag.stop_flag = not self.flag.stop_flag
-            if res_k == "up": self.flag.adjust_interval += 0.005
-            if res_k == "down": self.flag.adjust_interval -= 0.005
-        self.flag.running_flag = False
+            if res_k == "f1":
+                self.conn.stop_flag = not self.conn.stop_flag
+            elif res_k == "up":
+                self.conn.adjust_interval += 0.005
+            elif res_k == "down":
+                self.conn.adjust_interval -= 0.005
+            elif res_k == "left":
+                self.conn.adjust_progress -= 1
+            elif res_k == "right":
+                self.conn.adjust_progress += 1
+            elif res_k == "p":
+                self.conn.pg_ad_rating = 2
+            elif res_k == "o":
+                self.conn.pg_ad_rating = 0.5
+
+        self.conn.running_flag = False
 
 
 def load_config():
@@ -184,12 +264,11 @@ def load_config():
             MUSIC_START_LINE = idx + 1
 
 
-def main(argv):
-    global MUSIC_PATH
-    MUSIC_PATH = argv[1]
-    load_config()
-
-    print("Press F1 to start/stop, F2 to exit, UP to increase interval, DOWN to decrease interval")
+def display_default_info():
+    print(
+        "Press F1 to start/stop, F2 to exit, UP to increase interval, DOWN to decrease interval\n"
+        "LEFT to go back, RIGHT to go forward, P to double progress, O to halve progress"
+    )
     print(f"Play the song of `{MUSIC_PATH}`")
     print(
         f"arpeggio_interval: {ARPEGGIO_INTERVAL}"
@@ -197,14 +276,21 @@ def main(argv):
         f", space_interval_rating: {SPACE_INTERVAL_RATING}"
     )
 
-    f = Flag()
-    while f.running_flag:
-        if user_enter_monitor() == "f1":
-            m = Monitor(f)
-            m.start()
-            FileAnalyzer(MUSIC_PATH).read_content().analyze().play(f)
-            m.join()
+
+def main(argv):
+    global MUSIC_PATH
+    MUSIC_PATH = argv[1]
+    load_config()
+    display_default_info()
+
+    c = Connection()
+    while c.running_flag:
+        m = Monitor(c)
+        m.start()
+        FileAnalyzer(MUSIC_PATH, c).read_content().analyze().play()
+        m.join()
 
 
 if __name__ == '__main__':
     main(sys.argv)
+    # main(["", r"D:\Developments\GenshinImpactPianoPlayer\music\aLiEz.txt"])
