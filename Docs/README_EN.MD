@@ -15,8 +15,8 @@ This is a Genshin Impact's Phoenix Poetry Piano Player that can play the tunes o
     - 'F1': Pause/resume
     - 'F2': Exit
     - 'Left': Rewind
-    - 'Right': Fast forward
-    - 'Up': Accelerates
+    - `Right`: Increase the interval between performances
+    - `Up`: Reduce the interval between plays
     - 'Down': Slows down
     - 'O': Reduces the time it takes to fast forward and rewind
     - 'P': Increases the time to fast forward and rewind
