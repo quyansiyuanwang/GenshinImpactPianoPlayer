@@ -9,13 +9,22 @@ MUSIC_PATH: str = "music.txt"
 
 
 class Controller:
+    last_key: Union[str, None]
+
     @staticmethod
     def press(syllable: Syllable) -> None: ...
+
+    @staticmethod
+    def release_all() -> None: ...
+
+    @staticmethod
+    def delay_press(syllable: Syllable) -> None: ...
 
 
 class Connection:
     running_flag: bool
     stop_flag: bool
+    delay_press: bool
     adjust_interval: float
     adjust_progress: int
     pg_ad_rating: int
@@ -128,6 +137,8 @@ def user_enter_monitor() -> str: ...
 
 def load_config() -> None: ...
 
+
 def display_default_info() -> None: ...
+
 
 def main(argv: List[Any]) -> None: ...

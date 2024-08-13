@@ -13,16 +13,36 @@ MUSIC_PATH = "music.txt"
 
 
 class Controller:
+    last_key = None
+
     @staticmethod
     def press(syllable):
-        is_arpeggio = syllable.is_arpeggio
-
         print(syllable, end="", flush=True)
         if syllable.is_space: return
 
         for _k in syllable.word:
-            if is_arpeggio: time.sleep(ARPEGGIO_INTERVAL)
+            if syllable.is_arpeggio: time.sleep(ARPEGGIO_INTERVAL)
             keyboard.press_and_release(_k.lower())
+
+    @staticmethod
+    def release_all():
+        if Controller.last_key is not None:
+            for _k in Controller.last_key:
+                keyboard.release(_k)
+        Controller.last_key = None
+
+    @staticmethod
+    def delay_press(syllable):
+        print(syllable, end="", flush=True)
+        if syllable.is_space: return
+        if Controller.last_key is not None:
+            for _k in Controller.last_key:
+                keyboard.release(_k)
+
+        for _k in syllable.word:
+            if syllable.is_arpeggio: time.sleep(ARPEGGIO_INTERVAL)
+            keyboard.press(_k.lower())
+        Controller.last_key = syllable.word.lower()
 
 
 class Connection:
@@ -30,12 +50,14 @@ class Connection:
             self, *,
             running_flag=True,
             stop_flag=True,
+            delay_press=False,
             progress_adjust_rating=1,
             adjust_interval=0,
             adjust_progress=0
     ):
         self.running_flag = running_flag
         self.stop_flag = stop_flag
+        self.delay_press = delay_press
         self.adjust_interval = adjust_interval
         self.adjust_progress = adjust_progress
         self.pg_ad_rating = progress_adjust_rating
@@ -111,6 +133,7 @@ class PianoPlayer:
             f"{'Running' if not self.conn.stop_flag else 'Stopped'}  "
             f"[{interval:.4f}s - {1 / (interval / INTERVAL_RATING):.3f}Hz]  "
             f"APR:{self.pg_ad_rating}  "
+            f"Mode:{'horn' if self.conn.delay_press else 'piano'}  "
             f"{self.current_syllable}"
         )
 
@@ -153,7 +176,10 @@ class PianoPlayer:
 
             if self.check_stop(): return
 
-            Controller.press(self.current_syllable)
+            if self.conn.delay_press:
+                Controller.delay_press(self.current_syllable)
+            else:
+                Controller.press(self.current_syllable)
 
             self.idx += 1
 
@@ -242,6 +268,8 @@ class Monitor(Thread):
                 self.conn.pg_ad_rating = 2
             elif res_k == "o":
                 self.conn.pg_ad_rating = 0.5
+            elif res_k == "i":
+                self.conn.delay_press = not self.conn.delay_press
 
         self.conn.running_flag = False
 
@@ -267,7 +295,8 @@ def load_config():
 def display_default_info():
     print(
         "Press F1 to start/stop, F2 to exit, UP to increase interval, DOWN to decrease interval\n"
-        "LEFT to go back, RIGHT to go forward, P to double progress, O to halve progress"
+        "LEFT to go back, RIGHT to go forward, P to double progress, O to halve progress\n"
+        "I to switch mode between piano and horn"
     )
     print(f"Play the song of `{MUSIC_PATH}`")
     print(
@@ -288,6 +317,7 @@ def main(argv):
         m = Monitor(c)
         m.start()
         FileAnalyzer(MUSIC_PATH, c).read_content().analyze().play()
+        Controller.release_all()
         m.join()
 
 
