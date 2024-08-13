@@ -316,8 +316,10 @@ def main(argv):
     while c.running_flag:
         m = Monitor(c)
         m.start()
-        FileAnalyzer(MUSIC_PATH, c).read_content().analyze().play()
-        Controller.release_all()
+        try:
+            FileAnalyzer(MUSIC_PATH, c).read_content().analyze().play()
+        finally:
+            Controller.release_all()
         m.join()
 
 
