@@ -109,7 +109,7 @@ class PianoPlayer:
             f"title "
             f"{percent * 100:.2f}%  "
             f"{'Running' if not self.conn.stop_flag else 'Stopped'}  "
-            f"[{self.interval:.4f}s - {1 / (interval / INTERVAL_RATING):.3f}Hz]  "
+            f"[{interval:.4f}s - {1 / (interval / INTERVAL_RATING):.3f}Hz]  "
             f"APR:{self.pg_ad_rating}  "
             f"{self.current_syllable}"
         )
