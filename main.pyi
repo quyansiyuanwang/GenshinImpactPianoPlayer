@@ -5,6 +5,7 @@ ARPEGGIO_INTERVAL: float = 0.07
 INTERVAL_RATING: float = 0.15
 SPACE_INTERVAL_RATING: float = 0.5
 MUSIC_START_LINE: int = 1
+HORN_MODE_INTERVAL: float = 0.2
 MUSIC_PATH: str = "music.txt"
 
 
@@ -48,6 +49,7 @@ class Syllable:
     is_arpeggio: bool
     is_space: bool
     is_multitone: bool
+    is_rest: bool
 
     def __init__(self, word: str, is_arpeggio: bool = False) -> None: ...
 

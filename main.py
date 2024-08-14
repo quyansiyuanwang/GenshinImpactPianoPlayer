@@ -9,6 +9,7 @@ ARPEGGIO_INTERVAL = 0.05
 INTERVAL_RATING = 0.15
 SPACE_INTERVAL_RATING = 0.5
 MUSIC_START_LINE = 1
+HORN_MODE_INTERVAL = 0.01
 MUSIC_PATH = "music.txt"
 
 
@@ -38,6 +39,8 @@ class Controller:
         if Controller.last_key is not None:
             for _k in Controller.last_key:
                 keyboard.release(_k)
+
+        time.sleep(HORN_MODE_INTERVAL)
 
         for _k in syllable.word:
             if syllable.is_arpeggio: time.sleep(ARPEGGIO_INTERVAL)
@@ -69,6 +72,7 @@ class Syllable:
         self.is_arpeggio = is_arpeggio
         self.is_space = (word == " ")
         self.is_multitone = (len(word) > 1)
+        self.is_rest = (word == "^")
 
     def __str__(self):
         if self.is_space: return "_"
@@ -163,6 +167,7 @@ class PianoPlayer:
         if not self.conn.running_flag: return True
         while self.conn.stop_flag:
             if not self.conn.running_flag: return True
+
             self.change_args()
             self.display_title()
         return False
@@ -174,6 +179,7 @@ class PianoPlayer:
             self.display_title()
             self.sleep()
 
+            if self.current_syllable.is_rest: Controller.release_all()
             if self.check_stop(): return
 
             if self.conn.delay_press:
@@ -275,7 +281,7 @@ class Monitor(Thread):
 
 
 def load_config():
-    global ARPEGGIO_INTERVAL, INTERVAL_RATING, SPACE_INTERVAL_RATING, MUSIC_START_LINE
+    global ARPEGGIO_INTERVAL, INTERVAL_RATING, SPACE_INTERVAL_RATING, MUSIC_START_LINE, HORN_MODE_INTERVAL
     with open(MUSIC_PATH, 'r') as file:
         lines = file.read().split('\n')
 
@@ -287,6 +293,9 @@ def load_config():
 
         elif line.startswith("SPACE_INTERVAL_RATING"):
             SPACE_INTERVAL_RATING = float(line.split('=')[-1])
+
+        elif line.startswith("HORN_MODE_INTERVAL"):
+            HORN_MODE_INTERVAL = float(line.split('=')[-1])
 
         elif line.startswith("-"):
             MUSIC_START_LINE = idx + 1
