@@ -54,6 +54,7 @@ class Connection:
             running_flag=True,
             stop_flag=True,
             delay_press=False,
+            restart=False,
             progress_adjust_rating=1,
             adjust_interval=0,
             adjust_progress=0
@@ -64,6 +65,7 @@ class Connection:
         self.adjust_interval = adjust_interval
         self.adjust_progress = adjust_progress
         self.pg_ad_rating = progress_adjust_rating
+        self.restart = restart
 
 
 class Syllable:
@@ -122,10 +124,12 @@ class PianoPlayer:
 
     @property
     def percentage(self):
-        return (self.idx + 1) / self.length
+        return self.idx / self.length
 
     @property
     def current_syllable(self):
+        if self.idx >= self.length:
+            return Syllable("!")
         return self.syllables[self.idx]
 
     def display_title(self):
@@ -144,6 +148,10 @@ class PianoPlayer:
     def sleep(self):
         time.sleep(self.interval_)
 
+    def restart(self):
+        self.idx = 0
+        self.display_music(self.idx)
+
     def change_args(self):
         if self.conn.pg_ad_rating:
             self.pg_ad_rating *= self.conn.pg_ad_rating
@@ -158,6 +166,10 @@ class PianoPlayer:
             self.display_music(self.idx)
             self.conn.adjust_progress = 0
 
+        if self.conn.restart:
+            self.restart()
+            self.conn.restart = False
+
     def display_music(self, end):
         os.system("cls")
         display_default_info()
@@ -166,6 +178,7 @@ class PianoPlayer:
     def check_stop(self):
         if not self.conn.running_flag: return True
         while self.conn.stop_flag:
+            Controller.release_all()
             if not self.conn.running_flag: return True
 
             self.change_args()
@@ -276,6 +289,8 @@ class Monitor(Thread):
                 self.conn.pg_ad_rating = 0.5
             elif res_k == "i":
                 self.conn.delay_press = not self.conn.delay_press
+            elif res_k == "f3":
+                self.conn.restart = not self.conn.restart
 
         self.conn.running_flag = False
 
@@ -303,9 +318,11 @@ def load_config():
 
 def display_default_info():
     print(
-        "Press F1 to start/stop, F2 to exit, UP to increase interval, DOWN to decrease interval\n"
-        "LEFT to go back, RIGHT to go forward, P to double progress, O to halve progress\n"
-        "I to switch mode between piano and horn"
+        "Press F1 to start/stop, F2 to exit, F3 to restart, \n"
+        "UP to increase interval, DOWN to decrease interval, "
+        "LEFT to go back, RIGHT to go forward, \n"
+        "P to double progress, O to halve progress\n"
+        "I to switch mode between piano and horn, "
     )
     print(f"Play the song of `{MUSIC_PATH}`")
     print(
@@ -322,14 +339,19 @@ def main(argv):
     display_default_info()
 
     c = Connection()
+    (m := Monitor(c)).start()
+    music = FileAnalyzer(MUSIC_PATH, c).read_content().analyze()
     while c.running_flag:
-        m = Monitor(c)
-        m.start()
+
         try:
-            FileAnalyzer(MUSIC_PATH, c).read_content().analyze().play()
-        finally:
-            Controller.release_all()
-        m.join()
+            music.play()
+            c.stop_flag = True
+            music.display_title()
+        finally: Controller.release_all()
+
+        if c.restart: music.restart()
+
+    m.join()
 
 
 if __name__ == '__main__':

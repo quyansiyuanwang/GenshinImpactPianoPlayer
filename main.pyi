@@ -26,6 +26,7 @@ class Connection:
     running_flag: bool
     stop_flag: bool
     delay_press: bool
+    restart: bool
     adjust_interval: float
     adjust_progress: int
     pg_ad_rating: int
@@ -34,14 +35,12 @@ class Connection:
             self, *,
             running_flag: bool = True,
             stop_flag: bool = True,
+            delay_press: bool = False,
+            restart: bool = False,
             progress_adjust_rating: int = 1,
             adjust_interval: float = 0,
             adjust_progress: int = 0
-    ) -> None:
-        self.running_flag = running_flag
-        self.stop_flag = stop_flag
-        self.adjust_interval = adjust_interval
-        self.adjust_progress = adjust_progress
+    ) -> None: ...
 
 
 class Syllable:
@@ -94,6 +93,8 @@ class PianoPlayer:
     def display_title(self) -> None: ...
 
     def sleep(self) -> None: ...
+
+    def restart(self) -> None: ...
 
     def change_args(self) -> None: ...
 
