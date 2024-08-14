@@ -20,15 +20,16 @@ simple profile.
 3. Configuration Files
 4. Drag the score file onto the exe (administrator privileges required) to open it
 5. Shortcut Description:
-    - 'F1': Pause/resume
-    - 'F2': Exit
-    - 'Left': Rewind
+    - `F1`: Pause/resume
+    - `F2`: Exit
+    - `F3`: Start playing again
+    - `Left`: Rewind
     - `Right`: Increase the interval between performances
     - `Up`: Reduce the interval between plays
-    - 'Down': Slows down
-    - 'O': Reduces the time it takes to fast forward and rewind
-    - 'P': Increases the time to fast forward and rewind
-    - 'I': Switch mode (Piano/Horn)
+    - `Down`: Slows down
+    - `O`: Reduces the time it takes to fast-forward and rewind
+    - `P`: Increases the time to fast-forward and rewind
+    - `I`: Switch mode (Piano/Horn)
 
 ## File configuration description
 
