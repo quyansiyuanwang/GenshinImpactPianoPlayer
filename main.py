@@ -166,7 +166,7 @@ class PianoPlayer:
     @property
     def current_syllable(self):
         if self.idx >= self.length:
-            return Syllable("!")
+            return Syllable(" ")
         return self.syllables[self.idx]
 
     def display_title(self):
