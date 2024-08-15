@@ -54,7 +54,7 @@ class Controller:
         for _k in syllable.words:
             if syllable.is_arpeggio: time.sleep(ARPEGGIO_INTERVAL)
             keyboard.press(_k.lower())
-        Controller.last_key = syllable.words.lower()
+        Controller.last_key = ''.join(str(w).lower() for w in syllable.words)
 
 
 class Connection:
@@ -84,7 +84,7 @@ class Syllable:
         self.is_rest = (words == "^")
 
         self.words = words
-        if isinstance(words, str) and not self.is_space:
+        if isinstance(words, str) and not self.is_space and words != "^":
             self.words = list(words) if words.isalpha() else Syllable.analyse(words)
 
         self.is_arpeggio = is_arpeggio
