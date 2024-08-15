@@ -2,7 +2,6 @@ import os
 import sys
 import time
 from threading import Thread
-from typing import List, Union
 
 import keyboard
 
@@ -30,8 +29,10 @@ class Controller:
 
         for _k in syllable.words:
             if syllable.is_arpeggio: time.sleep(ARPEGGIO_INTERVAL)
-            if isinstance(_k, Syllable): Controller.press(_k, display=False)
-            else: keyboard.press_and_release(_k.lower())
+            if isinstance(_k, Syllable):
+                Controller.press(_k, display=False)
+            else:
+                keyboard.press_and_release(_k.lower())
 
     @staticmethod
     def release_all():
@@ -98,7 +99,7 @@ class Syllable:
             elif item in QUOTE_PAIR.values():
                 pairs[stack.pop()] = idx
 
-        res: List[Syllable] = []
+        res = []
         idx = 0
         length = len(word)
         while idx < length:
