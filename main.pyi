@@ -1,5 +1,5 @@
 from threading import Thread
-from typing import Union, List, Self, Iterable, Any
+from typing import Union, List, Self, Any
 
 ARPEGGIO_INTERVAL: float = 0.07
 INTERVAL_RATING: float = 0.15
@@ -13,7 +13,7 @@ class Controller:
     last_key: Union[str, None]
 
     @staticmethod
-    def press(syllable: Syllable) -> None: ...
+    def press(syllable: Syllable, display: bool = True) -> None: ...
 
     @staticmethod
     def release_all() -> None: ...
@@ -44,20 +44,23 @@ class Connection:
 
 
 class Syllable:
-    word: Union[str, None]
+    words: Union[str, List[Syllable]]
     is_arpeggio: bool
     is_space: bool
     is_multitone: bool
     is_rest: bool
 
-    def __init__(self, word: str, is_arpeggio: bool = False) -> None: ...
+    def __init__(self, word: Union[str, List[Syllable]], is_arpeggio: bool = False) -> None: ...
+
+    @staticmethod
+    def analyse(word: str) -> List[Syllable]: ...
 
     def __str__(self) -> str: ...
 
     def __repr__(self) -> str: ...
 
 
-Syllables = Iterable[Syllable]
+Syllables = List[Syllable]
 
 
 class PianoPlayer:

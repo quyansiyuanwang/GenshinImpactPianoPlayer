@@ -2,8 +2,15 @@ import os
 import sys
 import time
 from threading import Thread
+from typing import List, Union
 
 import keyboard
+
+QUOTE_PAIR = {
+    '(': ')',
+    '[': ']',
+    '{': '}'
+}
 
 ARPEGGIO_INTERVAL = 0.05
 INTERVAL_RATING = 0.15
@@ -17,13 +24,14 @@ class Controller:
     last_key = None
 
     @staticmethod
-    def press(syllable):
-        print(syllable, end="", flush=True)
+    def press(syllable, display=True):
+        if display: print(syllable, end="", flush=True)
         if syllable.is_space: return
 
-        for _k in syllable.word:
+        for _k in syllable.words:
             if syllable.is_arpeggio: time.sleep(ARPEGGIO_INTERVAL)
-            keyboard.press_and_release(_k.lower())
+            if isinstance(_k, Syllable): Controller.press(_k, display=False)
+            else: keyboard.press_and_release(_k.lower())
 
     @staticmethod
     def release_all():
@@ -42,10 +50,10 @@ class Controller:
 
         time.sleep(HORN_MODE_INTERVAL)
 
-        for _k in syllable.word:
+        for _k in syllable.words:
             if syllable.is_arpeggio: time.sleep(ARPEGGIO_INTERVAL)
             keyboard.press(_k.lower())
-        Controller.last_key = syllable.word.lower()
+        Controller.last_key = syllable.words.lower()
 
 
 class Connection:
@@ -69,22 +77,50 @@ class Connection:
 
 
 class Syllable:
-    def __init__(self, word, is_arpeggio=False):
-        self.word = word
+    def __init__(self, words, is_arpeggio=False):
+        self.is_space = (words == " ")
+        self.is_multitone = (len(words) > 1)
+        self.is_rest = (words == "^")
+
+        self.words = words
+        if isinstance(words, str) and not self.is_space:
+            self.words = list(words) if words.isalpha() else Syllable.analyse(words)
+
         self.is_arpeggio = is_arpeggio
-        self.is_space = (word == " ")
-        self.is_multitone = (len(word) > 1)
-        self.is_rest = (word == "^")
+
+    @staticmethod
+    def analyse(word):
+        pairs = {}
+        stack = []
+        for idx, item in enumerate(word):
+            if item in QUOTE_PAIR.keys():
+                stack.append(idx)
+            elif item in QUOTE_PAIR.values():
+                pairs[stack.pop()] = idx
+
+        res: List[Syllable] = []
+        idx = 0
+        length = len(word)
+        while idx < length:
+
+            if (right := pairs.get(idx, None)) is not None:
+                res.append(Syllable(word[idx + 1: right]))
+                idx = right + 1
+                continue
+            res.append(Syllable(word[idx]))
+            idx += 1
+        return res
 
     def __str__(self):
         if self.is_space: return "_"
 
+        word_str = ''.join(map(str, self.words))
         if self.is_arpeggio:
-            return f"[{self.word}]"
+            return f"[{word_str}]"
         elif self.is_multitone:
-            return f"({self.word})"
+            return f"({word_str})"
         else:
-            return f"{self.word}"
+            return f"{word_str}"
 
     def __repr__(self):
         return self.__str__()
@@ -110,7 +146,7 @@ class PianoPlayer:
 
     @property
     def interval_(self):
-        if self.current_syllable.word == " ":
+        if self.current_syllable.words == " ":
             return self.r_interval * SPACE_INTERVAL_RATING
         return self.r_interval
 
@@ -228,14 +264,11 @@ class FileAnalyzer:
             if content[idx] == "/":
                 pass
 
-            elif content[idx] in ("(", "[", "{"):
+            elif (right_quote := QUOTE_PAIR.get(content[idx], None)) is not None:
                 left_quote = idx
-                while idx < length and content[idx] not in (")", "]", "}"): idx += 1
+                while idx < length and content[idx] != right_quote: idx += 1
 
-                syllables.append(Syllable(
-                    content[left_quote + 1:idx],
-                    is_arpeggio=bool(content[idx] != ")")
-                ))
+                syllables.append(Syllable(content[left_quote + 1:idx], is_arpeggio=bool(content[idx] != ")")))
 
             else:
                 syllables.append(Syllable(content[idx].replace(u"\xa0", " ")))
@@ -347,7 +380,8 @@ def main(argv):
             music.play()
             c.stop_flag = True
             music.display_title()
-        finally: Controller.release_all()
+        finally:
+            Controller.release_all()
 
         if c.restart: music.restart()
 
@@ -356,3 +390,4 @@ def main(argv):
 
 if __name__ == '__main__':
     main(sys.argv)
+    # main(['', r'D:\a3432\Desktop\谱\Script\背对背拥抱 by小6.txt'])
