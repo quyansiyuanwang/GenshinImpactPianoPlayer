@@ -1,11 +1,12 @@
 from threading import Thread
 from typing import Union, List, Self, Any
 
-ARPEGGIO_INTERVAL: float = 0.07
-INTERVAL_RATING: float = 0.15
-SPACE_INTERVAL_RATING: float = 0.5
+DEFAULT_ARPEGGIO_INTERVAL = ARPEGGIO_INTERVAL = 0.05
+DEFAULT_INTERVAL_RATING = INTERVAL_RATING = 0.15
+DEFAULT_SPACE_INTERVAL_RATING = SPACE_INTERVAL_RATING = 0.5
+DEFAULT_HORN_MODE_INTERVAL = HORN_MODE_INTERVAL = 0.01
+
 MUSIC_START_LINE: int = 1
-HORN_MODE_INTERVAL: float = 0.2
 MUSIC_PATH: str = "music.txt"
 
 
@@ -27,7 +28,9 @@ class Connection:
     stop_flag: bool
     delay_press: bool
     restart: bool
+    reset_config: bool
     adjust_interval: float
+    adjust_space_interval: float
     adjust_progress: int
     pg_ad_rating: int
 
@@ -37,8 +40,10 @@ class Connection:
             stop_flag: bool = True,
             delay_press: bool = False,
             restart: bool = False,
+            reset_config: bool = False,
             progress_adjust_rating: int = 1,
             adjust_interval: float = 0,
+            adjust_space_interval: float = 0,
             adjust_progress: int = 0
     ) -> None: ...
 
@@ -96,6 +101,8 @@ class PianoPlayer:
     def display_title(self) -> None: ...
 
     def sleep(self) -> None: ...
+
+    def config_reset(self) -> None: ...
 
     def restart(self) -> None: ...
 

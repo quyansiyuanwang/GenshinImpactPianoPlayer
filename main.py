@@ -11,11 +11,11 @@ QUOTE_PAIR = {
     '{': '}'
 }
 
-ARPEGGIO_INTERVAL = 0.05
-INTERVAL_RATING = 0.15
-SPACE_INTERVAL_RATING = 0.5
+DEFAULT_ARPEGGIO_INTERVAL = ARPEGGIO_INTERVAL = 0.05
+DEFAULT_INTERVAL_RATING = INTERVAL_RATING = 0.15
+DEFAULT_SPACE_INTERVAL_RATING = SPACE_INTERVAL_RATING = 0.5
+DEFAULT_HORN_MODE_INTERVAL = HORN_MODE_INTERVAL = 0.01
 MUSIC_START_LINE = 1
-HORN_MODE_INTERVAL = 0.01
 MUSIC_PATH = "music.txt"
 
 
@@ -64,17 +64,21 @@ class Connection:
             stop_flag=True,
             delay_press=False,
             restart=False,
+            reset_config=False,
             progress_adjust_rating=1,
             adjust_interval=0,
+            adjust_space_interval=0,
             adjust_progress=0
     ):
         self.running_flag = running_flag
         self.stop_flag = stop_flag
         self.delay_press = delay_press
         self.adjust_interval = adjust_interval
+        self.adjust_space_interval = adjust_space_interval
         self.adjust_progress = adjust_progress
         self.pg_ad_rating = progress_adjust_rating
         self.restart = restart
+        self.reset_config = reset_config
 
 
 class Syllable:
@@ -96,7 +100,7 @@ class Syllable:
         for idx, item in enumerate(word):
             if item in QUOTE_PAIR.keys():
                 stack.append(idx)
-            elif item in QUOTE_PAIR.values():
+            elif item in QUOTE_PAIR.values() and stack:
                 pairs[stack.pop()] = idx
 
         res = []
@@ -179,17 +183,28 @@ class PianoPlayer:
             f"[{interval:.4f}s - {1 / (interval / INTERVAL_RATING):.3f}Hz]  "
             f"APR:{self.pg_ad_rating}  "
             f"Mode:{'horn' if self.conn.delay_press else 'piano'}  "
+            f"SI:{SPACE_INTERVAL_RATING:.2f}  "
             f"{self.current_syllable}"
         )
 
     def sleep(self):
         time.sleep(self.interval_)
 
+    def config_reset(self):
+        global ARPEGGIO_INTERVAL, INTERVAL_RATING, SPACE_INTERVAL_RATING, HORN_MODE_INTERVAL
+        self.interval_changes = 0
+        self.pg_ad_rating = 1
+        INTERVAL_RATING = DEFAULT_INTERVAL_RATING
+        SPACE_INTERVAL_RATING = DEFAULT_SPACE_INTERVAL_RATING
+        ARPEGGIO_INTERVAL = DEFAULT_ARPEGGIO_INTERVAL
+        HORN_MODE_INTERVAL = DEFAULT_HORN_MODE_INTERVAL
+
     def restart(self):
         self.idx = 0
         self.display_music(self.idx)
 
     def change_args(self):
+        global SPACE_INTERVAL_RATING
         if self.conn.pg_ad_rating:
             self.pg_ad_rating *= self.conn.pg_ad_rating
             self.conn.pg_ad_rating = 0
@@ -206,6 +221,14 @@ class PianoPlayer:
         if self.conn.restart:
             self.restart()
             self.conn.restart = False
+
+        if self.conn.adjust_space_interval:
+            SPACE_INTERVAL_RATING += self.conn.adjust_space_interval
+            self.conn.adjust_space_interval = 0
+
+        if self.conn.reset_config:
+            self.config_reset()
+            self.conn.reset_config = not self.conn.reset_config
 
     def display_music(self, end):
         os.system("cls")
@@ -261,20 +284,39 @@ class FileAnalyzer:
         syllables = []
         length = len(content)
         idx = 0
-        while idx < length:
-            if content[idx] == "/":
-                pass
 
-            elif (right_quote := QUOTE_PAIR.get(content[idx], None)) is not None:
-                left_quote = idx
-                while idx < length and content[idx] != right_quote: idx += 1
+        def inner():
+            nonlocal idx, syllables
+            section = 0
+            while idx < length:
+                if content[idx] == "/":
+                    if section < 4:
+                        for _ in range(4 - section): syllables.append(Syllable(" "))
+                    section = 0
 
-                syllables.append(Syllable(content[left_quote + 1:idx], is_arpeggio=bool(content[idx] != ")")))
+                elif (right_quote := QUOTE_PAIR.get(content[idx], None)) is not None:
+                    left_quote = idx
+                    while idx < length and content[idx] != right_quote: idx += 1
 
-            else:
-                syllables.append(Syllable(content[idx].replace(u"\xa0", " ")))
+                    syllables.append(Syllable(content[left_quote + 1:idx], is_arpeggio=bool(content[idx] != ")")))
 
-            idx += 1
+                elif content[idx].isalpha() or content[idx] == " ":
+                    syllables.append(Syllable(content[idx]))
+
+                elif content[idx] in QUOTE_PAIR.values():
+                    pass
+
+                else:
+                    syllables.append(Syllable(content[idx].replace(u"\xa0", " ")))
+
+                idx += 1
+                section += 1
+
+        try:
+            inner()
+        except (RecursionError, IndexError):
+            print(f"Err: cur at {idx}, till: {content[idx:]}")
+            return []
 
         return syllables
 
@@ -309,6 +351,10 @@ class Monitor(Thread):
         while (res_k := user_enter_monitor()) != "f2":
             if res_k == "f1":
                 self.conn.stop_flag = not self.conn.stop_flag
+            elif res_k == "f3":
+                self.conn.restart = not self.conn.restart
+            elif res_k == "f4":
+                self.conn.reset_config = not self.conn.reset_config
             elif res_k == "up":
                 self.conn.adjust_interval += 0.005
             elif res_k == "down":
@@ -323,28 +369,31 @@ class Monitor(Thread):
                 self.conn.pg_ad_rating = 0.5
             elif res_k == "i":
                 self.conn.delay_press = not self.conn.delay_press
-            elif res_k == "f3":
-                self.conn.restart = not self.conn.restart
+            elif res_k == "k":
+                self.conn.adjust_space_interval -= 0.02
+            elif res_k == "l":
+                self.conn.adjust_space_interval += 0.02
 
         self.conn.running_flag = False
 
 
 def load_config():
     global ARPEGGIO_INTERVAL, INTERVAL_RATING, SPACE_INTERVAL_RATING, MUSIC_START_LINE, HORN_MODE_INTERVAL
+    global DEFAULT_ARPEGGIO_INTERVAL, DEFAULT_INTERVAL_RATING, DEFAULT_SPACE_INTERVAL_RATING, DEFAULT_HORN_MODE_INTERVAL
     with open(MUSIC_PATH, 'r') as file:
         lines = file.read().split('\n')
 
     for idx, line in enumerate(lines):
         if line.startswith("ARPEGGIO_INTERVAL"):
-            ARPEGGIO_INTERVAL = float(line.split('=')[-1])
+            DEFAULT_ARPEGGIO_INTERVAL = ARPEGGIO_INTERVAL = float(line.split('=')[-1])
         elif line.startswith("INTERVAL_RATING"):
-            INTERVAL_RATING = float(line.split('=')[-1])
+            DEFAULT_INTERVAL_RATING = INTERVAL_RATING = float(line.split('=')[-1])
 
         elif line.startswith("SPACE_INTERVAL_RATING"):
-            SPACE_INTERVAL_RATING = float(line.split('=')[-1])
+            DEFAULT_SPACE_INTERVAL_RATING = SPACE_INTERVAL_RATING = float(line.split('=')[-1])
 
         elif line.startswith("HORN_MODE_INTERVAL"):
-            HORN_MODE_INTERVAL = float(line.split('=')[-1])
+            DEFAULT_HORN_MODE_INTERVAL = HORN_MODE_INTERVAL = float(line.split('=')[-1])
 
         elif line.startswith("-"):
             MUSIC_START_LINE = idx + 1
@@ -352,17 +401,19 @@ def load_config():
 
 def display_default_info():
     print(
-        "Press F1 to start/stop, F2 to exit, F3 to restart, \n"
+        "Press F1 to start/stop, F2 to exit, F3 to restart, F4 to reset config\n"
         "UP to increase interval, DOWN to decrease interval, "
         "LEFT to go back, RIGHT to go forward, \n"
-        "P to double progress, O to halve progress\n"
-        "I to switch mode between piano and horn, "
+        "P to double progress, O to halve progress, \n"
+        "I to switch mode between piano and horn, \n"
+        "K to increase space interval, L to decrease space interval"
     )
     print(f"Play the song of `{MUSIC_PATH}`")
     print(
         f"arpeggio_interval: {ARPEGGIO_INTERVAL}"
         f", interval_rating: {INTERVAL_RATING}"
         f", space_interval_rating: {SPACE_INTERVAL_RATING}"
+        f", horn_mode_interval: {HORN_MODE_INTERVAL}"
     )
 
 
@@ -391,4 +442,4 @@ def main(argv):
 
 if __name__ == '__main__':
     main(sys.argv)
-    # main(['', r'D:\a3432\Desktop\谱\Script\背对背拥抱 by小6.txt'])
+    # main(['', r'D:\a3432\Desktop\谱\Script\YOU--小雪.txt'])
