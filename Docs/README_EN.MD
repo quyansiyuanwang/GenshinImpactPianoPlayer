@@ -23,6 +23,7 @@ simple profile.
     - `F1`: Pause/resume
     - `F2`: Exit
     - `F3`: Start playing again
+    - `F4`: Reload the configuration file
     - `Left`: Rewind
     - `Right`: Increase the interval between performances
     - `Up`: Reduce the interval between plays
@@ -30,6 +31,8 @@ simple profile.
     - `O`: Reduces the time it takes to fast-forward and rewind
     - `P`: Increases the time to fast-forward and rewind
     - `I`: Switch mode (Piano/Horn)
+    - `K`: Reduced air interval magnification
+    - `L`: Increases the multiplier of the interval between air tones
 
 ## File configuration description
 
