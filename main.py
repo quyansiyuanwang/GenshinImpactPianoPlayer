@@ -11,6 +11,11 @@ QUOTE_PAIR = {
     '{': '}'
 }
 
+SAFE_KEYS = {'/', ' ', '^'}
+SAFE_KEYS.update({f"{chr(i)}" for i in range(65, 91)})
+SAFE_KEYS.update(QUOTE_PAIR.keys())
+SAFE_KEYS.update(QUOTE_PAIR.values())
+
 DEFAULT_ARPEGGIO_INTERVAL = ARPEGGIO_INTERVAL = 0.05
 DEFAULT_INTERVAL_RATING = INTERVAL_RATING = 0.15
 DEFAULT_SPACE_INTERVAL_RATING = SPACE_INTERVAL_RATING = 0.5
@@ -289,6 +294,11 @@ class FileAnalyzer:
             nonlocal idx, syllables
             section = 0
             while idx < length:
+                if content[idx] not in SAFE_KEYS:
+                    syllables.append(Syllable(" "))
+                    idx += 1
+                    continue
+
                 if content[idx] == "/":
                     if section < 4:
                         for _ in range(4 - section): syllables.append(Syllable(" "))
@@ -307,22 +317,26 @@ class FileAnalyzer:
                     pass
 
                 else:
-                    syllables.append(Syllable(content[idx].replace(u"\xa0", " ")))
+                    syllables.append(Syllable(content[idx]))
 
                 idx += 1
                 section += 1
 
         try:
             inner()
-        except (RecursionError, IndexError):
-            print(f"Err: cur at {idx}, till: {content[idx:]}")
+        except (RecursionError, IndexError) as e:
+            print(f"Err({e}): cur at {idx}, till: {content[idx:]}")
+            return []
+
+        except Exception as e:
+            print(f"Err({e}), cur at {idx}, till: {content[idx:]}")
             return []
 
         return syllables
 
     def analyze(self):
         song_player = PianoPlayer(self.conn)
-        song_player.interval = 1 / float(self.content[0])
+        song_player.interval = 1 / float(''.join(i for i in self.content[0] if i.isdigit() or i == '.'))
 
         for syllable in self.content[MUSIC_START_LINE:]:
             song_player.add_syllables(FileAnalyzer.content_analyze(syllable))
@@ -380,7 +394,7 @@ class Monitor(Thread):
 def load_config():
     global ARPEGGIO_INTERVAL, INTERVAL_RATING, SPACE_INTERVAL_RATING, MUSIC_START_LINE, HORN_MODE_INTERVAL
     global DEFAULT_ARPEGGIO_INTERVAL, DEFAULT_INTERVAL_RATING, DEFAULT_SPACE_INTERVAL_RATING, DEFAULT_HORN_MODE_INTERVAL
-    with open(MUSIC_PATH, 'r') as file:
+    with open(MUSIC_PATH, 'r', encoding='utf8') as file:
         lines = file.read().split('\n')
 
     for idx, line in enumerate(lines):
