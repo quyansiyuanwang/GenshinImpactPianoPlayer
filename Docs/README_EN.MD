@@ -24,6 +24,7 @@ simple profile.
     - `F2`: Exit
     - `F3`: Start playing again
     - `F4`: Reload the configuration file
+    - `F5`: Reload the score file
     - `Left`: Rewind
     - `Right`: Increase the interval between performances
     - `Up`: Reduce the interval between plays
@@ -44,15 +45,23 @@ simple profile.
     ARPEGGIO_INTERVAL=0.05
     INTERVAL_RATING=0.15
     SPACE_INTERVAL_RATING=0.65
+    SPACE_INTERVAL_RATING=0.5
+    HORN_MODE_INTERVAL=0.01
+    SPACE_FILLS=True
+    LINE_INTERVAL_RATING=1
+    IGNORE_BLANK_LINE=True
     ------
     ```
 - Description:
-    - The first line is a numeric value, which is the global (arpeggio) playing rate (positive correlation) (no default
-      value)
-    - ARPEGGIO_INTERVAL: The interval between arpeggios, default is 0.05
-    - INTERVAL_RATING: The ratio of the interval, default is 0.15
-    - SPACE_INTERVAL_RATING: The scale of the space, which is 0.5 by default
-    - HORN_MODE_INTERVAL: The automatic rest interval of the horn mode, default is 0.01
+    - The first line is a numeric value, which is the global (arpeggio) playing rate (positive correlation) (**no default
+      value**)
+    - ARPEGGIO_INTERVAL: The interval between arpeggios, default is `0.05`
+    - INTERVAL_RATING: The ratio of the interval, default is `0.15`
+    - SPACE_INTERVAL_RATING: The scale of the space, which is `0.5` by default
+    - HORN_MODE_INTERVAL: The automatic rest interval of the horn mode, default is `0.01`
+    - SPACE_FILLS: Whether to fill in the space, default is 'True'
+    - LINE_INTERVAL_RATING: The interval timescale for each row (needs to be an integer 'int'), defaults to 1
+    - IGNORE_BLANK_LINE: Whether to ignore blank lines, default is 'True'
     - A line that starts with '-' splits the line to split the configuration and score
 
 ## Sheet music file format

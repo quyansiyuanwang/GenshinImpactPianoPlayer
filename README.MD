@@ -23,6 +23,7 @@
     - `F2`: 退出
     - `F3`: 重新开始演奏
     - `F4`: 重新加载配置文件
+    - `F5`: 重新加载琴谱文件
     - `Left`: 快退
     - `Right`: 增加演奏间隔
     - `Up`: 减少演奏间隔
@@ -41,15 +42,22 @@
     0.75
     ARPEGGIO_INTERVAL=0.05
     INTERVAL_RATING=0.15
-    SPACE_INTERVAL_RATING=0.65
+    SPACE_INTERVAL_RATING=0.5
+    HORN_MODE_INTERVAL=0.01
+    SPACE_FILLS=True
+    LINE_INTERVAL_RATING=1
+    IGNORE_BLANK_LINE=True
     ------
     ```
 - 配置项说明:
-    - 第一行为数值, 为全局(琶音)弹琴速率(正相关)(无默认值)
-    - ARPEGGIO_INTERVAL: 琶音的间隔时间, 默认为0.05
-    - INTERVAL_RATING: 间隔时间的比例, 默认为0.15
-    - SPACE_INTERVAL_RATING: 空格的比例, 默认为0.5
-    - HORN_MODE_INTERVAL: 圆号模式的自动休止间隔时间, 默认为0.01
+    - 第一行为纯数值, 为全局(琶音)弹琴速率(正相关)(**无默认值**)
+    - ARPEGGIO_INTERVAL: 琶音的间隔时间, 默认为`0.05`
+    - INTERVAL_RATING: 间隔时间的比例, 默认为`0.15`
+    - SPACE_INTERVAL_RATING: 空格的比例, 默认为`0.5`
+    - HORN_MODE_INTERVAL: 圆号模式的自动休止间隔时间, 默认为`0.01`
+    - SPACE_FILLS: 是否填充空格, 默认为真`True`
+    - LINE_INTERVAL_RATING: 每行的间隔时间比例(需要为整数`int`), 默认为1
+    - IGNORE_BLANK_LINE: 是否忽略空行, 默认为真`True`
     - 以 `-` 为开头的一行为分割行, 用于分割配置和琴谱
 
 ## 琴谱文件格式
