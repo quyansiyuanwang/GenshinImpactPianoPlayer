@@ -1,11 +1,14 @@
 from threading import Thread
-from typing import Union, List, Self, Any
+from typing import Union, List, Self, Any, Dict, Literal
 
 DEFAULT_ARPEGGIO_INTERVAL = ARPEGGIO_INTERVAL = 0.05
 DEFAULT_INTERVAL_RATING = INTERVAL_RATING = 0.15
 DEFAULT_SPACE_INTERVAL_RATING = SPACE_INTERVAL_RATING = 0.5
 DEFAULT_HORN_MODE_INTERVAL = HORN_MODE_INTERVAL = 0.01
+DEFAULT_LINE_INTERVAL_RATING = LINE_INTERVAL_RATING = 1
 
+SPACE_FILLS: bool = True
+IGNORE_BLANK_LINE: bool = True
 MUSIC_START_LINE: int = 1
 MUSIC_PATH: str = "music.txt"
 
@@ -29,6 +32,7 @@ class Connection:
     delay_press: bool
     restart: bool
     reset_config: bool
+    hot_reload: bool
     adjust_interval: float
     adjust_space_interval: float
     adjust_progress: int
@@ -41,6 +45,7 @@ class Connection:
             delay_press: bool = False,
             restart: bool = False,
             reset_config: bool = False,
+            hot_reload: bool = False,
             progress_adjust_rating: int = 1,
             adjust_interval: float = 0,
             adjust_space_interval: float = 0,
@@ -128,7 +133,7 @@ class FileAnalyzer:
     def read_content(self) -> Self: ...
 
     @staticmethod
-    def content_analyze(content: str) -> Syllables: ...
+    def content_analyze(content: str, lineno: int) -> Syllables: ...
 
     def analyze(self) -> PianoPlayer: ...
 
@@ -152,6 +157,15 @@ def load_config() -> None: ...
 
 
 def display_default_info() -> None: ...
+
+
+def load_all() -> Dict[
+    Literal['music', 'connection', 'monitor'],
+    Union[PianoPlayer, Connection, Monitor]
+]: ...
+
+
+def play(music: PianoPlayer, connection: Connection) -> None: ...
 
 
 def main(argv: List[Any]) -> None: ...

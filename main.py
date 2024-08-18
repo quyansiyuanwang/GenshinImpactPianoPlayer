@@ -16,10 +16,20 @@ SAFE_KEYS.update({f"{chr(i)}" for i in range(65, 91)})
 SAFE_KEYS.update(QUOTE_PAIR.keys())
 SAFE_KEYS.update(QUOTE_PAIR.values())
 
+replace_map = {
+    "（": "(", "）": ")",
+    "【": "[", "】": "]",
+    "｛": "{", "｝": "}"
+}
+
 DEFAULT_ARPEGGIO_INTERVAL = ARPEGGIO_INTERVAL = 0.05
 DEFAULT_INTERVAL_RATING = INTERVAL_RATING = 0.15
 DEFAULT_SPACE_INTERVAL_RATING = SPACE_INTERVAL_RATING = 0.5
 DEFAULT_HORN_MODE_INTERVAL = HORN_MODE_INTERVAL = 0.01
+DEFAULT_LINE_INTERVAL_RATING = LINE_INTERVAL_RATING = 1
+
+SPACE_FILLS = True
+IGNORE_BLANK_LINE = True
 MUSIC_START_LINE = 1
 MUSIC_PATH = "music.txt"
 
@@ -32,12 +42,14 @@ class Controller:
         if display: print(syllable, end="", flush=True)
         if syllable.is_space: return
 
-        for _k in syllable.words:
-            if syllable.is_arpeggio: time.sleep(ARPEGGIO_INTERVAL)
+        last = len(syllable.words) - 1
+        for idx, _k in enumerate(syllable.words):
             if isinstance(_k, Syllable):
                 Controller.press(_k, display=False)
             else:
                 keyboard.press_and_release(_k.lower())
+
+            if syllable.is_arpeggio and idx != last: time.sleep(ARPEGGIO_INTERVAL)
 
     @staticmethod
     def release_all():
@@ -70,6 +82,7 @@ class Connection:
             delay_press=False,
             restart=False,
             reset_config=False,
+            hot_reload=False,
             progress_adjust_rating=1,
             adjust_interval=0,
             adjust_space_interval=0,
@@ -84,6 +97,7 @@ class Connection:
         self.pg_ad_rating = progress_adjust_rating
         self.restart = restart
         self.reset_config = reset_config
+        self.hot_reload = hot_reload
 
 
 class Syllable:
@@ -285,7 +299,7 @@ class FileAnalyzer:
         return self
 
     @staticmethod
-    def content_analyze(content):
+    def content_analyze(content, lineno):
         syllables = []
         length = len(content)
         idx = 0
@@ -297,10 +311,11 @@ class FileAnalyzer:
                 if content[idx] not in SAFE_KEYS:
                     syllables.append(Syllable(" "))
                     idx += 1
+                    section += 1
                     continue
 
                 if content[idx] == "/":
-                    if section < 4:
+                    if SPACE_FILLS and section < 4:
                         for _ in range(4 - section): syllables.append(Syllable(" "))
                     section = 0
 
@@ -325,11 +340,11 @@ class FileAnalyzer:
         try:
             inner()
         except (RecursionError, IndexError) as e:
-            print(f"Err({e}): cur at {idx}, till: {content[idx:]}")
+            print(f"\033[31mErr({e}): cur at ({lineno=})({idx=}), till: {content[idx:]}\033[0m")
             return []
 
         except Exception as e:
-            print(f"Err({e}), cur at {idx}, till: {content[idx:]}")
+            print(f"\033[31mErr({e}), cur at {idx}, till: {content[idx:]}\033[0m")
             return []
 
         return syllables
@@ -338,9 +353,18 @@ class FileAnalyzer:
         song_player = PianoPlayer(self.conn)
         song_player.interval = 1 / float(''.join(i for i in self.content[0] if i.isdigit() or i == '.'))
 
-        for syllable in self.content[MUSIC_START_LINE:]:
-            song_player.add_syllables(FileAnalyzer.content_analyze(syllable))
-            song_player.add_syllables([Syllable(" ")])
+        for lineno, syllable in enumerate(self.content[MUSIC_START_LINE:]):
+            song_player.add_syllables(FileAnalyzer.content_analyze(
+                replace_all(syllable),
+                lineno
+            ))
+
+            idx = len(syllable) - 1
+            while idx >= 0 and syllable[idx] == ' ' and IGNORE_BLANK_LINE: idx -= 1
+            if idx >= 0 and syllable[idx] == '/': continue
+
+            for _ in range(int(LINE_INTERVAL_RATING) if idx >= 0 else 0):
+                song_player.add_syllables([Syllable(" ")])
 
         return song_player
 
@@ -362,13 +386,20 @@ class Monitor(Thread):
         self.conn = conn
 
     def run(self):
-        while (res_k := user_enter_monitor()) != "f2":
+        while self.conn.running_flag:
+            res_k = user_enter_monitor()
             if res_k == "f1":
                 self.conn.stop_flag = not self.conn.stop_flag
+            elif res_k == "f2":
+                self.conn.running_flag = False
             elif res_k == "f3":
                 self.conn.restart = not self.conn.restart
             elif res_k == "f4":
                 self.conn.reset_config = not self.conn.reset_config
+            elif res_k == "f5":
+                self.conn.hot_reload = not self.conn.hot_reload
+                self.conn.running_flag = False
+                break
             elif res_k == "up":
                 self.conn.adjust_interval += 0.005
             elif res_k == "down":
@@ -391,9 +422,19 @@ class Monitor(Thread):
         self.conn.running_flag = False
 
 
+def replace_all(text):
+    for k, v in replace_map.items():
+        text = text.replace(k, v)
+    return text
+
+
 def load_config():
-    global ARPEGGIO_INTERVAL, INTERVAL_RATING, SPACE_INTERVAL_RATING, MUSIC_START_LINE, HORN_MODE_INTERVAL
-    global DEFAULT_ARPEGGIO_INTERVAL, DEFAULT_INTERVAL_RATING, DEFAULT_SPACE_INTERVAL_RATING, DEFAULT_HORN_MODE_INTERVAL
+    global ARPEGGIO_INTERVAL, INTERVAL_RATING, SPACE_INTERVAL_RATING, \
+        HORN_MODE_INTERVAL, LINE_INTERVAL_RATING
+    global DEFAULT_ARPEGGIO_INTERVAL, DEFAULT_INTERVAL_RATING, DEFAULT_SPACE_INTERVAL_RATING, \
+        DEFAULT_HORN_MODE_INTERVAL, DEFAULT_LINE_INTERVAL_RATING
+    global SPACE_FILLS, MUSIC_START_LINE, IGNORE_BLANK_LINE
+
     with open(MUSIC_PATH, 'r', encoding='utf8') as file:
         lines = file.read().split('\n')
 
@@ -409,13 +450,22 @@ def load_config():
         elif line.startswith("HORN_MODE_INTERVAL"):
             DEFAULT_HORN_MODE_INTERVAL = HORN_MODE_INTERVAL = float(line.split('=')[-1])
 
+        elif line.startswith("SPACE_FILLS"):
+            SPACE_FILLS = (line.split('=')[-1].lower() == "true")
+
+        elif line.startswith("LINE_INTERVAL_RATING"):
+            DEFAULT_LINE_INTERVAL_RATING = LINE_INTERVAL_RATING = int(line.split('=')[-1])
+
+        elif line.startswith("IGNORE_BLANK_LINE"):
+            IGNORE_BLANK_LINE = (line.split('=')[-1].lower() == "true")
+
         elif line.startswith("-"):
             MUSIC_START_LINE = idx + 1
 
 
 def display_default_info():
     print(
-        "Press F1 to start/stop, F2 to exit, F3 to restart, F4 to reset config\n"
+        "Press F1 to start/stop, F2 to exit, F3 to restart, F4 to reset config, F5 to hotreload music\n"
         "UP to increase interval, DOWN to decrease interval, "
         "LEFT to go back, RIGHT to go forward, \n"
         "P to double progress, O to halve progress, \n"
@@ -428,32 +478,61 @@ def display_default_info():
         f", interval_rating: {INTERVAL_RATING}"
         f", space_interval_rating: {SPACE_INTERVAL_RATING}"
         f", horn_mode_interval: {HORN_MODE_INTERVAL}"
+        f", line_interval_rating: {LINE_INTERVAL_RATING}"
     )
 
 
-def main(argv):
-    global MUSIC_PATH
-    MUSIC_PATH = argv[1]
+def load_all():
     load_config()
     display_default_info()
-
     c = Connection()
     (m := Monitor(c)).start()
     music = FileAnalyzer(MUSIC_PATH, c).read_content().analyze()
-    while c.running_flag:
 
+    return {
+        'music': music,
+        'connection': c,
+        'monitor': m
+    }
+
+
+def play(music, connection):
+    while connection.running_flag:
         try:
             music.play()
-            c.stop_flag = True
+            connection.stop_flag = True
             music.display_title()
         finally:
             Controller.release_all()
 
-        if c.restart: music.restart()
+        if connection.restart: music.restart()
 
-    m.join()
+
+def main(argv):
+    global MUSIC_PATH
+    if len(argv) == 1:
+        print("拖动音乐文件到exe上以启动，或者手动键入音乐文件路径")
+        while not os.path.exists(MUSIC_PATH := input("请输入音乐文件路径：")): print("请键入合法的路径！")
+    else:
+        MUSIC_PATH = argv[1]
+
+    hot_reload_flag = True  # for first time running
+    packages = load_all()
+    while hot_reload_flag:
+        play(music=packages['music'], connection=packages['connection'])
+        hot_reload_flag = packages['connection'].hot_reload
+        if hot_reload_flag:
+            os.system("cls")
+            cur_idx = packages['music'].idx
+            packages = load_all()
+            packages['music'].idx = cur_idx
+            packages['music'].display_music(cur_idx)
+            print(f"\n{'Hot reload success!':-^50}", flush=True)
+
+        else:
+            packages['monitor'].join()
 
 
 if __name__ == '__main__':
     main(sys.argv)
-    # main(['', r'D:\a3432\Desktop\谱\Script\YOU--小雪.txt'])
+    # main(['', r'D:\a3432\Desktop\谱\Script\temp.txt'])
