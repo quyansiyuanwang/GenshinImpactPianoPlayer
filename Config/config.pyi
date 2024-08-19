@@ -1,0 +1,10 @@
+class Config:
+    ARPEGGIO_INTERVAL: float
+    INTERVAL_RATING: float
+    SPACE_INTERVAL_RATING: float
+    HORN_MODE_INTERVAL: float
+    LINE_INTERVAL_RATING: int
+
+    SPACE_FILLS: bool
+    MUSIC_START_LINE: int
+    MUSIC_PATH: str
