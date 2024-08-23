@@ -77,6 +77,7 @@ class PianoPlayer:
 
     def restart(self):
         self.idx = 0
+        clear_and_DDI()
         self.display_music(self.idx)
 
     def change_args(self):
@@ -90,6 +91,7 @@ class PianoPlayer:
 
         if self.conn.adjust_progress:
             self.idx += int(self.conn.adjust_progress * self.progress_adjust_rating)
+            clear_and_DDI()
             self.display_music(self.idx)
             self.conn.adjust_progress = 0
 
@@ -105,9 +107,11 @@ class PianoPlayer:
             self.config_reset()
             self.conn.reset_config = not self.conn.reset_config
 
-    def display_music(self, end):
+    @staticmethod
+    def clear():
         os.system("cls")
-        display_default_info()
+
+    def display_music(self, end):
         print("".join(map(str, self.syllables[:end])), end="", flush=True)
 
     def check_stop(self):
@@ -140,6 +144,11 @@ class PianoPlayer:
     def __str__(self):
         syllables = ".".join([str(syllable) for syllable in self.syllables])
         return f"U{self.interval}\n{syllables}"
+
+
+def clear_and_DDI():
+    PianoPlayer.clear()
+    display_default_info()
 
 
 def display_default_info():

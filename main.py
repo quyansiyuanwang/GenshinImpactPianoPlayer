@@ -7,7 +7,7 @@ from utils import Monitor
 from Controller import Controller
 from Connection import Connection
 from MusicParse import FileAnalyzer
-from GenshinImpactPianoPlayer import display_default_info, PianoPlayer
+from GenshinImpactPianoPlayer import PianoPlayer, display_default_info
 
 
 def load_config():
@@ -41,7 +41,6 @@ def load_config():
 
 def load_all():
     load_config()
-    display_default_info()
     c = Connection()
     (m := Monitor(c)).start()
     package = FileAnalyzer(GlobalConfig.MUSIC_PATH).read_content().analyze()
@@ -76,16 +75,21 @@ def main(argv):
         GlobalConfig.MUSIC_PATH = argv[1]
 
     hot_reload_flag = True  # for first time running
+    display_default_info()
     packages = load_all()
     while hot_reload_flag:
         play(music=packages['music'], connection=packages['connection'])
         hot_reload_flag = packages['connection'].hot_reload
         if hot_reload_flag:
-            os.system("cls")
-            print(f"\n{'Hot reload!':-^50}", flush=True)
+            # configure the vars
             cur_idx = packages['music'].idx
             packages = load_all()
             packages['music'].idx = cur_idx
+
+            # display info
+            PianoPlayer.clear()
+            print(f"\n{'Hot reload!':-^50}", flush=True)
+            display_default_info()
             packages['music'].display_music(cur_idx)
 
         else:
