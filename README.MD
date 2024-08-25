@@ -18,12 +18,14 @@
     ```
 3. 配置文件
 4. 将琴谱文件拖动到exe(需要管理员权限)上打开
-5. 快捷键说明:
+5. 默认快捷键说明:
     - `F1`: 暂停/继续
     - `F2`: 退出
     - `F3`: 重新开始演奏
     - `F4`: 重新加载配置文件
     - `F5`: 重新加载琴谱文件
+    - `F6`: 修改快捷键设置
+    - `F7`: 保存当前快捷键设置
     - `Left`: 快退
     - `Right`: 增加演奏间隔
     - `Up`: 减少演奏间隔
@@ -33,6 +35,29 @@
     - `I`: 切换模式(Piano/Horn)
     - `K`: 减少空音间隔倍率
     - `L`: 增加空音间隔倍率
+6. 通过配置文件来配置快捷键
+    - 配置文件为`~/keysConfig/keyMap.ini`
+    - 默认配置文件格式如下:
+        ```ini
+        start/stop=f1
+        exit=f2
+        restart=f3
+        reset config=f4
+        hotreload music=f5
+        increase interval=up
+        decrease interval=down
+        go back=left
+        go forward=right
+        double progress=p
+        halve progress=o
+        switch mode=i
+        increase space interval=k
+        decrease space interval=l
+        save shortcut=f7
+        ```
+    - 若需要修改快捷键, 请修改对应的内容即可, 或者进入程序内修改
+    - 若没有该配置文件, 则会自动生成一个默认配置文件
+    - 请注意, 快捷键的键值需要为小写, 且不能有`ctrl`或`alt`等修饰键
 
 ## 文件配置说明
 

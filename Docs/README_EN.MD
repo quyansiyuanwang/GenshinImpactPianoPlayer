@@ -19,12 +19,14 @@ simple profile.
     ```
 3. Configuration Files
 4. Drag the score file onto the exe (administrator privileges required) to open it
-5. Shortcut Description:
+5. Default shortcut description:
     - `F1`: Pause/resume
     - `F2`: Exit
     - `F3`: Start playing again
     - `F4`: Reload the configuration file
     - `F5`: Reload the score file
+    - `F6`: Modify the shortcut settings
+    - `F7`: Saves the current shortcut settings
     - `Left`: Rewind
     - `Right`: Increase the interval between performances
     - `Up`: Reduce the interval between plays
@@ -34,6 +36,30 @@ simple profile.
     - `I`: Switch mode (Piano/Horn)
     - `K`: Reduced air interval magnification
     - `L`: Increases the multiplier of the interval between air tones
+6. Configure shortcuts through configuration files
+    - The configuration file is`~/keysConfig/keyMap.ini`
+    - The default configuration file format is as follows:
+        ```ini
+        start/stop=f1
+        exit=f2
+        restart=f3
+        reset config=f4
+        hotreload music=f5
+        increase interval=up
+        decrease interval=down
+        go back=left
+        go forward=right
+        double progress=p
+        halve progress=o
+        switch mode=i
+        increase space interval=k
+        decrease space interval=l
+        save shortcut=f7
+        ```
+    - If you need to modify the shortcut key, please modify the corresponding content, or enter the program to modify
+    - If there is no profile, a default profile is automatically generated
+    - Note that the key value of the shortcut key needs to be lowercase, and there must be no modifier keys such as 
+`ctrl` or `alt`
 
 ## File configuration description
 
