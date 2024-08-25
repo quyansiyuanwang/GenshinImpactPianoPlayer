@@ -5,6 +5,8 @@ class Connection:
     restart: bool
     reset_config: bool
     hot_reload: bool
+    modify_shortcut: bool
+    save_shortcut: bool
     adjust_interval: float
     adjust_space_interval: float
     adjust_progress: int
@@ -18,6 +20,8 @@ class Connection:
             restart: bool = False,
             reset_config: bool = False,
             hot_reload: bool = False,
+            modify_shortcut: bool = False,
+            save_shortcut: bool = False,
             progress_adjust_rating: int = 1,
             adjust_interval: float = 0,
             adjust_space_interval: float = 0,

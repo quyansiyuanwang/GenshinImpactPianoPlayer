@@ -2,10 +2,14 @@ from typing import Union, List, Any, Dict, Literal
 
 from Connection import Connection
 from GenshinImpactPianoPlayer import PianoPlayer
+from ShortcutKeyManager import ShortcutKeyManager
 from utils import Monitor
 
 
 def load_config() -> None: ...
+
+
+def load_shortcut_keys() -> ShortcutKeyManager: ...
 
 
 def load_all() -> Dict[

@@ -116,8 +116,9 @@ class PianoPlayer:
 
     def check_stop(self):
         if not self.conn.running_flag: return True
+        if self.conn.stop_flag: Controller.release_all()
+
         while self.conn.stop_flag:
-            Controller.release_all()
             if not self.conn.running_flag: return True
 
             self.change_args()
@@ -152,16 +153,9 @@ def clear_and_DDI():
 
 
 def display_default_info():
-    print(
-        "Press F1 to start/stop, F2 to exit, F3 to restart, F4 to reset config, F5 to hotreload music\n"
-        "UP to increase interval, DOWN to decrease interval, "
-        "LEFT to go back, RIGHT to go forward, \n"
-        "P to double progress, O to halve progress, \n"
-        "I to switch mode between piano and horn, \n"
-        "K to increase space interval, L to decrease space interval"
-    )
     print(f"Play the song of `{GlobalConfig.MUSIC_PATH}`")
     print(
+        f"The following are the default data: \n"
         f"arpeggio_interval: {consts.DEFAULT_ARPEGGIO_INTERVAL}"
         f", interval_rating: {consts.DEFAULT_INTERVAL_RATING}"
         f", space_interval_rating: {consts.DEFAULT_SPACE_INTERVAL_RATING}"

@@ -1,16 +1,20 @@
 from threading import Thread
 
 from Connection import Connection
+from ShortcutKeyManager import ShortcutKeyManager
 
 
 class Monitor(Thread):
     conn: Connection
+    shortcut_key_manager: ShortcutKeyManager
 
-    def __init__(self, conn: Connection) -> None:
+    def __init__(self, conn: Connection, shortcut_key_manager: ShortcutKeyManager) -> None:
         super().__init__()
         ...
 
-    def run(self): ...
+    def run(self) -> None: ...
+
+    def check_event(self) -> None: ...
 
 
 def replace_all(text: str) -> str: ...

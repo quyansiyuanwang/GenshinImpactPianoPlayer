@@ -57,11 +57,11 @@ class FileAnalyzer:
         try:
             inner()
         except (RecursionError, IndexError) as e:
-            print(f"\033[91mErr({e}): cur at ({lineno=})({idx=}), till: {content[idx:]}\033[0m")
+            print(f"Err({e}): cur at ({lineno=})({idx=}), till: {content[idx:]}")
             return []
 
         except Exception as e:
-            print(f"\033[31mErr({e}), cur at {idx}, till: {content[idx:]}\033[0m")
+            print(f"Err({e}), cur at ({lineno=})({idx=}), till: {content[idx:]}")
             return []
 
         return syllables

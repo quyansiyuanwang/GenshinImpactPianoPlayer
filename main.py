@@ -2,12 +2,13 @@ import os
 import sys
 
 from Config import Config as GlobalConfig
-from Consts import consts
+from Consts import consts, FIXED_RELATIVE_PATH, EXE_PATH
 from utils import Monitor
 from Controller import Controller
 from Connection import Connection
 from MusicParse import FileAnalyzer
 from GenshinImpactPianoPlayer import PianoPlayer, display_default_info
+from ShortcutKeyManager import ShortcutKeyManager
 
 
 def load_config():
@@ -39,10 +40,33 @@ def load_config():
             GlobalConfig.MUSIC_START_LINE = idx + 1
 
 
+def load_shortcut_keys():
+    skm = ShortcutKeyManager()
+    skm.set_default_shortcut_keys()
+
+    print(f"Loading keyMap.ini from {EXE_PATH + FIXED_RELATIVE_PATH}")
+    if not os.path.exists(EXE_PATH + FIXED_RELATIVE_PATH):
+        print("keyMap.ini not found, generating...")
+        skm.generate_ini()
+        return skm
+
+    with open(EXE_PATH + FIXED_RELATIVE_PATH, 'r', encoding='utf8') as file:
+        lines = file.read().split('\n')
+    for line in lines:
+        if not line: continue
+        description, key = line.split('=')
+        skm.set_key_by_description(description, key)
+
+    return skm
+
+
 def load_all():
     load_config()
     c = Connection()
-    (m := Monitor(c)).start()
+    skm = load_shortcut_keys()
+    m = Monitor(c, skm)
+    m.start()
+    skm.display()
     package = FileAnalyzer(GlobalConfig.MUSIC_PATH).read_content().analyze()
     music = PianoPlayer(package['syllables'], connection=c)
     music.interval = package['interval']
@@ -67,16 +91,18 @@ def play(music, connection):
 
 
 def main(argv):
+    os.system("mode con cols=128 lines=30")
     if len(argv) == 1:
-        print("拖动音乐文件到exe上以启动，或者手动键入音乐文件路径")
-        GlobalConfig.MUSIC_PATH = input("请输入音乐文件路径：")
-        while not os.path.exists(GlobalConfig.MUSIC_PATH): GlobalConfig.MUSIC_PATH = input("请输入音乐文件路径：")
+        print("Drag the music file onto the exe to launch, or manually type the music file path")
+        GlobalConfig.MUSIC_PATH = input("Please enter the music file path: ")
+        while not os.path.exists(GlobalConfig.MUSIC_PATH):
+            GlobalConfig.MUSIC_PATH = input("Please enter the correct music file path：")
     else:
         GlobalConfig.MUSIC_PATH = argv[1]
 
     hot_reload_flag = True  # for first time running
-    display_default_info()
     packages = load_all()
+    display_default_info()
     while hot_reload_flag:
         play(music=packages['music'], connection=packages['connection'])
         hot_reload_flag = packages['connection'].hot_reload
