@@ -27,7 +27,7 @@ DEFAULT_DESCRIPTION_LAMBDA_MAP = {
     'increase interval': lambda connection: increase_value(connection, 'adjust_interval', 0.005),
     'decrease interval': lambda connection: increase_value(connection, 'adjust_interval', -0.005),
     'go back': lambda connection: increase_value(connection, 'adjust_progress', -1),
-    'go forward': lambda connection: increase_value(connection, 'adjust_progress', 2),
+    'go forward': lambda connection: increase_value(connection, 'adjust_progress', 1),
     'double progress': lambda connection: set_value(connection, 'progress_adjust_rating', 2),
     'halve progress': lambda connection: set_value(connection, 'progress_adjust_rating', 0.5),
     'switch mode': lambda connection: reverse(connection, 'delay_press'),

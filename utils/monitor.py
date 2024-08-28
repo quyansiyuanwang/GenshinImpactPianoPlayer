@@ -1,3 +1,5 @@
+import time
+
 import keyboard
 
 from threading import Thread
