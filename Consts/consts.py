@@ -28,11 +28,11 @@ DEFAULT_DESCRIPTION_LAMBDA_MAP = {
     'decrease interval': lambda connection: increase_value(connection, 'adjust_interval', -0.005),
     'go back': lambda connection: increase_value(connection, 'adjust_progress', -1),
     'go forward': lambda connection: increase_value(connection, 'adjust_progress', 1),
-    'double progress': lambda connection: set_value(connection, 'progress_adjust_rating', 1),
+    'double progress': lambda connection: set_value(connection, 'progress_adjust_rating', 2),
     'halve progress': lambda connection: set_value(connection, 'progress_adjust_rating', 0.5),
     'switch mode': lambda connection: reverse(connection, 'delay_press'),
-    'increase space interval': lambda connection: increase_value(connection, 'adjust_space_interval', -0.02),
-    'decrease space interval': lambda connection: increase_value(connection, 'adjust_space_interval', 0.02),
+    'increase space interval': lambda connection: increase_value(connection, 'adjust_space_interval', -0.01),
+    'decrease space interval': lambda connection: increase_value(connection, 'adjust_space_interval', 0.01),
     'modify shortcut': lambda connection: reverse(connection, 'modify_shortcut'),
     'save shortcut': lambda connection: reverse(connection, 'save_shortcut')
 }
