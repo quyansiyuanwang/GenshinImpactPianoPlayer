@@ -13,7 +13,7 @@ class Monitor(Thread):
 
     def run(self):
         while self.conn.running_flag:
-            res_k = user_enter_monitor()
+            res_k = user_enter_monitor().lower()
 
             call_back = self.shortcut_key_manager.get_by_key(res_k)
             if call_back is not None: call_back(self.conn)

@@ -18,6 +18,7 @@ def load_config():
     for idx, line in enumerate(lines):
         if line.startswith("ARPEGGIO_INTERVAL"):
             consts.DEFAULT_ARPEGGIO_INTERVAL = GlobalConfig.ARPEGGIO_INTERVAL = float(line.split('=')[-1])
+
         elif line.startswith("INTERVAL_RATING"):
             consts.DEFAULT_INTERVAL_RATING = GlobalConfig.INTERVAL_RATING = float(line.split('=')[-1])
 
