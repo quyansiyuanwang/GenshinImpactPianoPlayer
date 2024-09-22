@@ -86,7 +86,7 @@ simple profile.
     - SPACE_INTERVAL_RATING: The scale of the space, which is `0.5` by default
     - HORN_MODE_INTERVAL: The automatic rest interval of the horn mode, default is `0.01`
     - SPACE_FILLS: Whether to fill in the space, default is 'True'
-    - LINE_INTERVAL_RATING: The interval timescale for each row (needs to be an integer 'int'), defaults to 1
+    - LINE_INTERVAL_RATING: The interval timescale for each row (needs to be an integer 'int'), defaults to `0`
     - IGNORE_BLANK_LINE: Whether to ignore blank lines, default is 'True'
     - A line that starts with '-' splits the line to split the configuration and score
 

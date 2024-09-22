@@ -81,7 +81,7 @@
     - SPACE_INTERVAL_RATING: 空格的比例, 默认为`0.5`
     - HORN_MODE_INTERVAL: 圆号模式的自动休止间隔时间, 默认为`0.01`
     - SPACE_FILLS: 是否填充空格, 默认为真`True`
-    - LINE_INTERVAL_RATING: 每行的间隔时间比例(需要为整数`int`), 默认为1
+    - LINE_INTERVAL_RATING: 每行的间隔时间比例(需要为整数`int`), 默认为`0`
     - IGNORE_BLANK_LINE: 是否忽略空行, 默认为真`True`
     - 以 `-` 为开头的一行为分割行, 用于分割配置和琴谱
 
