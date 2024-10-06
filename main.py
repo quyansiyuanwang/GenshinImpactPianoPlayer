@@ -51,13 +51,7 @@ def load_shortcut_keys():
         skm.generate_ini()
         return skm
 
-    with open(EXE_PATH + FIXED_RELATIVE_PATH, 'r', encoding='utf8') as file:
-        lines = file.read().split('\n')
-    for line in lines:
-        if not line: continue
-        description, key = line.split('=')
-        skm.set_key_by_description(description, key)
-
+    skm.load_ini()
     return skm
 
 
