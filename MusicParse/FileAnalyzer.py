@@ -41,18 +41,21 @@ class FileAnalyzer:
                     while idx < length and content[idx] != right_quote: idx += 1
 
                     syllables.append(Syllable(content[left_quote + 1:idx], is_arpeggio=bool(content[idx] != ")")))
+                    section += 1
 
                 elif content[idx].isalpha() or content[idx] == " ":
                     syllables.append(Syllable(content[idx]))
+                    section += 1
 
                 elif content[idx] in utils.QUOTE_PAIR.values():
                     pass
 
                 else:
                     syllables.append(Syllable(content[idx]))
+                    section += 1
 
                 idx += 1
-                section += 1
+
 
         try:
             inner()
