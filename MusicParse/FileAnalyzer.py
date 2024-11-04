@@ -56,7 +56,6 @@ class FileAnalyzer:
 
                 idx += 1
 
-
         try:
             inner()
         except (RecursionError, IndexError) as e:
