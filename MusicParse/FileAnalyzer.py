@@ -37,10 +37,15 @@ class FileAnalyzer:
                     section = 0
 
                 elif (right_quote := utils.QUOTE_PAIR.get(content[idx], None)) is not None:
-                    left_quote = idx
-                    while idx < length and content[idx] != right_quote: idx += 1
+                    left_quote = content[idx]
+                    left_quote_idx = idx
+                    quote_depth = 1
+                    while idx < length and content[idx] != right_quote and quote_depth != 0:
+                        if content[idx] == right_quote: quote_depth -= 1
+                        elif content[idx] == left_quote: quote_depth += 1
+                        idx += 1
 
-                    syllables.append(Syllable(content[left_quote + 1:idx], is_arpeggio=bool(content[idx] != ")")))
+                    syllables.append(Syllable(content[left_quote_idx + 1:idx], is_arpeggio=bool(content[idx] != ")")))
                     section += 1
 
                 elif content[idx].isalpha() or content[idx] == " ":

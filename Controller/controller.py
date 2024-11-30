@@ -30,8 +30,8 @@ class Controller:
         Controller.last_key = None
 
     @staticmethod
-    def delay_press(syllable):
-        print(syllable, end="", flush=True)
+    def delay_press(syllable, display=True):
+        if display: print(syllable, end="", flush=True)
         if syllable.is_space: return
         if Controller.last_key is not None:
             for _k in Controller.last_key:
@@ -41,5 +41,6 @@ class Controller:
 
         for _k in syllable.words:
             if syllable.is_arpeggio: time.sleep(GlobalConfig.ARPEGGIO_INTERVAL)
-            keyboard.press(_k.lower())
+            if not isinstance(_k, Syllable): keyboard.press(_k.lower())
+            else: Controller.delay_press(_k, display=False)
         Controller.last_key = ''.join(str(w).lower() for w in syllable.words)
