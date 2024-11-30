@@ -84,6 +84,7 @@ def play(music, connection):
 
         if connection.restart: music.restart()
 
+
 def main(argv):
     os.system("mode con cols=128 lines=30")
     if len(argv) == 1:
