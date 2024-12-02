@@ -39,6 +39,7 @@ def load_config():
 
         elif line.startswith("-"):
             GlobalConfig.MUSIC_START_LINE = idx + 1
+            return None
 
 
 def load_shortcut_keys():
@@ -64,7 +65,7 @@ def load_all():
     skm.display()
     package = FileAnalyzer(GlobalConfig.MUSIC_PATH).read_content().analyze()
     music = PianoPlayer(package['syllables'], connection=c)
-    music.interval = package['interval']
+    GlobalConfig.PLAYER_INTERVAL = package['interval']
 
     return {
         'music': music,

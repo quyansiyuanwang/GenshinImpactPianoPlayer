@@ -1,4 +1,10 @@
+from typing import Tuple
+
+
 class Config:
+    PLAYER_KEYS: Tuple[str, str, str, str, str, str]
+
+    PLAYER_INTERVAL: float
     ARPEGGIO_INTERVAL: float
     INTERVAL_RATING: float
     SPACE_INTERVAL_RATING: float

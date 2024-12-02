@@ -5,6 +5,7 @@ from Consts import consts
 from Controller import Controller
 from MusicParse import Syllable
 from Config import Config as GlobalConfig
+from MusicParse import Action
 
 
 class PianoPlayer:
@@ -12,7 +13,6 @@ class PianoPlayer:
         self.syllables = [] if syllables is None else syllables
         self.conn = connection
 
-        self.interval = 0.5
         self.idx = 0
         self.interval_changes = 0
         self.progress_adjust_rating = 1
@@ -28,17 +28,18 @@ class PianoPlayer:
 
     @property
     def interval_(self):
+        if isinstance(self.current_syllable, Action): return 0
         if self.current_syllable.words == " ":
             return self.r_interval * GlobalConfig.SPACE_INTERVAL_RATING
         return self.r_interval
 
     @property
     def r_interval(self):
-        return self.interval * GlobalConfig.INTERVAL_RATING + self.interval_changes
+        return GlobalConfig.PLAYER_INTERVAL * GlobalConfig.INTERVAL_RATING + self.interval_changes
 
     @interval_.setter
     def interval_(self, value):
-        self.interval = value
+        GlobalConfig.PLAYER_INTERVAL = value
 
     @property
     def percentage(self):
@@ -132,6 +133,11 @@ class PianoPlayer:
             self.display_title()
             self.sleep()
 
+            if isinstance(self.current_syllable, Action):
+                self.current_syllable()
+                self.idx += 1
+                continue
+
             if self.current_syllable.is_rest: Controller.release_all()
             if self.check_stop(): return
 
@@ -144,7 +150,7 @@ class PianoPlayer:
 
     def __str__(self):
         syllables = ".".join([str(syllable) for syllable in self.syllables])
-        return f"U{self.interval}\n{syllables}"
+        return f"U{GlobalConfig.PLAYER_INTERVAL}\n{syllables}"
 
 
 def clear_and_DDI():

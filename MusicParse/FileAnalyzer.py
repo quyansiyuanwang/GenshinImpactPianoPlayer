@@ -1,7 +1,8 @@
 from Consts import consts, utils
 from Config import Config as GlobalConfig
-from MusicParse import Syllable
 from utils import replace_all
+from .Syllable import Syllable
+from .Action import Action
 
 
 class FileAnalyzer:
@@ -41,8 +42,10 @@ class FileAnalyzer:
                     left_quote_idx = idx
                     quote_depth = 1
                     while idx < length and content[idx] != right_quote and quote_depth != 0:
-                        if content[idx] == right_quote: quote_depth -= 1
-                        elif content[idx] == left_quote: quote_depth += 1
+                        if content[idx] == right_quote:
+                            quote_depth -= 1
+                        elif content[idx] == left_quote:
+                            quote_depth += 1
                         idx += 1
 
                     syllables.append(Syllable(content[left_quote_idx + 1:idx], is_arpeggio=bool(content[idx] != ")")))
@@ -64,24 +67,42 @@ class FileAnalyzer:
         try:
             inner()
         except (RecursionError, IndexError) as e:
-            print(f"Err({e}): cur at ({lineno=})({idx=}), till: {content[idx:]}")
+            print(f"RI:Err({e}): cur at ({lineno=})({idx=}), till: {content[idx:]}")
             return []
 
         except Exception as e:
-            print(f"Err({e}), cur at ({lineno=})({idx=}), till: {content[idx:]}")
+            print(f"O:Err({e}), cur at ({lineno=})({idx=}), till: {content[idx:]}")
             return []
 
         return syllables
 
+    @staticmethod
+    def dispose_action(content):
+        action = Action(content)
+        if action.is_valid:
+            return action
+        return None
+
     def analyze(self):
         syllables = []
+        config_flag = False
 
-        interval = 1 / float(''.join(i for i in self.content[0] if i.isdigit() or i == '.'))
+        interval = 1 / float(self.content[0])
 
         for lineno, syllable in enumerate(self.content[GlobalConfig.MUSIC_START_LINE:]):
             replace_content = replace_all(syllable)
             idx = len(syllable) - 1
             while idx >= 0 and syllable[idx] == ' ': idx -= 1
+
+            if idx >= 0 and syllable[idx].startswith("#"):
+                config_flag = not config_flag
+                continue
+
+            if config_flag:
+                action = FileAnalyzer.dispose_action(syllable)
+                if action is not None:
+                    syllables.append(action)
+                    continue
 
             for s in FileAnalyzer.content_analyze(
                     replace_content,

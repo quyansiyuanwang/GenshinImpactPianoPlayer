@@ -1,14 +1,14 @@
-from typing import Self, List, Optional
+from typing import Self, List, Optional, Union
 
 from Connection import Connection
 from MusicParse import Syllable
+from MusicParse.Action import Action
 
 Syllables = List[Syllable]
 
 
 class PianoPlayer:
     syllables: Syllables
-    interval: float
     idx: int
     conn: Connection
     interval_changes: float
@@ -34,7 +34,7 @@ class PianoPlayer:
     def percentage(self) -> float: ...
 
     @property
-    def current_syllable(self) -> Syllable: ...
+    def current_syllable(self) -> Union[Action, Syllable]: ...
 
     def display_title(self) -> None: ...
 

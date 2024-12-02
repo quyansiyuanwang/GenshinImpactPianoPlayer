@@ -4,6 +4,7 @@ from typing import Dict, Callable
 
 from Connection import Connection
 
+DEFAULT_PLAYER_INTERVAL: float = 1.0
 DEFAULT_ARPEGGIO_INTERVAL: float = 0.05
 DEFAULT_INTERVAL_RATING: float = 0.15
 DEFAULT_SPACE_INTERVAL_RATING: float = 0.5
