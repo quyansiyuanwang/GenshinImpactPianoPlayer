@@ -23,6 +23,7 @@ class Config:
 
     @staticmethod
     def reset():
+        Config.PLAYER_INTERVAL = consts.DEFAULT_PLAYER_INTERVAL
         Config.ARPEGGIO_INTERVAL = consts.DEFAULT_ARPEGGIO_INTERVAL
         Config.INTERVAL_RATING = consts.DEFAULT_INTERVAL_RATING
         Config.SPACE_INTERVAL_RATING = consts.DEFAULT_SPACE_INTERVAL_RATING
