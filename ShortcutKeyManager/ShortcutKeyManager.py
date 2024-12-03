@@ -53,6 +53,8 @@ class ShortcutKeyManager:
                 assert False, 'No such key description'
 
     def generate_ini(self):
+        if not os.path.exists(EXE_PATH + FIXED_RELATIVE_PATH):
+            os.makedirs(os.path.dirname(EXE_PATH + FIXED_RELATIVE_PATH), exist_ok=True)
         with open(EXE_PATH + FIXED_RELATIVE_PATH, 'w', encoding='utf8') as file:
             for shortcut_key in self.keys_list:
                 file.write(f'{shortcut_key.description}={shortcut_key.key}\n')
