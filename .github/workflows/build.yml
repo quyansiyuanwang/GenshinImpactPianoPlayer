@@ -29,7 +29,7 @@ jobs:
         run: mv dist/main.exe dist/GenshinImpactPianoPlayer.exe
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: executable
           path: dist/GenshinImpactPianoPlayer.exe
@@ -39,7 +39,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Download artifact
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: executable
 
@@ -55,7 +55,7 @@ jobs:
           prerelease: false
 
       - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
+        uses: actions/upload-release-asset@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
