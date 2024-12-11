@@ -44,6 +44,9 @@ jobs:
           name: executable
 
       - name: Create Release
+        permissions:
+          contents: write
+          actions: read
         id: create_release
         uses: actions/create-release@v1
         env:
