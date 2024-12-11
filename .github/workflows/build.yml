@@ -33,7 +33,9 @@ jobs:
           pip install requests
 
       - name: Build with PyInstaller
-        run: pyinstaller -F .\login.py --hidden-import=bs4
+        run: |
+          pyinstaller -F .\main.py --hidden-import=bs4
+          mv .\dist\main.exe .\dist\GenshinImpactPianoPlayer.exe
 
       - name: Create Release
         id: create_release
@@ -52,8 +54,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: .\dist\login.exe
-          asset_name: login.exe
+          asset_path: .\dist\GenshinImpactPianoPlayer.exe
+          asset_name: GenshinImpactPianoPlayer.exe
           asset_content_type: application/octet-stream
 
       - name: Upload README as Release Asset
