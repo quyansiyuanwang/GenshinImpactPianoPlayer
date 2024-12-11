@@ -57,7 +57,7 @@ jobs:
           prerelease: false
 
       - name: dir dist
-        run: dir dist
+        run: dir .
 
       - name: Upload a Release Asset
         uses: actions/upload-release-asset@v1
