@@ -55,3 +55,4 @@ jobs:
           release_name: Release ${{ github.run_id }}-${{ github.sha }}
           draft: false
           prerelease: false
+          files: dist/GenshinImpactPianoPlayer.exe
