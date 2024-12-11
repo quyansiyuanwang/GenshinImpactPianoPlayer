@@ -12,6 +12,7 @@ DEFAULT_HORN_MODE_INTERVAL: float = 0.01
 DEFAULT_LINE_INTERVAL_RATING: int = 1
 
 SPACE_FILLS: bool = True
+STRICT_LIMITED: bool = False
 IGNORE_BLANK_LINE: bool = True
 MUSIC_START_LINE: int = 1
 MUSIC_PATH: str = "music.txt"

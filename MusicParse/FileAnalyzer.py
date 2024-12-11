@@ -26,6 +26,10 @@ class FileAnalyzer:
             nonlocal idx, syllables
             section = 0
             while idx < min(max_idx, length):
+                if section == 4 and GlobalConfig.STRICT_LIMITED:
+                    while idx < min(max_idx, length) and content[idx] != "/":
+                        idx += 1
+
                 if content[idx] not in utils.SAFE_KEYS:
                     syllables.append(Syllable(" "))
                     idx += 1
@@ -67,11 +71,19 @@ class FileAnalyzer:
         try:
             inner()
         except (RecursionError, IndexError) as e:
-            print(f"RI:Err({e}): cur at ({lineno=})({idx=}), till: {content[idx:]}")
+            print(
+                f"RI:Err({e}): cur at "
+                f"(lineno={lineno + GlobalConfig.MUSIC_START_LINE + 1})({idx=}), "
+                f"till: {content[idx:]}"
+            )
             return []
 
         except Exception as e:
-            print(f"O:Err({e}), cur at ({lineno=})({idx=}), till: {content[idx:]}")
+            print(
+                f"OE:Err({e}), cur at "
+                f"(lineno={lineno + GlobalConfig.MUSIC_START_LINE + 1})({idx=}), "
+                f"till: {content[idx:]}"
+            )
             return []
 
         return syllables
@@ -87,7 +99,7 @@ class FileAnalyzer:
         syllables = []
         config_flag = False
 
-        interval = 1 / float(self.content[0])
+        interval = 1 / float(self.content[0].strip())
 
         for lineno, syllable in enumerate(self.content[GlobalConfig.MUSIC_START_LINE:]):
             replace_content = replace_all(syllable)

@@ -2,7 +2,7 @@ from typing import Tuple
 
 
 class Config:
-    PLAYER_KEYS: Tuple[str, str, str, str, str, str]
+    PLAYER_KEYS: Tuple[str, str, str, str, str, str, str]
 
     PLAYER_INTERVAL: float
     ARPEGGIO_INTERVAL: float
@@ -12,5 +12,6 @@ class Config:
     LINE_INTERVAL_RATING: int
 
     SPACE_FILLS: bool
+    STRICT_LIMITED: bool
     MUSIC_START_LINE: int
     MUSIC_PATH: str

@@ -168,4 +168,8 @@ def display_default_info():
         f", horn_mode_interval: {consts.DEFAULT_HORN_MODE_INTERVAL}"
         f", line_interval_rating: {consts.DEFAULT_LINE_INTERVAL_RATING}"
     )
-    print(f"SPACE_FILLS: {GlobalConfig.SPACE_FILLS}, IGNORE_BLANK_LINE: {consts.IGNORE_BLANK_LINE}")
+    print(
+        f"SPACE_FILLS: {GlobalConfig.SPACE_FILLS}, "
+        f"IGNORE_BLANK_LINE: {consts.IGNORE_BLANK_LINE}, "
+        f"STRICT_LIMITED: {consts.STRICT_LIMITED}"
+    )
