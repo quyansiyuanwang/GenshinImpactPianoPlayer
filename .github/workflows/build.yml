@@ -56,7 +56,10 @@ jobs:
           draft: false
           prerelease: false
 
-      - name: Upload Release Asset
+      - name: dir dist
+        run: dir dist
+
+      - name: Upload a Release Asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
