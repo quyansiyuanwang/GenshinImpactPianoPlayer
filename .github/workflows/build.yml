@@ -29,12 +29,11 @@ jobs:
       - name: Install PyInstaller
         run: |
           pip install pyinstaller
-          pip install bs4
-          pip install requests
+          pip install -r .\requirements.txt
 
       - name: Build with PyInstaller
         run: |
-          pyinstaller -F .\main.py --hidden-import=bs4
+          pyinstaller -F .\main.py
           mv .\dist\main.exe .\dist\GenshinImpactPianoPlayer.exe
 
       - name: Create Release
