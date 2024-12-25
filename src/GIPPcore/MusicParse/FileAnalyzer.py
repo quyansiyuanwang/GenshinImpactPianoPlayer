@@ -12,7 +12,7 @@ class FileAnalyzer:
         self.content = None
 
     def read_content(self):
-        with open(self.filename, "r", encoding='utf8') as file:
+        with open(self.filename, "r", encoding='utf-8-sig') as file:
             self.content = file.read().split('\n')
         return self
 
