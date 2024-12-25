@@ -1,7 +1,7 @@
 from threading import Thread
 
-from Connection import Connection
-from ShortcutKeyManager import ShortcutKeyManager
+from src.GIPPcore.Connection import Connection
+from src.GIPPcore.ShortcutKeyManager import ShortcutKeyManager
 
 
 class Monitor(Thread):

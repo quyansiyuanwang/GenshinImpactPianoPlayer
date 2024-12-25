@@ -1,8 +1,8 @@
 import time
 import keyboard
 
-from MusicParse import Syllable
-from Config import Config as GlobalConfig
+from ..MusicParse import Syllable
+from ..Config import Config as GlobalConfig
 
 
 class Controller:

@@ -1,9 +1,9 @@
 from typing import Union, List, Any, Dict, Literal
 
-from Connection import Connection
-from GenshinImpactPianoPlayer import PianoPlayer
-from ShortcutKeyManager import ShortcutKeyManager
-from utils import Monitor
+from .GIPPcore.Connection import Connection
+from .GIPPcore.GenshinImpactPianoPlayer import PianoPlayer
+from .GIPPcore.ShortcutKeyManager import ShortcutKeyManager
+from .GIPPcore.utils import Monitor
 
 
 def load_config() -> None: ...

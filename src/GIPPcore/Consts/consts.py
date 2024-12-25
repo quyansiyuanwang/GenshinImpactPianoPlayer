@@ -1,7 +1,7 @@
 import os
 import sys
 
-from utils import reverse, set_value, increase_value
+from ..utils import reverse, set_value, increase_value
 
 DEFAULT_PLAYER_INTERVAL: float = 1.0
 DEFAULT_ARPEGGIO_INTERVAL: float = 0.05

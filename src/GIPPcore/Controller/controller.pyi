@@ -1,6 +1,6 @@
 from typing import Union
 
-from MusicParse import Syllable
+from ..MusicParse import Syllable
 
 
 class Controller:

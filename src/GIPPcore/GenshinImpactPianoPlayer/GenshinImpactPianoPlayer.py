@@ -1,11 +1,11 @@
 import os
 import time
 
-from Consts import consts
-from Controller import Controller
-from MusicParse import Syllable
-from Config import Config as GlobalConfig
-from MusicParse import Action
+from ..Consts import consts
+from ..Controller import Controller
+from ..MusicParse import Syllable
+from ..Config import Config as GlobalConfig
+from ..MusicParse import Action
 
 
 class PianoPlayer:

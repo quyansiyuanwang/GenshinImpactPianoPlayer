@@ -1,8 +1,8 @@
 from typing import Self, List, Optional, Union
 
-from Connection import Connection
-from MusicParse import Syllable
-from MusicParse.Action import Action
+from ..Connection import Connection
+from ..MusicParse import Syllable
+from ..MusicParse import Action
 
 Syllables = List[Syllable]
 

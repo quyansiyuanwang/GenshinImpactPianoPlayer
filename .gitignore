@@ -90,7 +90,7 @@ __pycache__/
 .Python
 build/
 develop-eggs/
-dist/
+test_files/
 downloads/
 eggs/
 .eggs/
@@ -242,3 +242,4 @@ cython_debug/
 
 !/music/
 !/build/
+!/test_files/

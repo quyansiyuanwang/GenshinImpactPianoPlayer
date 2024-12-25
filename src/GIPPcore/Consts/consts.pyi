@@ -2,7 +2,7 @@ import os
 import sys
 from typing import Dict, Callable
 
-from Connection import Connection
+from src.GIPPcore.Connection import Connection
 
 DEFAULT_PLAYER_INTERVAL: float = 1.0
 DEFAULT_ARPEGGIO_INTERVAL: float = 0.05

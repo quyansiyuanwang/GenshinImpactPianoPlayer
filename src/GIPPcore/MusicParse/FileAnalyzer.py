@@ -1,6 +1,6 @@
-from Consts import consts, utils
-from Config import Config as GlobalConfig
-from utils import replace_all
+from ..Consts import utils,consts
+from ..Config import Config as GlobalConfig
+from ..utils import replace_all
 from .Syllable import Syllable
 from .Action import Action
 

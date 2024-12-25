@@ -1,7 +1,7 @@
 import os
 
-from Consts.consts import FIXED_RELATIVE_PATH, EXE_PATH, DEFAULT_DESCRIPTION_KEY_MAP
-from Consts import DEFAULT_DESCRIPTION_LAMBDA_MAP
+from ..Consts import FIXED_RELATIVE_PATH, EXE_PATH, DEFAULT_DESCRIPTION_KEY_MAP
+from ..Consts import DEFAULT_DESCRIPTION_LAMBDA_MAP
 
 
 class ShortcutKey:

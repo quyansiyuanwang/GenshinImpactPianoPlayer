@@ -1,6 +1,6 @@
 from typing import Callable, List, Any
 
-from Connection import Connection
+from ..Connection import Connection
 
 ConnectionCallback = Callable[[Connection], ...]
 

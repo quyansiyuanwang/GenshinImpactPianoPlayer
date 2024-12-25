@@ -1,4 +1,4 @@
-from Consts import consts
+from ..Consts import consts
 
 
 class Config:

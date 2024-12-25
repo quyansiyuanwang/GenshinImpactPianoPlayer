@@ -1,4 +1,4 @@
-from Consts import utils
+from ..Consts import utils
 
 
 class Syllable:

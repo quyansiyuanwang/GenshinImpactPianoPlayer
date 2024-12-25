@@ -1,14 +1,14 @@
 import os
 import sys
 
-from Config import Config as GlobalConfig
-from Consts import consts, FIXED_RELATIVE_PATH, EXE_PATH
-from utils import Monitor
-from Controller import Controller
-from Connection import Connection
-from MusicParse import FileAnalyzer
-from GenshinImpactPianoPlayer import PianoPlayer, display_default_info
-from ShortcutKeyManager import ShortcutKeyManager
+from GIPPcore.Config import Config as GlobalConfig
+from GIPPcore.Consts import consts, FIXED_RELATIVE_PATH, EXE_PATH
+from GIPPcore.utils import Monitor
+from GIPPcore.Controller import Controller
+from GIPPcore.Connection import Connection
+from GIPPcore.MusicParse import FileAnalyzer
+from GIPPcore.GenshinImpactPianoPlayer import PianoPlayer, display_default_info
+from GIPPcore.ShortcutKeyManager import ShortcutKeyManager
 
 
 def load_config():
@@ -32,7 +32,7 @@ def load_config():
             consts.DEFAULT_LINE_INTERVAL_RATING = GlobalConfig.LINE_INTERVAL_RATING = int(line.split('=')[-1])
 
         elif line.startswith("SPACE_FILLS"):
-            GlobalConfig.SPACE_FILLS = (line.split('=')[-1].lower() == "true")
+            consts.SPACE_FILLS = (line.split('=')[-1].lower() == "true")
 
         elif line.startswith("IGNORE_BLANK_LINE"):
             consts.IGNORE_BLANK_LINE = (line.split('=')[-1].lower() == "true")
