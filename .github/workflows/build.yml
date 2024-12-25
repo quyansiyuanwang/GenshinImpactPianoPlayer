@@ -33,7 +33,7 @@ jobs:
 
       - name: Build with PyInstaller
         run: |
-          pyinstaller -F .\main.py
+          pyinstaller -F .\src\main.py
           mv .\dist\main.exe .\dist\GenshinImpactPianoPlayer.exe
 
       - name: Create Release
