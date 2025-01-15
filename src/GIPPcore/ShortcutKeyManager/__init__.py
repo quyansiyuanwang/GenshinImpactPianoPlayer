@@ -1,5 +1,6 @@
-from .ShortcutKeyManager import ShortcutKeyManager
+from .ShortcutKeyManager import ShortcutKeyManager, ShortcutKey
 
 __all__ = [
-    'ShortcutKeyManager'
+    'ShortcutKeyManager',
+    'ShortcutKey'
 ]

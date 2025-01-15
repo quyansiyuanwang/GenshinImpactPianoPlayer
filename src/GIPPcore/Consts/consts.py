@@ -1,12 +1,14 @@
 import os
 import sys
+from typing import Callable, Dict, Union
 
 from ..utils import reverse, set_value, increase_value
+from ..Connection import Connection
 
 DEFAULT_PLAYER_INTERVAL: float = 1.0
 DEFAULT_ARPEGGIO_INTERVAL: float = 0.05
 DEFAULT_INTERVAL_RATING: float = 0.15
-DEFAULT_SPACE_INTERVAL_RATING: float = 0.5
+DEFAULT_SPACE_INTERVAL_RATING: float = 1.0
 DEFAULT_HORN_MODE_INTERVAL: float = 0.01
 DEFAULT_LINE_INTERVAL_RATING: int = 0
 
@@ -19,7 +21,7 @@ MUSIC_PATH: str = "music.txt"
 FIXED_RELATIVE_PATH = r'\keysConfig\keyMap.ini'
 EXE_PATH = os.path.dirname(sys.executable)
 
-DEFAULT_DESCRIPTION_LAMBDA_MAP = {
+DEFAULT_DESCRIPTION_LAMBDA_MAP: Dict[str, Callable[[Connection], Union[None, bool]]] = {
     'start/stop': lambda connection: reverse(connection, 'stop_flag'),
     'exit': lambda connection: set_value(connection, 'running_flag', False),
     'restart': lambda connection: reverse(connection, 'restart'),
@@ -39,7 +41,7 @@ DEFAULT_DESCRIPTION_LAMBDA_MAP = {
     'save shortcut': lambda connection: reverse(connection, 'save_shortcut')
 }
 
-DEFAULT_DESCRIPTION_KEY_MAP = {
+DEFAULT_DESCRIPTION_KEY_MAP: Dict[str, str] = {
     'start/stop': 'f1',
     'exit': 'f2',
     'restart': 'f3',

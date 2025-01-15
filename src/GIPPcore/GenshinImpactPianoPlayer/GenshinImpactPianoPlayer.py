@@ -1,87 +1,101 @@
 import os
 import time
+from typing import List, Self, Union
 
+from ..Connection import Connection
 from ..Consts import consts
 from ..Controller import Controller
 from ..MusicParse import Syllable
 from ..Config import Config as GlobalConfig
 from ..MusicParse import Action
 
+Syllables = List[Union[Syllable, Action]]
+
 
 class PianoPlayer:
-    def __init__(self, syllables=None, *, connection):
-        self.syllables = [] if syllables is None else syllables
-        self.conn = connection
+
+    def __init__(
+        self,
+        syllables: Syllables,
+        *,
+        connection: Connection,
+    ) -> None:
+        self.syllables: Syllables = syllables
+        self.conn: Connection = connection
 
         self.idx = 0
         self.interval_changes = 0
         self.progress_adjust_rating = 1
 
     @property
-    def length(self):
+    def length(self) -> int:
         return len(self.syllables)
 
-    def add_syllables(self, syllables):
+    def add_syllables(self, syllables: Syllables) -> Self:
         for syllable in syllables:
             self.syllables.append(syllable)
         return self
 
     @property
-    def interval_(self):
-        if isinstance(self.current_syllable, Action): return 0
+    def interval_(self) -> float:
+        if isinstance(self.current_syllable, Action):
+            return 0
         if self.current_syllable.words == " ":
-            return self.r_interval * GlobalConfig.SPACE_INTERVAL_RATING
+            return self.r_interval * GlobalConfig.space_interval_rating
         return self.r_interval
 
     @property
-    def r_interval(self):
-        return GlobalConfig.PLAYER_INTERVAL * GlobalConfig.INTERVAL_RATING + self.interval_changes
+    def r_interval(self) -> float:
+        return (
+            GlobalConfig.player_interval * GlobalConfig.interval_rating
+            + self.interval_changes
+        )
 
     @interval_.setter
-    def interval_(self, value):
-        GlobalConfig.PLAYER_INTERVAL = value
+    def interval_(self, value: float) -> None:
+        GlobalConfig.player_interval = value
 
     @property
-    def percentage(self):
+    def percentage(self) -> float:
         return self.idx / self.length
 
     @property
-    def current_syllable(self):
+    def current_syllable(self) -> Union[Syllable, Action]:
         if self.idx >= self.length:
-            return Syllable(" ")
+            return Syllable(words=" ")
         return self.syllables[self.idx]
 
-    def display_title(self):
+    def display_title(self) -> None:
         percent = self.percentage
         interval = self.r_interval
         os.system(
             f"title "
             f"{percent * 100:.2f}%  "
             f"{'Running' if not self.conn.stop_flag else 'Stopped'}  "
-            f"[{interval:.4f}s - {1 / (interval / GlobalConfig.INTERVAL_RATING):.3f}Hz]  "
+            f"[{interval:.4f}s - {1 / (interval / GlobalConfig.interval_rating):.3f}Hz]  "
             f"APR:{self.progress_adjust_rating}  "
             f"Mode:{'horn' if self.conn.delay_press else 'piano'}  "
-            f"SI:{GlobalConfig.SPACE_INTERVAL_RATING:.2f}  "
+            f"SI:{GlobalConfig.space_interval_rating:.2f}  "
             f"{self.current_syllable}"
         )
 
-    def sleep(self):
+    def sleep(self) -> None:
         time.sleep(self.interval_)
 
-    def config_reset(self):
+    def config_reset(self) -> None:
         self.interval_changes = 0
         self.progress_adjust_rating = 1
-        GlobalConfig.INTERVAL_RATING = consts.DEFAULT_INTERVAL_RATING
-        GlobalConfig.SPACE_INTERVAL_RATING = consts.DEFAULT_SPACE_INTERVAL_RATING
-        GlobalConfig.ARPEGGIO_INTERVAL = consts.DEFAULT_ARPEGGIO_INTERVAL
-        GlobalConfig.HORN_MODE_INTERVAL = consts.DEFAULT_HORN_MODE_INTERVAL
+        GlobalConfig.interval_rating = consts.DEFAULT_INTERVAL_RATING
+        GlobalConfig.space_interval_rating = consts.DEFAULT_SPACE_INTERVAL_RATING
+        GlobalConfig.arpeggio_interval = consts.DEFAULT_ARPEGGIO_INTERVAL
+        GlobalConfig.horn_mode_interval = consts.DEFAULT_HORN_MODE_INTERVAL
 
-    def restart(self):
+    def restart(self) -> None:
         self.idx = 0
         clear_and_DDI()
-        self.display_music(self.idx)
+        self.display_music(end=self.idx)
 
-    def change_args(self):
+    def change_args(self) -> None:
         if self.conn.progress_adjust_rating:
             self.progress_adjust_rating *= self.conn.progress_adjust_rating
             self.conn.progress_adjust_rating = 0
@@ -101,7 +115,7 @@ class PianoPlayer:
             self.conn.restart = False
 
         if self.conn.adjust_space_interval:
-            GlobalConfig.SPACE_INTERVAL_RATING += self.conn.adjust_space_interval
+            GlobalConfig.space_interval_rating += self.conn.adjust_space_interval
             self.conn.adjust_space_interval = 0
 
         if self.conn.reset_config:
@@ -109,24 +123,27 @@ class PianoPlayer:
             self.conn.reset_config = not self.conn.reset_config
 
     @staticmethod
-    def clear():
+    def clear() -> None:
         os.system("cls")
 
-    def display_music(self, end):
+    def display_music(self, end: int) -> None:
         print("".join(map(str, self.syllables[:end])), end="", flush=True)
 
-    def check_stop(self):
-        if not self.conn.running_flag: return True
-        if self.conn.stop_flag: Controller.release_all()
+    def check_stop(self) -> bool:
+        if not self.conn.running_flag:
+            return True
+        if self.conn.stop_flag:
+            Controller.release_all()
 
         while self.conn.stop_flag:
-            if not self.conn.running_flag: return True
+            if not self.conn.running_flag:
+                return True
 
             self.change_args()
             self.display_title()
         return False
 
-    def play(self):
+    def play(self) -> None:
         while self.idx < self.length:
 
             self.change_args()
@@ -138,8 +155,10 @@ class PianoPlayer:
                 self.idx += 1
                 continue
 
-            if self.current_syllable.is_rest: Controller.release_all()
-            if self.check_stop(): return
+            if self.current_syllable.is_rest:
+                Controller.release_all()
+            if self.check_stop():
+                return
 
             if self.conn.delay_press:
                 Controller.delay_press(self.current_syllable)
@@ -148,18 +167,18 @@ class PianoPlayer:
 
             self.idx += 1
 
-    def __str__(self):
+    def __str__(self) -> str:
         syllables = ".".join([str(syllable) for syllable in self.syllables])
-        return f"U{GlobalConfig.PLAYER_INTERVAL}\n{syllables}"
+        return f"U{GlobalConfig.player_interval}\n{syllables}"
 
 
-def clear_and_DDI():
+def clear_and_DDI() -> None:
     PianoPlayer.clear()
     display_default_info()
 
 
-def display_default_info():
-    print(f"Play the song of `{GlobalConfig.MUSIC_PATH}`")
+def display_default_info() -> None:
+    print(f"Play the song of `{GlobalConfig.music_path}`")
     print(
         f"The following are the default data: \n"
         f"arpeggio_interval: {consts.DEFAULT_ARPEGGIO_INTERVAL}"
@@ -169,7 +188,7 @@ def display_default_info():
         f", line_interval_rating: {consts.DEFAULT_LINE_INTERVAL_RATING}"
     )
     print(
-        f"SPACE_FILLS: {GlobalConfig.SPACE_FILLS}, "
+        f"SPACE_FILLS: {GlobalConfig.space_fills}, "
         f"IGNORE_BLANK_LINE: {consts.IGNORE_BLANK_LINE}, "
         f"STRICT_LIMITED: {consts.STRICT_LIMITED}"
     )

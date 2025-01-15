@@ -1,52 +1,73 @@
 import os
 import sys
+from typing import List, Union, TypedDict
 
 from GIPPcore.Config import Config as GlobalConfig
 from GIPPcore.Consts import consts, FIXED_RELATIVE_PATH, EXE_PATH
 from GIPPcore.utils import Monitor
 from GIPPcore.Controller import Controller
 from GIPPcore.Connection import Connection
-from GIPPcore.MusicParse import FileAnalyzer
+from GIPPcore.MusicParse import Action, FileAnalyzer, MusicPackage, Syllable
 from GIPPcore.GenshinImpactPianoPlayer import PianoPlayer, display_default_info
 from GIPPcore.ShortcutKeyManager import ShortcutKeyManager
 
+Syllables = List[Union[Syllable, Action]]
 
-def load_config():
-    with open(GlobalConfig.MUSIC_PATH, 'r', encoding='utf8') as file:
-        lines = file.read().split('\n')
+
+class AllObjects(TypedDict):
+    music: PianoPlayer
+    connection: Connection
+    monitor: Monitor
+
+
+def load_config() -> None:
+    with open(GlobalConfig.music_path, "r", encoding="utf8") as file:
+        lines = file.read().split("\n")
 
     for idx, line in enumerate(lines):
         if line.startswith("ARPEGGIO_INTERVAL"):
-            consts.DEFAULT_ARPEGGIO_INTERVAL = GlobalConfig.ARPEGGIO_INTERVAL = float(line.split('=')[-1])
+            consts.DEFAULT_ARPEGGIO_INTERVAL = GlobalConfig.arpeggio_interval = float(
+                line.split("=")[-1]
+            )
 
         elif line.startswith("INTERVAL_RATING"):
-            consts.DEFAULT_INTERVAL_RATING = GlobalConfig.INTERVAL_RATING = float(line.split('=')[-1])
+            consts.DEFAULT_INTERVAL_RATING = GlobalConfig.interval_rating = float(
+                line.split("=")[-1]
+            )
 
         elif line.startswith("SPACE_INTERVAL_RATING"):
-            consts.DEFAULT_SPACE_INTERVAL_RATING = GlobalConfig.SPACE_INTERVAL_RATING = float(line.split('=')[-1])
+            consts.DEFAULT_SPACE_INTERVAL_RATING = (
+                GlobalConfig.space_interval_rating
+            ) = float(line.split("=")[-1])
 
         elif line.startswith("HORN_MODE_INTERVAL"):
-            consts.DEFAULT_HORN_MODE_INTERVAL = GlobalConfig.HORN_MODE_INTERVAL = float(line.split('=')[-1])
+            consts.DEFAULT_HORN_MODE_INTERVAL = GlobalConfig.horn_mode_interval = float(
+                line.split("=")[-1]
+            )
 
         elif line.startswith("LINE_INTERVAL_RATING"):
-            consts.DEFAULT_LINE_INTERVAL_RATING = GlobalConfig.LINE_INTERVAL_RATING = int(line.split('=')[-1])
+            consts.DEFAULT_LINE_INTERVAL_RATING = GlobalConfig.line_interval_rating = (
+                int(line.split("=")[-1])
+            )
 
         elif line.startswith("SPACE_FILLS"):
-            consts.SPACE_FILLS = (line.split('=')[-1].lower() == "true")
+            consts.SPACE_FILLS = line.split("=")[-1].lower() == "true"
 
         elif line.startswith("IGNORE_BLANK_LINE"):
-            consts.IGNORE_BLANK_LINE = (line.split('=')[-1].lower() == "true")
+            consts.IGNORE_BLANK_LINE = line.split("=")[-1].lower() == "true"
 
         elif line.startswith("STRICT_LIMITED"):
-            GlobalConfig.STRICT_LIMITED = consts.STRICT_LIMITED = (line.split('=')[-1].lower() == "true")
+            GlobalConfig.strict_limited = consts.STRICT_LIMITED = (
+                line.split("=")[-1].lower() == "true"
+            )
 
         elif line.startswith("-"):
-            GlobalConfig.MUSIC_START_LINE = idx + 1
+            GlobalConfig.music_start_line = idx + 1
             return None
 
 
-def load_shortcut_keys():
-    skm = ShortcutKeyManager()
+def load_shortcut_keys() -> ShortcutKeyManager[Connection, Union[None, bool]]:
+    skm: ShortcutKeyManager[Connection, Union[None, bool]] = ShortcutKeyManager()
     skm.set_default_shortcut_keys()
 
     print(f"Loading keyMap.ini from {EXE_PATH + FIXED_RELATIVE_PATH}")
@@ -59,25 +80,23 @@ def load_shortcut_keys():
     return skm
 
 
-def load_all():
+def load_all() -> AllObjects:
     load_config()
     c = Connection()
-    skm = load_shortcut_keys()
-    m = Monitor(c, skm)
+    skm: ShortcutKeyManager[Connection, Union[None, bool]] = load_shortcut_keys()
+    m = Monitor(conn=c, shortcut_key_manager=skm)
     m.start()
     skm.display()
-    package = FileAnalyzer(GlobalConfig.MUSIC_PATH).read_content().analyze()
-    music = PianoPlayer(package['syllables'], connection=c)
-    GlobalConfig.PLAYER_INTERVAL = package['interval']
+    package: MusicPackage = (
+        FileAnalyzer(filename=GlobalConfig.music_path).read_content().analyze()
+    )
+    music = PianoPlayer(syllables=package["syllables"], connection=c)
+    GlobalConfig.player_interval = package["interval"]
 
-    return {
-        'music': music,
-        'connection': c,
-        'monitor': m
-    }
+    return {"music": music, "connection": c, "monitor": m}
 
 
-def play(music, connection):
+def play(music: PianoPlayer, connection: Connection) -> None:
     while connection.running_flag:
         try:
             music.play()
@@ -86,41 +105,44 @@ def play(music, connection):
         finally:
             Controller.release_all()
 
-        if connection.restart: music.restart()
+        if connection.restart:
+            music.restart()
 
 
-def main(argv):
-    os.system("mode con cols=128 lines=30")
+def main(argv: List[str]):
     if len(argv) == 1:
-        print("Drag the music file onto the exe to launch, or manually type the music file path")
-        GlobalConfig.MUSIC_PATH = input("Please enter the music file path: ")
-        while not os.path.exists(GlobalConfig.MUSIC_PATH):
-            GlobalConfig.MUSIC_PATH = input("Please enter the correct music file path：")
+        print(
+            "Drag the music file onto the exe to launch, or manually type the music file path"
+        )
+        GlobalConfig.music_path = input("Please enter the music file path: ")
+        while not os.path.exists(GlobalConfig.music_path):
+            GlobalConfig.music_path = input(
+                "Please enter the correct music file path: "
+            )
     else:
-        GlobalConfig.MUSIC_PATH = argv[1]
+        GlobalConfig.music_path = argv[1]
 
     hot_reload_flag = True  # for first time running
-    packages = load_all()
+    packages: AllObjects = load_all()
     display_default_info()
     while hot_reload_flag:
-        play(music=packages['music'], connection=packages['connection'])
-        hot_reload_flag = packages['connection'].hot_reload
+        play(music=packages["music"], connection=packages["connection"])
+        hot_reload_flag = packages["connection"].hot_reload
         if hot_reload_flag:
             # configure the vars
-            cur_idx = packages['music'].idx
+            cur_idx = packages["music"].idx
             packages = load_all()
-            packages['music'].idx = cur_idx
+            packages["music"].idx = cur_idx
 
             # display info
             PianoPlayer.clear()
             print(f"\n{'Hot reload!':-^50}", flush=True)
             display_default_info()
-            packages['music'].display_music(cur_idx)
+            packages["music"].display_music(cur_idx)
 
         else:
-            packages['monitor'].join()
+            packages["monitor"].join()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main(sys.argv)
-    # main(['', r'D:\a3432\Desktop\谱\Script\color-x by呵呵哒6.txt'])
