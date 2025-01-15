@@ -7,25 +7,31 @@ class Action:
         if not self.is_valid: return
 
         k, v = cfg_str.split("=")
-        self.key: str = k.strip()
+        self.key: str = k.strip().lower()
         self.value: float = float(v.strip())
 
         self.dispose_special()
+
+    def execute(self):
+        print(self, end="")
+        self.__call__()
 
     def __call__(self):
         setattr(Config, self.key, self.value)
 
     def dispose_special(self):
-        if self.key == "SPEED":
-            self.key = "PLAYER_INTERVAL"
+        if self.key == "speed":
+            self.key = "player_interval"
             self.value = 1 / self.value
 
     def __str__(self) -> str:
         key = self.key
-        if self.key == "PLAYER_INTERVAL":
-            key = "SPEED"
+        value = self.value
+        if self.key == "player_interval":
+            key = "speed"
+            value = 1 / self.value
 
-        return f"$CFG[{key}={1 / self.value}]"
+        return f"$CFG[{key.upper()}={value}]"
 
     def __repr__(self):
         return self.__str__()

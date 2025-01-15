@@ -25,38 +25,38 @@ def load_config() -> None:
         lines = file.read().split("\n")
 
     for idx, line in enumerate(lines):
-        if line.startswith("ARPEGGIO_INTERVAL"):
+        if line.upper().startswith("ARPEGGIO_INTERVAL"):
             consts.DEFAULT_ARPEGGIO_INTERVAL = GlobalConfig.arpeggio_interval = float(
                 line.split("=")[-1]
             )
 
-        elif line.startswith("INTERVAL_RATING"):
+        elif line.upper().startswith("INTERVAL_RATING"):
             consts.DEFAULT_INTERVAL_RATING = GlobalConfig.interval_rating = float(
                 line.split("=")[-1]
             )
 
-        elif line.startswith("SPACE_INTERVAL_RATING"):
+        elif line.upper().startswith("SPACE_INTERVAL_RATING"):
             consts.DEFAULT_SPACE_INTERVAL_RATING = (
                 GlobalConfig.space_interval_rating
             ) = float(line.split("=")[-1])
 
-        elif line.startswith("HORN_MODE_INTERVAL"):
+        elif line.upper().startswith("HORN_MODE_INTERVAL"):
             consts.DEFAULT_HORN_MODE_INTERVAL = GlobalConfig.horn_mode_interval = float(
                 line.split("=")[-1]
             )
 
-        elif line.startswith("LINE_INTERVAL_RATING"):
+        elif line.upper().startswith("LINE_INTERVAL_RATING"):
             consts.DEFAULT_LINE_INTERVAL_RATING = GlobalConfig.line_interval_rating = (
                 int(line.split("=")[-1])
             )
 
-        elif line.startswith("SPACE_FILLS"):
+        elif line.upper().startswith("SPACE_FILLS"):
             consts.SPACE_FILLS = line.split("=")[-1].lower() == "true"
 
-        elif line.startswith("IGNORE_BLANK_LINE"):
+        elif line.upper().startswith("IGNORE_BLANK_LINE"):
             consts.IGNORE_BLANK_LINE = line.split("=")[-1].lower() == "true"
 
-        elif line.startswith("STRICT_LIMITED"):
+        elif line.upper().startswith("STRICT_LIMITED"):
             GlobalConfig.strict_limited = consts.STRICT_LIMITED = (
                 line.split("=")[-1].lower() == "true"
             )

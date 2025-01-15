@@ -151,7 +151,8 @@ class PianoPlayer:
             self.sleep()
 
             if isinstance(self.current_syllable, Action):
-                self.current_syllable()
+                self.current_syllable.execute()
+                self.display_title()
                 self.idx += 1
                 continue
 

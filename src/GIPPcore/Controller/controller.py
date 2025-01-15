@@ -26,7 +26,10 @@ class Controller:
                 keyboard.press_and_release(_k.lower())
 
             if syllable.is_arpeggio and idx != last:
-                time.sleep(GlobalConfig.arpeggio_interval)
+                time.sleep(
+                    GlobalConfig.arpeggio_interval if GlobalConfig.arpeggio_interval > 0
+                    else (GlobalConfig.player_interval * GlobalConfig.interval_rating) / (len(syllable.words) - 1)
+                )
 
     @staticmethod
     def release_all():
@@ -47,9 +50,14 @@ class Controller:
 
         time.sleep(GlobalConfig.horn_mode_interval)
 
+        first_flag = True
         for _k in syllable.words:
-            if syllable.is_arpeggio:
-                time.sleep(GlobalConfig.arpeggio_interval)
+            if syllable.is_arpeggio and not first_flag:
+                time.sleep(
+                    GlobalConfig.arpeggio_interval if GlobalConfig.arpeggio_interval > 0
+                    else (GlobalConfig.player_interval * GlobalConfig.interval_rating) / (len(syllable.words) - 1)
+                )
+                first_flag = False
             if not isinstance(_k, Syllable):
                 keyboard.press(_k.lower())
             else:
