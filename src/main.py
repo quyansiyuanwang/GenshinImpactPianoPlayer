@@ -51,7 +51,7 @@ def load_config() -> None:
             )
 
         elif line.upper().startswith("SPACE_FILLS"):
-            consts.SPACE_FILLS = line.split("=")[-1].lower() == "true"
+            GlobalConfig.space_fills = line.split("=")[-1].lower() == "true"
 
         elif line.upper().startswith("IGNORE_BLANK_LINE"):
             consts.IGNORE_BLANK_LINE = line.split("=")[-1].lower() == "true"

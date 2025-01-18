@@ -6,13 +6,13 @@ from ..utils import reverse, set_value, increase_value
 from ..Connection import Connection
 
 DEFAULT_PLAYER_INTERVAL: float = 1.0
-DEFAULT_ARPEGGIO_INTERVAL: float = 0.05
+DEFAULT_ARPEGGIO_INTERVAL: float = -1
 DEFAULT_INTERVAL_RATING: float = 0.15
 DEFAULT_SPACE_INTERVAL_RATING: float = 1.0
 DEFAULT_HORN_MODE_INTERVAL: float = 0.01
 DEFAULT_LINE_INTERVAL_RATING: int = 0
 
-SPACE_FILLS: bool = True
+SPACE_FILLS: bool = False
 STRICT_LIMITED: bool = False
 IGNORE_BLANK_LINE: bool = True
 MUSIC_START_LINE: int = 1
