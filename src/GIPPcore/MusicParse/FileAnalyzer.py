@@ -52,15 +52,15 @@ class FileAnalyzer:
                     section = 0
 
                 elif (
-                    right_quote := utils.QUOTE_PAIR.get(content[idx], None)
+                        right_quote := utils.QUOTE_PAIR.get(content[idx], None)
                 ) is not None:
                     left_quote = content[idx]
                     left_quote_idx = idx
                     quote_depth = 1
                     while (
-                        idx < length
-                        and content[idx] != right_quote
-                        and quote_depth != 0
+                            idx < length
+                            and content[idx] != right_quote
+                            and quote_depth != 0
                     ):
                         if content[idx] == right_quote:
                             quote_depth -= 1
@@ -70,7 +70,7 @@ class FileAnalyzer:
 
                     syllables.append(
                         Syllable(
-                            content[left_quote_idx + 1 : idx],
+                            content[left_quote_idx + 1: idx],
                             is_arpeggio=bool(content[idx] != ")"),
                         )
                     )
@@ -117,7 +117,7 @@ class FileAnalyzer:
         return None
 
     def analyze(
-        self,
+            self,
     ) -> MusicPackage:
         if self.content is None:
             raise ValueError("Content is None, please read content first")
@@ -127,7 +127,7 @@ class FileAnalyzer:
         interval = 1 / float(self.content[0].strip())
 
         for lineno, syllable in enumerate(
-            self.content[GlobalConfig.music_start_line :]
+                self.content[GlobalConfig.music_start_line:]
         ):
             replace_content = replace_all(syllable)
             idx = len(syllable) - 1
@@ -145,9 +145,9 @@ class FileAnalyzer:
                     continue
 
             for s in FileAnalyzer.content_analyze(
-                replace_content,
-                idx if idx >= 0 and syllable[idx] == "/" else len(syllable),
-                lineno,
+                    replace_content,
+                    idx if idx >= 0 and syllable[idx] == "/" else len(syllable),
+                    lineno,
             ):
                 syllables.append(s)
 
@@ -155,7 +155,7 @@ class FileAnalyzer:
                 continue  # blank line
 
             for _ in range(
-                int(consts.DEFAULT_LINE_INTERVAL_RATING) if idx != -1 else 1
+                    int(consts.DEFAULT_LINE_INTERVAL_RATING) if idx != -1 else 1
             ):
                 syllables.append(Syllable(" "))
 
