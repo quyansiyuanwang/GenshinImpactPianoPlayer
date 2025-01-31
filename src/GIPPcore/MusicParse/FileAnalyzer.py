@@ -46,7 +46,7 @@ class FileAnalyzer:
                     continue
 
                 if content[idx] == "/":
-                    if consts.SPACE_FILLS and section < 4:
+                    if GlobalConfig.space_fills and section < 4:
                         for _ in range(4 - section):
                             syllables.append(Syllable(" "))
                     section = 0
