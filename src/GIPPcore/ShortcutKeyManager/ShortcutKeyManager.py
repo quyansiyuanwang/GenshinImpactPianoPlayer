@@ -1,4 +1,5 @@
 import os
+import time
 from typing import Callable, Optional, TypeVar, Generic, List
 
 from ..Consts import FIXED_RELATIVE_PATH, EXE_PATH, DEFAULT_DESCRIPTION_KEY_MAP
@@ -11,16 +12,9 @@ RT = TypeVar("RT")
 class ShortcutKey(Generic[T, RT]):
     def __init__(self, key: str, description: str, func: Callable[[T], RT]) -> None:
         self.key: str = key
-        self.description: str = description
+        self.description: str = description.split("*")[-1]
         self.func: Callable[[T], RT] = func
-
-    def is_always_active(self) -> bool:
-        if self.description in [
-            "exit",
-            "keyboard lock",
-        ]:
-            return True
-        return False
+        self.is_always_active: bool = True if description.startswith("*") else False
 
     def __call__(self, *args: T, **kwargs: T) -> RT:
         return self.func(*args, **kwargs)
@@ -36,6 +30,7 @@ class ShortcutKeyManager(Generic[T, RT]):
                 return shortcut_key
 
     def get_by_description(self, description: str) -> Optional[ShortcutKey[T, RT]]:
+        description = description.split("*")[-1]
         for shortcut_key in self.keys_list:
             if shortcut_key.description == description:
                 return shortcut_key
@@ -71,7 +66,9 @@ class ShortcutKeyManager(Generic[T, RT]):
             os.makedirs(os.path.dirname(EXE_PATH + FIXED_RELATIVE_PATH), exist_ok=True)
         with open(EXE_PATH + FIXED_RELATIVE_PATH, "w", encoding="utf8") as file:
             for shortcut_key in self.keys_list:
-                file.write(f"{shortcut_key.description}={shortcut_key.key}\n")
+                file.write(
+                    f"{'*' if shortcut_key.is_always_active else ''}{shortcut_key.description}={shortcut_key.key}\n"
+                )
 
     def load_ini(self) -> None:
         with open(EXE_PATH + FIXED_RELATIVE_PATH, "r", encoding="utf8") as file:
@@ -96,13 +93,18 @@ class ShortcutKeyManager(Generic[T, RT]):
         print("-" * 50)
 
     def modify_shortcut_key(self) -> None:
-        print()
         for idx, shortcut_key in enumerate(self.keys_list):
             print(f"{idx + 1}. {shortcut_key.description} : {shortcut_key.key}")
         print("-" * 50)
-        idx = (
-            int(input("Please enter the index of the shortcut you want to modify: "))
-            - 1
-        )
-        new_key = input("Please enter the new key: ")
+        time.sleep(0.3)
+        try:
+            idx = (
+                    int(input(
+                        "Please enter the index of the shortcut you want to modify(empty for exit): "
+                    )) - 1
+            )
+            new_key = input("Please enter the new key: ")
+        except ValueError:
+            print("Exited editing")
+            return None
         self.keys_list[idx].key = new_key

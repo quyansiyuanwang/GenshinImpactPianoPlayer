@@ -23,7 +23,7 @@ EXE_PATH = os.path.dirname(sys.executable)
 
 DEFAULT_DESCRIPTION_LAMBDA_MAP: Dict[str, Callable[[Connection], Union[None, bool]]] = {
     'start/stop': lambda connection: reverse(connection, 'stop_flag'),
-    'exit': lambda connection: set_value(connection, 'running_flag', False),
+    '*exit': lambda connection: set_value(connection, 'running_flag', False),
     'restart': lambda connection: reverse(connection, 'restart'),
     'reset config': lambda connection: reverse(connection, 'reset_config'),
     'hotreload music':
@@ -39,12 +39,12 @@ DEFAULT_DESCRIPTION_LAMBDA_MAP: Dict[str, Callable[[Connection], Union[None, boo
     'decrease space interval': lambda connection: increase_value(connection, 'adjust_space_interval', 0.01),
     'modify shortcut': lambda connection: reverse(connection, 'modify_shortcut'),
     'save shortcut': lambda connection: reverse(connection, 'save_shortcut'),
-    'keyboard lock': lambda connection: reverse(connection, 'keyboard_lock')
+    '*keyboard lock': lambda connection: reverse(connection, 'keyboard_lock')
 }
 
 DEFAULT_DESCRIPTION_KEY_MAP: Dict[str, str] = {
     'start/stop': 'f1',
-    'exit': 'f2',
+    '*exit': 'f2',
     'restart': 'f3',
     'reset config': 'f4',
     'hotreload music': 'f5',
@@ -59,5 +59,5 @@ DEFAULT_DESCRIPTION_KEY_MAP: Dict[str, str] = {
     'decrease space interval': 'l',
     'modify shortcut': 'f6',
     'save shortcut': 'f7',
-    'keyboard lock': 'f8'
+    '*keyboard lock': 'f8'
 }

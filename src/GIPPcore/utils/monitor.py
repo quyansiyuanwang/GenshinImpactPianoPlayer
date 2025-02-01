@@ -32,7 +32,7 @@ class Monitor(Thread):
             )
 
             if call_back is not None and \
-                    (not self.conn.keyboard_lock or call_back.is_always_active()):
+                    (not self.conn.keyboard_lock or call_back.is_always_active):
                 call_back(self.conn)
 
             self.check_event()
