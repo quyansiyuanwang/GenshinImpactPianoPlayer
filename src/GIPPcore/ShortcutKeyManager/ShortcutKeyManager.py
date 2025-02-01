@@ -50,6 +50,7 @@ class ShortcutKeyManager(Generic[T, RT]):
         shortcut_key = self.get_by_description(description)
         if shortcut_key is not None:
             shortcut_key.key = key
+            shortcut_key.is_always_active = True if description.startswith("*") else False
             return None
         rep: Optional[Callable[[T], RT]] = DEFAULT_DESCRIPTION_LAMBDA_MAP.get(description)  # type: ignore[dict-item]
         if rep is not None:
