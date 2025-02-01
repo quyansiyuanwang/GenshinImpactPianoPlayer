@@ -14,6 +14,14 @@ class ShortcutKey(Generic[T, RT]):
         self.description: str = description
         self.func: Callable[[T], RT] = func
 
+    def is_always_active(self) -> bool:
+        if self.description in [
+            "exit",
+            "keyboard lock",
+        ]:
+            return True
+        return False
+
     def __call__(self, *args: T, **kwargs: T) -> RT:
         return self.func(*args, **kwargs)
 

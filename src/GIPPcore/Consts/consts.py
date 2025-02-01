@@ -38,7 +38,8 @@ DEFAULT_DESCRIPTION_LAMBDA_MAP: Dict[str, Callable[[Connection], Union[None, boo
     'increase space interval': lambda connection: increase_value(connection, 'adjust_space_interval', -0.01),
     'decrease space interval': lambda connection: increase_value(connection, 'adjust_space_interval', 0.01),
     'modify shortcut': lambda connection: reverse(connection, 'modify_shortcut'),
-    'save shortcut': lambda connection: reverse(connection, 'save_shortcut')
+    'save shortcut': lambda connection: reverse(connection, 'save_shortcut'),
+    'keyboard lock': lambda connection: reverse(connection, 'keyboard_lock')
 }
 
 DEFAULT_DESCRIPTION_KEY_MAP: Dict[str, str] = {
@@ -57,5 +58,6 @@ DEFAULT_DESCRIPTION_KEY_MAP: Dict[str, str] = {
     'increase space interval': 'k',
     'decrease space interval': 'l',
     'modify shortcut': 'f6',
-    'save shortcut': 'f7'
+    'save shortcut': 'f7',
+    'keyboard lock': 'f8'
 }

@@ -57,7 +57,7 @@ class Controller:
                     GlobalConfig.arpeggio_interval if GlobalConfig.arpeggio_interval > 0
                     else (GlobalConfig.player_interval * GlobalConfig.interval_rating) / (len(syllable.words) - 1)
                 )
-                first_flag = False
+            first_flag = False
             if not isinstance(_k, Syllable):
                 keyboard.press(_k.lower())
             else:

@@ -15,10 +15,10 @@ Syllables = List[Union[Syllable, Action]]
 class PianoPlayer:
 
     def __init__(
-        self,
-        syllables: Syllables,
-        *,
-        connection: Connection,
+            self,
+            syllables: Syllables,
+            *,
+            connection: Connection,
     ) -> None:
         self.syllables: Syllables = syllables
         self.conn: Connection = connection
@@ -47,8 +47,8 @@ class PianoPlayer:
     @property
     def r_interval(self) -> float:
         return (
-            GlobalConfig.player_interval * GlobalConfig.interval_rating
-            + self.interval_changes
+                GlobalConfig.player_interval * GlobalConfig.interval_rating
+                + self.interval_changes
         )
 
     @interval_.setter
@@ -70,6 +70,7 @@ class PianoPlayer:
         interval = self.r_interval
         os.system(
             f"title "
+            f"{'KBL' if self.conn.keyboard_lock else ''}  "
             f"{percent * 100:.2f}%  "
             f"{'Running' if not self.conn.stop_flag else 'Stopped'}  "
             f"[{interval:.4f}s - {1 / (interval / GlobalConfig.interval_rating):.3f}Hz]  "

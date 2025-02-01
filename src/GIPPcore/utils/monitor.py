@@ -4,17 +4,18 @@ import keyboard
 from threading import Thread
 
 if TYPE_CHECKING:
-    from GIPPcore.ShortcutKeyManager import ShortcutKeyManager, ShortcutKey
-    from GIPPcore.Connection.connection import Connection
+    from GIPPcore.ShortcutKeyManager import ShortcutKeyManager, ShortcutKey  # noqa
+    from GIPPcore.Connection import Connection  # noqa
+
     SKMType = ShortcutKeyManager[Connection, Union[None, bool]]
 
 
 class Monitor(Thread):
 
     def __init__(
-        self,
-        conn: 'Connection',
-        shortcut_key_manager: 'SKMType',
+            self,
+            conn: 'Connection',
+            shortcut_key_manager: 'SKMType',
     ):
         super().__init__()
         self.conn: 'Connection' = conn
@@ -29,7 +30,9 @@ class Monitor(Thread):
             call_back: Optional[ShortcutKey[Connection, Union[None, bool]]] = (
                 self.shortcut_key_manager.get_by_key(str(res_k))
             )
-            if call_back is not None:
+
+            if call_back is not None and \
+                    (not self.conn.keyboard_lock or call_back.is_always_active()):
                 call_back(self.conn)
 
             self.check_event()

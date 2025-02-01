@@ -57,9 +57,7 @@ def load_config() -> None:
             consts.IGNORE_BLANK_LINE = line.split("=")[-1].lower() == "true"
 
         elif line.upper().startswith("STRICT_LIMITED"):
-            GlobalConfig.strict_limited = consts.STRICT_LIMITED = (
-                line.split("=")[-1].lower() == "true"
-            )
+            GlobalConfig.strict_limited = consts.STRICT_LIMITED = line.split("=")[-1].lower() == "true"
 
         elif line.startswith("-"):
             GlobalConfig.music_start_line = idx + 1
