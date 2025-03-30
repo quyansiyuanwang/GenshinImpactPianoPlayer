@@ -240,6 +240,9 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-!/music/
-!/build/
-!/test_files/
+**/music/
+**/build/
+**/test_files/
+**/dist/
+
+*.spec
