@@ -40,6 +40,13 @@ Thumbs.db
 # Project specific
 *.log
 
+# Build artifacts
+build/
+dist/
+release/
+*.spec
+version_info.txt
+
 # Claude Code
 .claude/
 

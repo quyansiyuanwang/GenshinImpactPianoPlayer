@@ -13,6 +13,7 @@
 - [时间控制](docs/TIMING.md) - 时间和节奏控制
 - [自定义](docs/CUSTOMIZATION.md) - 自定义配置
 - [性能优化](docs/OPTIMIZATION.md) - 性能优化建议
+- [打包说明](docs/BUILD.md) - 如何打包成exe可执行文件
 - [更新日志](docs/CHANGELOG.md) - 版本更新记录
 - [开发指南](CLAUDE.md) - 给Claude Code的开发指南
 
