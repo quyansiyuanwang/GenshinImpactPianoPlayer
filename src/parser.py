@@ -155,7 +155,7 @@ class ScoreParser:
     def _parse_line(self, line: str) -> List[Note]:
         """Parse a single line into a list of notes.
 
-        Space is treated as an empty note (rest).
+        Whitespace characters (space, tab, etc.) are treated as empty notes (rests).
         '/' is a segment separator - if segment_length > 0, pad to that length.
         """
         # First pass: split by '/' and parse each segment
@@ -172,8 +172,8 @@ class ScoreParser:
                     segments.append(current_segment)
                     current_segment = []
                 i += 1
-            elif char == " ":
-                # Space is an empty note (rest)
+            elif char.isspace():
+                # Any whitespace character is an empty note (rest)
                 current_segment.append(Note(type=NoteType.SINGLE, keys=[" "]))
                 i += 1
             elif char == "(":
