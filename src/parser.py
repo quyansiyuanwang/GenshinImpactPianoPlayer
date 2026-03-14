@@ -50,6 +50,7 @@ class ScoreParser:
         self.content = ""
         self.pos = 0
         self._segment_length = 0  # Will be set during config parsing
+        self._empty_line_interval_rating = 0.0  # Will be set during config parsing
 
     def parse(self) -> ParsedScore:
         """Parse the score file and return ParsedScore object."""
@@ -107,6 +108,8 @@ class ScoreParser:
 
         # Store segment_length for use during line parsing
         self._segment_length = int(config_dict.get("segment_length", DEFAULT_SEGMENT_LENGTH))
+        # Store empty_line_interval_rating for use during score parsing
+        self._empty_line_interval_rating = config_dict.get("empty_line_interval_rating", DEFAULT_EMPTY_LINE_INTERVAL_RATING)
 
         return PlayConfig(
             version=version or DEFAULT_VERSION,
@@ -122,7 +125,8 @@ class ScoreParser:
     def _parse_score(self) -> List[List[Note]]:
         """Parse the score content into lines of notes.
 
-        Empty lines are preserved as special EMPTY_LINE markers.
+        Empty lines are preserved as special EMPTY_LINE markers only if
+        empty_line_interval_rating > 0.
         """
         lines = []
 
@@ -133,9 +137,12 @@ class ScoreParser:
             if stripped.startswith("#"):
                 continue
 
-            # Empty line - add as special marker
+            # Empty line - only add if empty_line_interval_rating > 0
             if not stripped:
-                lines.append([Note(type=NoteType.EMPTY_LINE, keys=[])])
+                # Check if we should preserve empty lines
+                empty_line_rating = getattr(self, '_empty_line_interval_rating', 0)
+                if empty_line_rating > 0:
+                    lines.append([Note(type=NoteType.EMPTY_LINE, keys=[])])
                 continue
 
             # Parse normal line
