@@ -413,9 +413,26 @@ class CLI:
         self.running = True
 
         # Main loop
+        last_refresh = time.time()
         try:
             while self.running:
-                time.sleep(0.1)
+                # Check for key events (including resize)
+                try:
+                    key = stdscr.getch()
+                    if key == curses.KEY_RESIZE:
+                        # Terminal was resized, force redraw
+                        curses.resizeterm(*stdscr.getmaxyx())
+                        self._display_score()
+                except curses.error:
+                    pass
+
+                # Periodic refresh (every 0.5 seconds) to catch any missed updates
+                current_time = time.time()
+                if current_time - last_refresh >= 0.5:
+                    self._display_score()
+                    last_refresh = current_time
+
+                time.sleep(0.05)
         except KeyboardInterrupt:
             pass
 
