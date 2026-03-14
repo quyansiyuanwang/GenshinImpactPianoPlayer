@@ -22,6 +22,9 @@ DEFAULT_HOTKEYS = {
     # Line interval adjustment
     "line_interval_less": "down",
     "line_interval_more": "up",
+    # Space interval adjustment
+    "space_interval_less": "shift+down",
+    "space_interval_more": "shift+up",
     # Segment length adjustment
     "segment_length_less": "page down",
     "segment_length_more": "page up",
@@ -58,6 +61,7 @@ DEFAULT_SPEED_MULTIPLIER = 1.0
 DEFAULT_ARPEGGIO_INTERVAL = 0.05  # seconds
 DEFAULT_INTERVAL_RATING = 0.2  # seconds
 DEFAULT_LINE_INTERVAL_RATING = 1.0  # N empty notes between lines
+DEFAULT_SPACE_INTERVAL_RATING = 1.0  # multiplier for space (rest) notes
 DEFAULT_SEGMENT_LENGTH = 0  # 0 = disabled, >0 = force N notes per segment
 
 # Playback limits

@@ -37,6 +37,7 @@ class Player:
         self._arpeggio_interval = score.config.arpeggio_interval
         self._interval_rating = score.config.interval_rating
         self._line_interval_rating = score.config.line_interval_rating
+        self._space_interval_rating = score.config.space_interval_rating
         self._segment_length = score.config.segment_length
 
         # Sustain mode
@@ -113,6 +114,10 @@ class Player:
     def set_line_interval_rating(self, rating: float) -> None:
         """Set line interval rating (N empty notes between lines)."""
         self._line_interval_rating = max(0.0, min(10.0, rating))
+
+    def set_space_interval_rating(self, rating: float) -> None:
+        """Set space interval rating (multiplier for rest notes)."""
+        self._space_interval_rating = max(0.0, min(10.0, rating))
 
     def set_segment_length(self, length: int) -> None:
         """Set segment length (N notes per segment, 0 = disabled)."""
@@ -264,7 +269,11 @@ class Player:
             # Every note (including space, chord, arpeggio) should have interval after it
             # Except the last note in the line
             if i < len(line) - 1:
-                self._sleep(self._interval_rating)
+                # Use space_interval_rating for rest notes, normal interval for others
+                if note.type == NoteType.SINGLE and note.keys[0] == ' ':
+                    self._sleep(self._interval_rating * self._space_interval_rating)
+                else:
+                    self._sleep(self._interval_rating)
 
     def _play_note(self, note: Note) -> None:
         """Play a single note (single, chord, or arpeggio)."""

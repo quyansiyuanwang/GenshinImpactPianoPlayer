@@ -11,6 +11,7 @@ from src.constants import (
     DEFAULT_ARPEGGIO_INTERVAL,
     DEFAULT_INTERVAL_RATING,
     DEFAULT_LINE_INTERVAL_RATING,
+    DEFAULT_SPACE_INTERVAL_RATING,
     DEFAULT_SEGMENT_LENGTH,
 )
 
@@ -111,6 +112,7 @@ class ScoreParser:
             arpeggio_interval=config_dict.get("arpeggio_interval", DEFAULT_ARPEGGIO_INTERVAL),
             interval_rating=config_dict.get("interval_rating", DEFAULT_INTERVAL_RATING),
             line_interval_rating=config_dict.get("line_interval_rating", DEFAULT_LINE_INTERVAL_RATING),
+            space_interval_rating=config_dict.get("space_interval_rating", DEFAULT_SPACE_INTERVAL_RATING),
             segment_length=self._segment_length,
         )
 

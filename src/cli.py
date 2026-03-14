@@ -108,6 +108,7 @@ class CLI:
                 arp_interval = self.player._arpeggio_interval
                 interval = self.player._interval_rating
                 line_interval = self.player._line_interval_rating
+                space_interval = self.player._space_interval_rating
                 segment_length = self.player._segment_length
                 sustain_enabled = self.player.get_sustain_enabled()
 
@@ -122,6 +123,9 @@ class CLI:
                 )
                 config_lines.append(
                     f"  Line Interval: {line_interval:.0f} notes  [Up/Down] Adjust line"
+                )
+                config_lines.append(
+                    f"  Space Interval: {space_interval:.1f}x     [Shift+Up/Down] Adjust space"
                 )
                 segment_status = (
                     f"{segment_length} notes" if segment_length > 0 else "Disabled"
@@ -484,6 +488,12 @@ class CLI:
             self.hotkeys["line_interval_more"], lambda: self._adjust_line_interval(1.0)
         )  # Up = more
         keyboard.add_hotkey(
+            self.hotkeys["space_interval_less"], lambda: self._adjust_space_interval(-0.1)
+        )  # Shift+Down = less
+        keyboard.add_hotkey(
+            self.hotkeys["space_interval_more"], lambda: self._adjust_space_interval(0.1)
+        )  # Shift+Up = more
+        keyboard.add_hotkey(
             self.hotkeys["segment_length_less"], lambda: self._adjust_segment_length(-1)
         )  # PgDn = less
         keyboard.add_hotkey(
@@ -566,6 +576,17 @@ class CLI:
         # Always force display update
         self._display_score()
 
+    def _adjust_space_interval(self, delta: float) -> None:
+        """Adjust space interval rating (multiplier for rest notes)."""
+        if not self.player:
+            return
+
+        current = self.player._space_interval_rating
+        new_rating = max(0.0, current + delta)
+        self.player.set_space_interval_rating(new_rating)
+        # Always force display update
+        self._display_score()
+
     def _adjust_segment_length(self, delta: int) -> None:
         """Adjust segment length (N notes per segment)."""
         if not self.player:
@@ -624,6 +645,7 @@ class CLI:
             arpeggio_interval = self.player._arpeggio_interval
             interval_rating = self.player._interval_rating
             line_interval_rating = self.player._line_interval_rating
+            space_interval_rating = self.player._space_interval_rating
             segment_length = self.player._segment_length
 
             # Parse the original content
@@ -635,6 +657,7 @@ class CLI:
                 "arpeggio_interval": False,
                 "interval_rating": False,
                 "line_interval_rating": False,
+                "space_interval_rating": False,
                 "segment_length": False,
             }
 
@@ -665,6 +688,11 @@ class CLI:
                             f"LINE_INTERVAL_RATING = {line_interval_rating}"
                         )
                         config_updated["line_interval_rating"] = True
+                    elif key == "space_interval_rating":
+                        new_lines.append(
+                            f"SPACE_INTERVAL_RATING = {space_interval_rating}"
+                        )
+                        config_updated["space_interval_rating"] = True
                     elif key == "segment_length":
                         new_lines.append(f"SEGMENT_LENGTH = {segment_length}")
                         config_updated["segment_length"] = True
@@ -685,6 +713,10 @@ class CLI:
                     if not config_updated["line_interval_rating"]:
                         insert_lines.append(
                             f"LINE_INTERVAL_RATING = {line_interval_rating}"
+                        )
+                    if not config_updated["space_interval_rating"]:
+                        insert_lines.append(
+                            f"SPACE_INTERVAL_RATING = {space_interval_rating}"
                         )
                     if not config_updated["segment_length"]:
                         insert_lines.append(f"SEGMENT_LENGTH = {segment_length}")
@@ -763,6 +795,7 @@ class CLI:
             arpeggio_interval = self.player._arpeggio_interval
             interval_rating = self.player._interval_rating
             line_interval_rating = self.player._line_interval_rating
+            space_interval_rating = self.player._space_interval_rating
             segment_length = self.player._segment_length
 
             # Stop current playback
@@ -785,6 +818,7 @@ class CLI:
             self.player.set_arpeggio_interval(arpeggio_interval)
             self.player.set_interval_rating(interval_rating)
             self.player.set_line_interval_rating(line_interval_rating)
+            self.player.set_space_interval_rating(space_interval_rating)
             self.player.set_segment_length(segment_length)
 
             # Restore position (clamp to new score length)
