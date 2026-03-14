@@ -1,0 +1,346 @@
+"""Core playback engine for GIPianoPlayer."""
+
+import time
+from enum import Enum
+from threading import Thread, Event
+from typing import Optional, Callable
+from src.parser import ParsedScore, Note, NoteType
+from src.keyboard_controller import KeyboardController
+
+
+class PlayerState(Enum):
+    """Playback state."""
+    STOPPED = "stopped"
+    PLAYING = "playing"
+    PAUSED = "paused"
+
+
+class Player:
+    """Core playback engine that plays parsed scores."""
+
+    def __init__(self, score: ParsedScore, keyboard_controller: KeyboardController):
+        self.score = score
+        self.keyboard = keyboard_controller
+
+        # Playback state
+        self._state = PlayerState.STOPPED
+        self._current_line = 0
+        self._current_note = 0
+
+        # Control events
+        self._pause_event = Event()
+        self._stop_event = Event()
+        self._pause_event.set()  # Not paused initially
+
+        # Playback parameters (can be adjusted in real-time)
+        self._speed_multiplier = score.config.speed_multiplier
+        self._arpeggio_interval = score.config.arpeggio_interval
+        self._interval_rating = score.config.interval_rating
+        self._line_interval_rating = score.config.line_interval_rating
+        self._segment_length = score.config.segment_length
+
+        # Sustain mode
+        self._sustain_enabled = False
+        self._sustained_keys = []  # Keys currently being held
+
+        # Playback thread
+        self._playback_thread: Optional[Thread] = None
+
+        # Progress callback
+        self._progress_callback: Optional[Callable[[int, int, int, int], None]] = None
+
+    def set_progress_callback(self, callback: Callable[[int, int, int, int], None]) -> None:
+        """Set callback for progress updates: (current_line, total_lines, current_note, total_notes)."""
+        self._progress_callback = callback
+
+    def play(self) -> None:
+        """Start playback from current position."""
+        if self._state == PlayerState.PLAYING:
+            return
+
+        if self._state == PlayerState.PAUSED:
+            self.resume()
+            return
+
+        self._state = PlayerState.PLAYING
+        self._stop_event.clear()
+        self._pause_event.set()
+
+        self._playback_thread = Thread(target=self._playback_loop, daemon=True)
+        self._playback_thread.start()
+
+    def pause(self) -> None:
+        """Pause playback."""
+        if self._state == PlayerState.PLAYING:
+            self._state = PlayerState.PAUSED
+            self._pause_event.clear()
+            # Release sustained keys when pausing
+            self._release_sustained_keys()
+
+    def resume(self) -> None:
+        """Resume playback from paused state."""
+        if self._state == PlayerState.PAUSED:
+            self._state = PlayerState.PLAYING
+            self._pause_event.set()
+
+    def stop(self) -> None:
+        """Stop playback and reset position."""
+        self._state = PlayerState.STOPPED
+        self._stop_event.set()
+        self._pause_event.set()  # Unblock if paused
+
+        # Release sustained keys when stopping
+        self._release_sustained_keys()
+
+        if self._playback_thread and self._playback_thread.is_alive():
+            self._playback_thread.join(timeout=1.0)
+
+        self._current_line = 0
+        self._current_note = 0
+
+    def set_speed(self, multiplier: float) -> None:
+        """Set playback speed multiplier."""
+        self._speed_multiplier = max(0.1, min(10.0, multiplier))
+
+    def set_arpeggio_interval(self, interval: float) -> None:
+        """Set arpeggio interval in seconds."""
+        self._arpeggio_interval = max(0.01, min(1.0, interval))
+
+    def set_interval_rating(self, rating: float) -> None:
+        """Set base interval rating."""
+        self._interval_rating = max(0.01, min(5.0, rating))
+
+    def set_line_interval_rating(self, rating: float) -> None:
+        """Set line interval rating (N empty notes between lines)."""
+        self._line_interval_rating = max(0.0, min(10.0, rating))
+
+    def set_segment_length(self, length: int) -> None:
+        """Set segment length (N notes per segment, 0 = disabled)."""
+        self._segment_length = max(0, min(20, length))
+
+    def toggle_sustain(self) -> None:
+        """Toggle sustain mode on/off."""
+        self._sustain_enabled = not self._sustain_enabled
+        # If turning off, release all sustained keys
+        if not self._sustain_enabled:
+            self._release_sustained_keys()
+
+    def get_sustain_enabled(self) -> bool:
+        """Get current sustain mode state."""
+        return self._sustain_enabled
+
+    def _release_sustained_keys(self) -> None:
+        """Release all currently sustained keys."""
+        if not self._sustained_keys:
+            return
+
+        for key in self._sustained_keys:
+            self.keyboard.release_key(key)
+        self._sustained_keys.clear()
+        # Add a small delay after releasing to ensure the game/software registers it
+        time.sleep(0.02)  # 20ms delay after releasing keys
+
+    def jump_to_line(self, line_number: int) -> None:
+        """Jump to a specific line."""
+        if 0 <= line_number < len(self.score.lines):
+            self._current_line = line_number
+            self._current_note = 0
+
+    def skip_forward_line(self) -> None:
+        """Skip forward by 1 line."""
+        if self._current_line < len(self.score.lines) - 1:
+            self._current_line += 1
+            self._current_note = 0
+
+    def skip_backward_line(self) -> None:
+        """Skip backward by 1 line."""
+        if self._current_line > 0:
+            self._current_line -= 1
+            self._current_note = 0
+
+    def skip_forward_notes(self, notes: int = 1) -> None:
+        """Skip forward by N notes."""
+        remaining = notes
+        while remaining > 0 and self._current_line < len(self.score.lines):
+            line = self.score.lines[self._current_line]
+            notes_in_line = len(line) - self._current_note
+
+            if remaining >= notes_in_line:
+                # Skip to next line
+                remaining -= notes_in_line
+                self._current_line += 1
+                self._current_note = 0
+            else:
+                # Skip within current line
+                self._current_note += remaining
+                remaining = 0
+
+    def skip_backward_notes(self, notes: int = 1) -> None:
+        """Skip backward by N notes."""
+        remaining = notes
+        while remaining > 0 and (self._current_line > 0 or self._current_note > 0):
+            if remaining <= self._current_note:
+                # Skip within current line
+                self._current_note -= remaining
+                remaining = 0
+            else:
+                # Skip to previous line
+                remaining -= self._current_note
+                if self._current_line > 0:
+                    self._current_line -= 1
+                    self._current_note = len(self.score.lines[self._current_line])
+                else:
+                    self._current_note = 0
+                    remaining = 0
+
+    def get_progress(self) -> tuple[int, int]:
+        """Get current progress as (current_line, total_lines)."""
+        return (self._current_line, len(self.score.lines))
+
+    def get_state(self) -> PlayerState:
+        """Get current playback state."""
+        return self._state
+
+    def _playback_loop(self) -> None:
+        """Main playback loop running in separate thread."""
+        while self._current_line < len(self.score.lines):
+            # Check if stopped
+            if self._stop_event.is_set():
+                break
+
+            # Wait if paused
+            self._pause_event.wait()
+
+            # Check again after unpausing
+            if self._stop_event.is_set():
+                break
+
+            # Play current line
+            line = self.score.lines[self._current_line]
+            self._play_line(line)
+
+            # Line interval (N empty notes between lines)
+            if self._current_line < len(self.score.lines) - 1 and self._line_interval_rating > 0:
+                # Simulate N empty notes
+                for _ in range(int(self._line_interval_rating)):
+                    if self._stop_event.is_set():
+                        break
+                    self._pause_event.wait()
+                    self._sleep(self._interval_rating)
+
+            # Move to next line
+            self._current_line += 1
+            self._current_note = 0
+
+        # Playback finished
+        self._state = PlayerState.STOPPED
+        self._current_line = 0
+        self._current_note = 0
+
+    def _play_line(self, line: list[Note]) -> None:
+        """Play a single line of notes."""
+        for i, note in enumerate(line):
+            # Check if stopped
+            if self._stop_event.is_set():
+                break
+
+            # Wait if paused
+            self._pause_event.wait()
+
+            self._current_note = i
+
+            # Update progress for every note to show real-time playback
+            if self._progress_callback:
+                self._progress_callback(
+                    self._current_line,
+                    len(self.score.lines),
+                    self._current_note,
+                    len(line)
+                )
+
+            # Play the note
+            self._play_note(note)
+
+            # Every note (including space, chord, arpeggio) should have interval after it
+            # Except the last note in the line
+            if i < len(line) - 1:
+                self._sleep(self._interval_rating)
+
+    def _play_note(self, note: Note) -> None:
+        """Play a single note (single, chord, or arpeggio)."""
+        if note.type == NoteType.SINGLE:
+            if note.keys[0] == ' ':
+                # Space is an empty note (rest) - no action needed, just skip
+                # In sustain mode, keep holding previous keys
+                pass
+            else:
+                # Non-rest note: release previous sustained keys if in sustain mode
+                if self._sustain_enabled:
+                    self._release_sustained_keys()
+                    # Press and hold the new key
+                    self.keyboard.press_key(note.keys[0])
+                    self._sustained_keys.append(note.keys[0])
+                else:
+                    # Normal tap
+                    self.keyboard.tap_key(note.keys[0])
+
+        elif note.type == NoteType.CHORD:
+            # Non-rest note: release previous sustained keys if in sustain mode
+            if self._sustain_enabled:
+                self._release_sustained_keys()
+                # Press and hold all keys in the chord
+                for key in note.keys:
+                    self.keyboard.press_key(key)
+                    self._sustained_keys.append(key)
+            else:
+                # Normal chord
+                self.keyboard.press_keys_simultaneously(note.keys)
+
+        elif note.type == NoteType.ARPEGGIO:
+            # Non-rest note: release ALL previous sustained keys before starting arpeggio
+            if self._sustain_enabled:
+                self._release_sustained_keys()
+
+            for idx, key in enumerate(note.keys):
+                if isinstance(key, str):
+                    if self._sustain_enabled:
+                        # For arpeggio in sustain mode, release previous note in THIS arpeggio
+                        if idx > 0:
+                            prev_key = note.keys[idx - 1]
+                            if isinstance(prev_key, str) and prev_key in self._sustained_keys:
+                                self.keyboard.release_key(prev_key)
+                                self._sustained_keys.remove(prev_key)
+                                # Small delay after releasing to ensure registration
+                                time.sleep(0.02)
+                        # Press and hold current note
+                        self.keyboard.press_key(key)
+                        self._sustained_keys.append(key)
+                    else:
+                        self.keyboard.tap_key(key)
+                elif isinstance(key, Note):
+                    # Nested chord within arpeggio
+                    if self._sustain_enabled:
+                        # Release previous arpeggio note before nested chord
+                        if idx > 0:
+                            prev_key = note.keys[idx - 1]
+                            if isinstance(prev_key, str) and prev_key in self._sustained_keys:
+                                self.keyboard.release_key(prev_key)
+                                self._sustained_keys.remove(prev_key)
+                                # Small delay after releasing to ensure registration
+                                time.sleep(0.02)
+                        # Play nested chord (will add its keys to sustained_keys)
+                        for chord_key in key.keys:
+                            self.keyboard.press_key(chord_key)
+                            self._sustained_keys.append(chord_key)
+                    else:
+                        # Normal nested chord
+                        self.keyboard.press_keys_simultaneously(key.keys)
+
+                # Arpeggio interval (except after last key)
+                if idx < len(note.keys) - 1:
+                    self._sleep(self._arpeggio_interval)
+
+    def _sleep(self, duration: float) -> None:
+        """Sleep for specified duration adjusted by speed multiplier."""
+        if duration > 0:
+            time.sleep(duration / self._speed_multiplier)

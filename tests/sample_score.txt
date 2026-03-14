@@ -1,0 +1,26 @@
+# Sample score file for GIPianoPlayer
+
+# Configuration parameters
+version = 1.0
+ARPEGGIO_INTERVAL = 0.05
+INTERVAL_RATING = 0.2
+SPACE_INTERVAL_RATING = 1.0
+LINE_INTERVAL_RATING = 0.0
+
+# Score content
+# Valid keys: QWERTYUASDFGHJZXCVBNM
+# Single notes: Q W E R T...
+# Chords (simultaneous): (QWE)
+# Arpeggio (rapid succession): [QWE]
+# Mixed: [(QW)E] - chord QW then E in arpeggio
+# Space marker: /
+
+(VAH)   /H Q /(BSJ)   /H G /
+(CMG)   /S   /(CND)   /G D /
+(XS)   /N A /(BG)   /(XS)   /
+(VAH)   /H Q /(BSJ)   /H G /
+(CMG)   /S   /(CND)   /G D /
+(XS)   /N A /(BG)   /(XS)   /
+(VAH)   /H Q /(BSJ)   /H G /
+(CMG)   /S   /(CND)   /G D /
+(XS)   /N A /(BG)   /(XS)   /

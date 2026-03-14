@@ -1,0 +1,19 @@
+[project]
+name = "gipianoplayer"
+version = "1.0.0"
+description = "A Python piano playing script that simulates keyboard input"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "pynput>=1.7.6",
+    "keyboard>=0.13.5",
+    "windows-curses>=2.4.1",
+]
+
+[dependency-groups]
+dev = []
+
+[tool.uv.workspace]
+members = [
+    "BGINoti",
+]
