@@ -3,7 +3,7 @@
 import time
 from enum import Enum
 from threading import Thread, Event
-from typing import Optional, Callable
+from typing import Optional, Callable, List
 from src.parser import ParsedScore, Note, NoteType
 from src.keyboard_controller import KeyboardController
 
@@ -44,7 +44,7 @@ class Player:
 
         # Sustain mode
         self._sustain_enabled = False
-        self._sustained_keys = []  # Keys currently being held
+        self._sustained_keys: List[str] = []  # Keys currently being held
 
         # Playback thread
         self._playback_thread: Optional[Thread] = None

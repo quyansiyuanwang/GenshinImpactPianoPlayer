@@ -5,7 +5,7 @@ import time
 import os
 import curses
 from typing import Optional, Dict
-from src.parser import ScoreParser, NoteType
+from src.parser import ScoreParser, NoteType, ParsedScore
 from src.player import Player, PlayerState
 from src.keyboard_controller import KeyboardController
 from src.constants import (
@@ -34,7 +34,7 @@ class CLI:
         self.file_path = file_path
         self.player: Optional[Player] = None
         self.running = False
-        self.score = None
+        self.score: Optional[ParsedScore] = None
         self.display_active = False
         self.last_display_time = 0
         self.original_content = ""

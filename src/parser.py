@@ -34,6 +34,10 @@ class Note:
     type: NoteType
     keys: List[Union[str, "Note"]]  # Can contain strings or nested Notes
 
+    def __init__(self, type: NoteType, keys: List[Union[str, "Note"]]):
+        self.type = type
+        self.keys = keys
+
 
 @dataclass
 class ParsedScore:
@@ -169,8 +173,8 @@ class ScoreParser:
         '/' is a segment separator - if segment_length > 0, pad to that length.
         """
         # First pass: split by '/' and parse each segment
-        segments = []
-        current_segment = []
+        segments: List[List[Note]] = []
+        current_segment: List[Note] = []
         i = 0
 
         while i < len(line):
