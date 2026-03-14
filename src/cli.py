@@ -39,6 +39,7 @@ class CLI:
         self.last_display_time = 0
         self.original_content = ""
         self.stdscr = None  # curses screen object
+        self.last_terminal_size = (0, 0)  # Track terminal size changes
 
         # Use custom hotkeys or defaults
         self.hotkeys = hotkeys if hotkeys is not None else DEFAULT_HOTKEYS.copy()
@@ -87,6 +88,13 @@ class CLI:
         try:
             # Get terminal size
             height, width = self.stdscr.getmaxyx()
+
+            # Check if terminal size changed
+            current_size = (height, width)
+            if current_size != self.last_terminal_size:
+                self.last_terminal_size = current_size
+                # Force full redraw on size change
+                self.stdscr.clear()
 
             # Clear screen
             self.stdscr.clear()
@@ -277,13 +285,23 @@ class CLI:
 
             # Status line
             state = self.player.get_state().value.upper() if self.player else "STOPPED"
-            progress = (current_line / total_lines * 100) if total_lines > 0 else 0
+
+            # Calculate note-level progress
+            if self.player and total_lines > 0:
+                # Count total notes in all lines
+                total_notes = sum(len(line) for line in self.score.lines)
+                # Count notes up to current position
+                played_notes = sum(len(self.score.lines[i]) for i in range(current_line))
+                played_notes += current_note
+                progress = (played_notes / total_notes * 100) if total_notes > 0 else 0
+                progress_text = f"Status: {state} | Line {current_line + 1}/{total_lines} | Note {played_notes}/{total_notes} | Progress: {progress:.1f}%"
+            else:
+                progress_text = f"Status: {state} | Line {current_line + 1}/{total_lines} | Progress: 0.0%"
+
             self.stdscr.addstr(
                 row,
                 0,
-                f"Status: {state} | Line {current_line + 1}/{total_lines} | Progress: {progress:.1f}%"[
-                    : width - 1
-                ],
+                progress_text[: width - 1],
             )
             row += 2
 
