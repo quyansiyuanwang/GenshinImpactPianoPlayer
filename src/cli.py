@@ -54,7 +54,11 @@ class CLI:
         """Format a score line as text, preserving visual separators."""
         # Check if this is an empty line
         if len(line) == 1 and line[0].type == NoteType.EMPTY_LINE:
-            return "[Empty Line]"
+            # Only show [Empty Line] if interval > 0
+            if self.player and self.player._empty_line_interval_rating > 0:
+                return "[Empty Line]"
+            else:
+                return ""
 
         result = ""
         prev_was_space = False
@@ -295,7 +299,9 @@ class CLI:
                 # Count total notes in all lines
                 total_notes = sum(len(line) for line in self.score.lines)
                 # Count notes up to current position
-                played_notes = sum(len(self.score.lines[i]) for i in range(current_line))
+                played_notes = sum(
+                    len(self.score.lines[i]) for i in range(current_line)
+                )
                 played_notes += current_note
                 progress = (played_notes / total_notes * 100) if total_notes > 0 else 0
                 progress_text = f"Status: {state} | Line {current_line + 1}/{total_lines} | Note {played_notes}/{total_notes} | Progress: {progress:.1f}%"
@@ -496,16 +502,20 @@ class CLI:
             self.hotkeys["line_interval_more"], lambda: self._adjust_line_interval(1.0)
         )  # Up = more
         keyboard.add_hotkey(
-            self.hotkeys["space_interval_less"], lambda: self._adjust_space_interval(-0.1)
+            self.hotkeys["space_interval_less"],
+            lambda: self._adjust_space_interval(-0.1),
         )  # Shift+Down = less
         keyboard.add_hotkey(
-            self.hotkeys["space_interval_more"], lambda: self._adjust_space_interval(0.1)
+            self.hotkeys["space_interval_more"],
+            lambda: self._adjust_space_interval(0.1),
         )  # Shift+Up = more
         keyboard.add_hotkey(
-            self.hotkeys["empty_line_interval_less"], lambda: self._adjust_empty_line_interval(-1.0)
+            self.hotkeys["empty_line_interval_less"],
+            lambda: self._adjust_empty_line_interval(-1.0),
         )  # Ctrl+Down = less
         keyboard.add_hotkey(
-            self.hotkeys["empty_line_interval_more"], lambda: self._adjust_empty_line_interval(1.0)
+            self.hotkeys["empty_line_interval_more"],
+            lambda: self._adjust_empty_line_interval(1.0),
         )  # Ctrl+Up = more
         keyboard.add_hotkey(
             self.hotkeys["segment_length_less"], lambda: self._adjust_segment_length(-1)
