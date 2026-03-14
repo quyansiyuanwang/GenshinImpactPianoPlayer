@@ -39,7 +39,6 @@ class CLI:
         self.last_display_time = 0
         self.original_content = ""
         self.stdscr = None  # curses screen object
-        self.last_terminal_size = (0, 0)  # Track terminal size changes
 
         # Use custom hotkeys or defaults
         self.hotkeys = hotkeys if hotkeys is not None else DEFAULT_HOTKEYS.copy()
@@ -86,17 +85,10 @@ class CLI:
             return
 
         try:
-            # Get terminal size
+            # Get terminal size (recalculate every time for real-time adaptation)
             height, width = self.stdscr.getmaxyx()
 
-            # Check if terminal size changed
-            current_size = (height, width)
-            if current_size != self.last_terminal_size:
-                self.last_terminal_size = current_size
-                # Force full redraw on size change
-                self.stdscr.clear()
-
-            # Clear screen
+            # Clear screen for fresh render
             self.stdscr.clear()
 
             # Get current position
