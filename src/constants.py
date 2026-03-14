@@ -41,6 +41,8 @@ DEFAULT_HOTKEYS = {
     "reparse": "f6",
     # Sustain toggle
     "toggle_sustain": "f7",
+    # Segment strict mode toggle
+    "toggle_segment_strict": "f4",
 }
 
 # Skip amounts
@@ -67,6 +69,7 @@ DEFAULT_LINE_INTERVAL_RATING = 1.0  # N empty notes between lines
 DEFAULT_SPACE_INTERVAL_RATING = 1.0  # multiplier for space (rest) notes
 DEFAULT_EMPTY_LINE_INTERVAL_RATING = 0.0  # N empty notes for empty lines
 DEFAULT_SEGMENT_LENGTH = 0  # 0 = disabled, >0 = force N notes per segment
+DEFAULT_SEGMENT_STRICT = False  # True = truncate segments exceeding length, False = pad only
 
 # Playback limits
 MIN_SPEED = 0.1

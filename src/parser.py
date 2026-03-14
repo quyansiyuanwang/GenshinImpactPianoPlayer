@@ -14,6 +14,7 @@ from src.constants import (
     DEFAULT_SPACE_INTERVAL_RATING,
     DEFAULT_EMPTY_LINE_INTERVAL_RATING,
     DEFAULT_SEGMENT_LENGTH,
+    DEFAULT_SEGMENT_STRICT,
 )
 
 
@@ -50,6 +51,7 @@ class ScoreParser:
         self.content = ""
         self.pos = 0
         self._segment_length = 0  # Will be set during config parsing
+        self._segment_strict = False  # Will be set during config parsing
         self._empty_line_interval_rating = 0.0  # Will be set during config parsing
 
     def parse(self) -> ParsedScore:
@@ -108,6 +110,10 @@ class ScoreParser:
 
         # Store segment_length for use during line parsing
         self._segment_length = int(config_dict.get("segment_length", DEFAULT_SEGMENT_LENGTH))
+        # Store segment_strict for use during line parsing
+        self._segment_strict = config_dict.get("segment_strict", DEFAULT_SEGMENT_STRICT)
+        if isinstance(self._segment_strict, str):
+            self._segment_strict = self._segment_strict.lower() in ('true', '1', 'yes', 'on')
         # Store empty_line_interval_rating for use during score parsing
         self._empty_line_interval_rating = config_dict.get("empty_line_interval_rating", DEFAULT_EMPTY_LINE_INTERVAL_RATING)
 
@@ -120,6 +126,7 @@ class ScoreParser:
             space_interval_rating=config_dict.get("space_interval_rating", DEFAULT_SPACE_INTERVAL_RATING),
             empty_line_interval_rating=config_dict.get("empty_line_interval_rating", DEFAULT_EMPTY_LINE_INTERVAL_RATING),
             segment_length=self._segment_length,
+            segment_strict=self._segment_strict,
         )
 
     def _parse_score(self) -> List[List[Note]]:
@@ -211,19 +218,24 @@ class ScoreParser:
         if not segments:
             segments = [current_segment] if current_segment else []
 
-        # Second pass: apply segment_length padding if enabled
+        # Second pass: apply segment_length padding/truncation if enabled
         segment_length = self._get_segment_length()
+        segment_strict = self._get_segment_strict()
         if segment_length > 0:
-            padded_segments = []
+            processed_segments = []
             for segment in segments:
                 if len(segment) < segment_length:
                     # Pad with empty notes (rests)
                     padding_needed = segment_length - len(segment)
-                    padded_segment = segment + [Note(type=NoteType.SINGLE, keys=[" "])] * padding_needed
-                    padded_segments.append(padded_segment)
+                    processed_segment = segment + [Note(type=NoteType.SINGLE, keys=[" "])] * padding_needed
+                    processed_segments.append(processed_segment)
+                elif len(segment) > segment_length and segment_strict:
+                    # Strict mode: truncate to segment_length
+                    processed_segments.append(segment[:segment_length])
                 else:
-                    padded_segments.append(segment)
-            segments = padded_segments
+                    # Normal mode: keep as is (even if exceeds length)
+                    processed_segments.append(segment)
+            segments = processed_segments
 
         # Flatten all segments into a single list of notes
         notes = []
@@ -235,6 +247,11 @@ class ScoreParser:
     def _get_segment_length(self) -> int:
         """Get segment_length from config if available."""
         # This will be called during parsing, need to access from stored config
+        return getattr(self, '_segment_length', 0)
+
+    def _get_segment_strict(self) -> bool:
+        """Get segment_strict from config if available."""
+        return getattr(self, '_segment_strict', False)
         # We'll need to store it during _parse_config
         return getattr(self, '_segment_length', 0)
 

@@ -40,6 +40,7 @@ class Player:
         self._space_interval_rating = score.config.space_interval_rating
         self._empty_line_interval_rating = score.config.empty_line_interval_rating
         self._segment_length = score.config.segment_length
+        self._segment_strict = score.config.segment_strict
 
         # Sustain mode
         self._sustain_enabled = False
@@ -138,6 +139,14 @@ class Player:
     def get_sustain_enabled(self) -> bool:
         """Get current sustain mode state."""
         return self._sustain_enabled
+
+    def toggle_segment_strict(self) -> None:
+        """Toggle segment strict mode on/off."""
+        self._segment_strict = not self._segment_strict
+
+    def get_segment_strict(self) -> bool:
+        """Get current segment strict mode state."""
+        return self._segment_strict
 
     def _release_sustained_keys(self) -> None:
         """Release all currently sustained keys."""

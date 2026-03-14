@@ -119,6 +119,7 @@ class CLI:
                 space_interval = self.player._space_interval_rating
                 empty_line_interval = self.player._empty_line_interval_rating
                 segment_length = self.player._segment_length
+                segment_strict = self.player.get_segment_strict()
                 sustain_enabled = self.player.get_sustain_enabled()
 
                 config_lines.append(
@@ -142,8 +143,9 @@ class CLI:
                 segment_status = (
                     f"{segment_length} notes" if segment_length > 0 else "Disabled"
                 )
+                strict_indicator = " (Strict)" if segment_strict and segment_length > 0 else ""
                 config_lines.append(
-                    f"  Segment Length: {segment_status}  [PgUp/PgDn] Adjust segment"
+                    f"  Segment Length: {segment_status}{strict_indicator}  [PgUp/PgDn] Adjust | [{self.hotkeys['toggle_segment_strict']}] Toggle Strict"
                 )
                 sustain_status = "ON" if sustain_enabled else "OFF"
                 config_lines.append(
@@ -538,6 +540,9 @@ class CLI:
         keyboard.add_hotkey(
             self.hotkeys["toggle_sustain"], self._toggle_sustain
         )  # F7 to toggle sustain
+        keyboard.add_hotkey(
+            self.hotkeys["toggle_segment_strict"], self._toggle_segment_strict
+        )  # F4 to toggle segment strict
 
     def _toggle_play_pause(self) -> None:
         """Toggle between play and pause."""
@@ -683,6 +688,7 @@ class CLI:
             space_interval_rating = self.player._space_interval_rating
             empty_line_interval_rating = self.player._empty_line_interval_rating
             segment_length = self.player._segment_length
+            segment_strict = self.player.get_segment_strict()
 
             # Parse the original content
             lines = self.original_content.split("\n")
@@ -696,6 +702,7 @@ class CLI:
                 "space_interval_rating": False,
                 "empty_line_interval_rating": False,
                 "segment_length": False,
+                "segment_strict": False,
             }
 
             for line in lines:
@@ -738,6 +745,9 @@ class CLI:
                     elif key == "segment_length":
                         new_lines.append(f"SEGMENT_LENGTH = {segment_length}")
                         config_updated["segment_length"] = True
+                    elif key == "segment_strict":
+                        new_lines.append(f"SEGMENT_STRICT = {segment_strict}")
+                        config_updated["segment_strict"] = True
                     else:
                         new_lines.append(line)
                 else:
@@ -766,6 +776,8 @@ class CLI:
                         )
                     if not config_updated["segment_length"]:
                         insert_lines.append(f"SEGMENT_LENGTH = {segment_length}")
+                    if not config_updated["segment_strict"]:
+                        insert_lines.append(f"SEGMENT_STRICT = {segment_strict}")
 
                     if insert_lines:
                         # Insert before the separator or first score line
@@ -891,6 +903,15 @@ class CLI:
 
         self.player.toggle_sustain()
         # Force display update to show new sustain state
+        self._display_score()
+
+    def _toggle_segment_strict(self) -> None:
+        """Toggle segment strict mode on/off."""
+        if not self.player:
+            return
+
+        self.player.toggle_segment_strict()
+        # Force display update to show new strict state
         self._display_score()
 
     def _on_progress(

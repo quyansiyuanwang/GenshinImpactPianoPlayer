@@ -15,3 +15,4 @@ class PlayConfig:
     space_interval_rating: float  # Space (rest) note interval multiplier
     empty_line_interval_rating: float  # Empty line interval (N empty notes for empty lines)
     segment_length: int  # Number of notes between each / separator (0 = disabled)
+    segment_strict: bool  # True = truncate segments exceeding length, False = pad only
