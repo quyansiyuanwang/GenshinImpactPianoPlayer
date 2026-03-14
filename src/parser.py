@@ -111,9 +111,12 @@ class ScoreParser:
         # Store segment_length for use during line parsing
         self._segment_length = int(config_dict.get("segment_length", DEFAULT_SEGMENT_LENGTH))
         # Store segment_strict for use during line parsing
-        self._segment_strict = config_dict.get("segment_strict", DEFAULT_SEGMENT_STRICT)
-        if isinstance(self._segment_strict, str):
-            self._segment_strict = self._segment_strict.lower() in ('true', '1', 'yes', 'on')
+        segment_strict_value = config_dict.get("segment_strict", DEFAULT_SEGMENT_STRICT)
+        # Convert to boolean: handle both numeric (0.0/1.0) and boolean values
+        if isinstance(segment_strict_value, (int, float)):
+            self._segment_strict = bool(segment_strict_value)
+        else:
+            self._segment_strict = bool(segment_strict_value)
         # Store empty_line_interval_rating for use during score parsing
         self._empty_line_interval_rating = config_dict.get("empty_line_interval_rating", DEFAULT_EMPTY_LINE_INTERVAL_RATING)
 
@@ -252,8 +255,6 @@ class ScoreParser:
     def _get_segment_strict(self) -> bool:
         """Get segment_strict from config if available."""
         return getattr(self, '_segment_strict', False)
-        # We'll need to store it during _parse_config
-        return getattr(self, '_segment_length', 0)
 
     def _parse_arpeggio(self, content: str) -> List[Union[str, Note]]:
         """Parse arpeggio content which may contain nested chords."""

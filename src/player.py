@@ -96,7 +96,9 @@ class Player:
         self._release_sustained_keys()
 
         if self._playback_thread and self._playback_thread.is_alive():
-            self._playback_thread.join(timeout=1.0)
+            self._playback_thread.join(timeout=2.0)
+            # If thread still alive after timeout, it will be cleaned up on next play()
+            # This prevents blocking indefinitely
 
         self._current_line = 0
         self._current_note = 0
@@ -189,6 +191,12 @@ class Player:
                 remaining -= notes_in_line
                 self._current_line += 1
                 self._current_note = 0
+                # Check bounds after incrementing
+                if self._current_line >= len(self.score.lines):
+                    # Reached end, clamp to last valid position
+                    self._current_line = len(self.score.lines) - 1
+                    self._current_note = len(self.score.lines[self._current_line]) - 1
+                    remaining = 0
             else:
                 # Skip within current line
                 self._current_note += remaining
@@ -207,7 +215,8 @@ class Player:
                 remaining -= self._current_note
                 if self._current_line > 0:
                     self._current_line -= 1
-                    self._current_note = len(self.score.lines[self._current_line])
+                    # Set to last note of previous line (len - 1, not len)
+                    self._current_note = max(0, len(self.score.lines[self._current_line]) - 1)
                 else:
                     self._current_note = 0
                     remaining = 0

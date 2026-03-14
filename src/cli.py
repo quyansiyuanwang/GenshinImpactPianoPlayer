@@ -713,6 +713,40 @@ class CLI:
                     stripped and not stripped.startswith("#") and "=" not in stripped
                 ):
                     config_section = False
+                    # Insert missing configs ONCE when we first exit config section
+                    if any(not v for v in config_updated.values()):
+                        insert_lines = []
+                        if not config_updated["speed_multiplier"]:
+                            insert_lines.append(f"SPEED_MULTIPLIER = {speed_multiplier}")
+                        if not config_updated["arpeggio_interval"]:
+                            insert_lines.append(f"ARPEGGIO_INTERVAL = {arpeggio_interval}")
+                        if not config_updated["interval_rating"]:
+                            insert_lines.append(f"INTERVAL_RATING = {interval_rating}")
+                        if not config_updated["line_interval_rating"]:
+                            insert_lines.append(
+                                f"LINE_INTERVAL_RATING = {line_interval_rating}"
+                            )
+                        if not config_updated["space_interval_rating"]:
+                            insert_lines.append(
+                                f"SPACE_INTERVAL_RATING = {space_interval_rating}"
+                            )
+                        if not config_updated["empty_line_interval_rating"]:
+                            insert_lines.append(
+                                f"EMPTY_LINE_INTERVAL_RATING = {empty_line_interval_rating}"
+                            )
+                        if not config_updated["segment_length"]:
+                            insert_lines.append(f"SEGMENT_LENGTH = {segment_length}")
+                        if not config_updated["segment_strict"]:
+                            insert_lines.append(f"SEGMENT_STRICT = {segment_strict}")
+
+                        if insert_lines:
+                            # Insert before the separator or first score line
+                            for insert_line in insert_lines:
+                                new_lines.append(insert_line)
+
+                        # Mark all as updated
+                        for key in config_updated:
+                            config_updated[key] = True
 
                 if config_section and "=" in line:
                     key, _ = line.split("=", 1)
@@ -752,42 +786,6 @@ class CLI:
                         new_lines.append(line)
                 else:
                     new_lines.append(line)
-
-                # If we just passed config section, add missing configs
-                if not config_section and any(not v for v in config_updated.values()):
-                    insert_lines = []
-                    if not config_updated["speed_multiplier"]:
-                        insert_lines.append(f"SPEED_MULTIPLIER = {speed_multiplier}")
-                    if not config_updated["arpeggio_interval"]:
-                        insert_lines.append(f"ARPEGGIO_INTERVAL = {arpeggio_interval}")
-                    if not config_updated["interval_rating"]:
-                        insert_lines.append(f"INTERVAL_RATING = {interval_rating}")
-                    if not config_updated["line_interval_rating"]:
-                        insert_lines.append(
-                            f"LINE_INTERVAL_RATING = {line_interval_rating}"
-                        )
-                    if not config_updated["space_interval_rating"]:
-                        insert_lines.append(
-                            f"SPACE_INTERVAL_RATING = {space_interval_rating}"
-                        )
-                    if not config_updated["empty_line_interval_rating"]:
-                        insert_lines.append(
-                            f"EMPTY_LINE_INTERVAL_RATING = {empty_line_interval_rating}"
-                        )
-                    if not config_updated["segment_length"]:
-                        insert_lines.append(f"SEGMENT_LENGTH = {segment_length}")
-                    if not config_updated["segment_strict"]:
-                        insert_lines.append(f"SEGMENT_STRICT = {segment_strict}")
-
-                    if insert_lines:
-                        # Insert before the separator or first score line
-                        idx = len(new_lines) - 1
-                        for insert_line in reversed(insert_lines):
-                            new_lines.insert(idx, insert_line)
-
-                    # Mark all as updated
-                    for key in config_updated:
-                        config_updated[key] = True
 
             # Write back to file
             with open(self.file_path, "w", encoding="utf-8") as f:
