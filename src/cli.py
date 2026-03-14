@@ -52,6 +52,10 @@ class CLI:
 
     def _format_score_line(self, line) -> str:
         """Format a score line as text, preserving visual separators."""
+        # Check if this is an empty line
+        if len(line) == 1 and line[0].type == NoteType.EMPTY_LINE:
+            return "[Empty Line]"
+
         result = ""
         prev_was_space = False
 
@@ -109,6 +113,7 @@ class CLI:
                 interval = self.player._interval_rating
                 line_interval = self.player._line_interval_rating
                 space_interval = self.player._space_interval_rating
+                empty_line_interval = self.player._empty_line_interval_rating
                 segment_length = self.player._segment_length
                 sustain_enabled = self.player.get_sustain_enabled()
 
@@ -126,6 +131,9 @@ class CLI:
                 )
                 config_lines.append(
                     f"  Space Interval: {space_interval:.1f}x     [Shift+Up/Down] Adjust space"
+                )
+                config_lines.append(
+                    f"  Empty Line: {empty_line_interval:.0f} notes     [Ctrl+Up/Down] Adjust empty line"
                 )
                 segment_status = (
                     f"{segment_length} notes" if segment_length > 0 else "Disabled"
@@ -494,6 +502,12 @@ class CLI:
             self.hotkeys["space_interval_more"], lambda: self._adjust_space_interval(0.1)
         )  # Shift+Up = more
         keyboard.add_hotkey(
+            self.hotkeys["empty_line_interval_less"], lambda: self._adjust_empty_line_interval(-1.0)
+        )  # Ctrl+Down = less
+        keyboard.add_hotkey(
+            self.hotkeys["empty_line_interval_more"], lambda: self._adjust_empty_line_interval(1.0)
+        )  # Ctrl+Up = more
+        keyboard.add_hotkey(
             self.hotkeys["segment_length_less"], lambda: self._adjust_segment_length(-1)
         )  # PgDn = less
         keyboard.add_hotkey(
@@ -587,6 +601,17 @@ class CLI:
         # Always force display update
         self._display_score()
 
+    def _adjust_empty_line_interval(self, delta: float) -> None:
+        """Adjust empty line interval rating (N empty notes for empty lines)."""
+        if not self.player:
+            return
+
+        current = self.player._empty_line_interval_rating
+        new_rating = max(0.0, current + delta)
+        self.player.set_empty_line_interval_rating(new_rating)
+        # Always force display update
+        self._display_score()
+
     def _adjust_segment_length(self, delta: int) -> None:
         """Adjust segment length (N notes per segment)."""
         if not self.player:
@@ -646,6 +671,7 @@ class CLI:
             interval_rating = self.player._interval_rating
             line_interval_rating = self.player._line_interval_rating
             space_interval_rating = self.player._space_interval_rating
+            empty_line_interval_rating = self.player._empty_line_interval_rating
             segment_length = self.player._segment_length
 
             # Parse the original content
@@ -658,6 +684,7 @@ class CLI:
                 "interval_rating": False,
                 "line_interval_rating": False,
                 "space_interval_rating": False,
+                "empty_line_interval_rating": False,
                 "segment_length": False,
             }
 
@@ -693,6 +720,11 @@ class CLI:
                             f"SPACE_INTERVAL_RATING = {space_interval_rating}"
                         )
                         config_updated["space_interval_rating"] = True
+                    elif key == "empty_line_interval_rating":
+                        new_lines.append(
+                            f"EMPTY_LINE_INTERVAL_RATING = {empty_line_interval_rating}"
+                        )
+                        config_updated["empty_line_interval_rating"] = True
                     elif key == "segment_length":
                         new_lines.append(f"SEGMENT_LENGTH = {segment_length}")
                         config_updated["segment_length"] = True
@@ -717,6 +749,10 @@ class CLI:
                     if not config_updated["space_interval_rating"]:
                         insert_lines.append(
                             f"SPACE_INTERVAL_RATING = {space_interval_rating}"
+                        )
+                    if not config_updated["empty_line_interval_rating"]:
+                        insert_lines.append(
+                            f"EMPTY_LINE_INTERVAL_RATING = {empty_line_interval_rating}"
                         )
                     if not config_updated["segment_length"]:
                         insert_lines.append(f"SEGMENT_LENGTH = {segment_length}")
@@ -796,6 +832,7 @@ class CLI:
             interval_rating = self.player._interval_rating
             line_interval_rating = self.player._line_interval_rating
             space_interval_rating = self.player._space_interval_rating
+            empty_line_interval_rating = self.player._empty_line_interval_rating
             segment_length = self.player._segment_length
 
             # Stop current playback
@@ -819,6 +856,7 @@ class CLI:
             self.player.set_interval_rating(interval_rating)
             self.player.set_line_interval_rating(line_interval_rating)
             self.player.set_space_interval_rating(space_interval_rating)
+            self.player.set_empty_line_interval_rating(empty_line_interval_rating)
             self.player.set_segment_length(segment_length)
 
             # Restore position (clamp to new score length)

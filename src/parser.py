@@ -12,6 +12,7 @@ from src.constants import (
     DEFAULT_INTERVAL_RATING,
     DEFAULT_LINE_INTERVAL_RATING,
     DEFAULT_SPACE_INTERVAL_RATING,
+    DEFAULT_EMPTY_LINE_INTERVAL_RATING,
     DEFAULT_SEGMENT_LENGTH,
 )
 
@@ -22,6 +23,7 @@ class NoteType(Enum):
     SINGLE = "single"  # Single key
     CHORD = "chord"  # Multiple keys pressed simultaneously
     ARPEGGIO = "arpeggio"  # Keys pressed in rapid succession
+    EMPTY_LINE = "empty_line"  # Empty line (blank line in score)
 
 
 @dataclass
@@ -113,19 +115,31 @@ class ScoreParser:
             interval_rating=config_dict.get("interval_rating", DEFAULT_INTERVAL_RATING),
             line_interval_rating=config_dict.get("line_interval_rating", DEFAULT_LINE_INTERVAL_RATING),
             space_interval_rating=config_dict.get("space_interval_rating", DEFAULT_SPACE_INTERVAL_RATING),
+            empty_line_interval_rating=config_dict.get("empty_line_interval_rating", DEFAULT_EMPTY_LINE_INTERVAL_RATING),
             segment_length=self._segment_length,
         )
 
     def _parse_score(self) -> List[List[Note]]:
-        """Parse the score content into lines of notes."""
+        """Parse the score content into lines of notes.
+
+        Empty lines are preserved as special EMPTY_LINE markers.
+        """
         lines = []
 
         for line in self.score_content.split("\n"):
-            line = line.strip()
-            if not line or line.startswith("#"):
+            stripped = line.strip()
+
+            # Skip comments
+            if stripped.startswith("#"):
                 continue
 
-            notes = self._parse_line(line)
+            # Empty line - add as special marker
+            if not stripped:
+                lines.append([Note(type=NoteType.EMPTY_LINE, keys=[])])
+                continue
+
+            # Parse normal line
+            notes = self._parse_line(stripped)
             if notes:
                 lines.append(notes)
 

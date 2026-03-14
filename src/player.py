@@ -38,6 +38,7 @@ class Player:
         self._interval_rating = score.config.interval_rating
         self._line_interval_rating = score.config.line_interval_rating
         self._space_interval_rating = score.config.space_interval_rating
+        self._empty_line_interval_rating = score.config.empty_line_interval_rating
         self._segment_length = score.config.segment_length
 
         # Sustain mode
@@ -118,6 +119,10 @@ class Player:
     def set_space_interval_rating(self, rating: float) -> None:
         """Set space interval rating (multiplier for rest notes)."""
         self._space_interval_rating = max(0.0, min(10.0, rating))
+
+    def set_empty_line_interval_rating(self, rating: float) -> None:
+        """Set empty line interval rating (N empty notes for empty lines)."""
+        self._empty_line_interval_rating = max(0.0, min(10.0, rating))
 
     def set_segment_length(self, length: int) -> None:
         """Set segment length (N notes per segment, 0 = disabled)."""
@@ -244,6 +249,16 @@ class Player:
 
     def _play_line(self, line: list[Note]) -> None:
         """Play a single line of notes."""
+        # Check if this is an empty line
+        if len(line) == 1 and line[0].type == NoteType.EMPTY_LINE:
+            # Empty line - simulate N empty notes
+            for _ in range(int(self._empty_line_interval_rating)):
+                if self._stop_event.is_set():
+                    break
+                self._pause_event.wait()
+                self._sleep(self._interval_rating)
+            return
+
         for i, note in enumerate(line):
             # Check if stopped
             if self._stop_event.is_set():
