@@ -421,7 +421,7 @@ class CLI:
                     key = stdscr.getch()
                     if key == curses.KEY_RESIZE:
                         # Terminal was resized, force redraw
-                        curses.resizeterm(*stdscr.getmaxyx())
+                        curses.resize_term(*stdscr.getmaxyx())
                         self._display_score()
                 except curses.error:
                     pass
