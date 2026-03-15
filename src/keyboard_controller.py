@@ -32,22 +32,25 @@ class KeyboardController:
         if self.use_keyboard:
             keyboard.press(key.lower())
         else:
-            self.controller.press(key)
+            # pynput accepts single character strings
+            self.controller.press(key.lower())
 
     def release_key(self, key: str) -> None:
         """Release a single key."""
         if self.use_keyboard:
             keyboard.release(key.lower())
         else:
-            self.controller.release(key)
+            # pynput accepts single character strings
+            self.controller.release(key.lower())
 
     def tap_key(self, key: str) -> None:
         """Press and immediately release a key."""
         if self.use_keyboard:
             keyboard.press_and_release(key.lower())
         else:
-            self.controller.press(key)
-            self.controller.release(key)
+            # pynput accepts single character strings
+            self.controller.press(key.lower())
+            self.controller.release(key.lower())
 
     def press_keys_simultaneously(self, keys: List[str]) -> None:
         """Press multiple keys at the same time (chord)."""
@@ -65,14 +68,14 @@ class KeyboardController:
         else:
             # Press all keys
             for key in keys:
-                self.controller.press(key)
+                self.controller.press(key.lower())
 
             # Minimal delay to ensure all keys are registered
-            time.sleep(0.005)  # Reduced from 0.01 to 0.005
+            time.sleep(0.005)
 
             # Release all keys
             for key in keys:
-                self.controller.release(key)
+                self.controller.release(key.lower())
 
     def press_keys_arpeggio(self, keys: List[str], interval: float) -> None:
         """Press keys in rapid succession (arpeggio)."""

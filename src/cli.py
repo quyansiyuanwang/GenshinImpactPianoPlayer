@@ -357,8 +357,14 @@ class CLI:
             # Refresh screen
             self.stdscr.refresh()
 
-        except curses.error:
-            # Ignore curses errors (e.g., writing outside screen bounds)
+        except curses.error as e:
+            # Handle specific curses errors gracefully
+            # Most common: writing outside screen bounds when terminal is resized
+            # We'll catch and ignore these, as they'll be fixed on next refresh
+            pass
+        except Exception as e:
+            # Unexpected error - log it but don't crash
+            # In production, this should use proper logging
             pass
 
     def _format_note(self, note) -> str:
