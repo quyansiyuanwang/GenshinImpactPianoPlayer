@@ -38,6 +38,41 @@ class Note:
         self.type = type
         self.keys = keys
 
+    def display(self, show_rest_as_underscore: bool = True) -> str:
+        """Display the note as a string.
+
+        Args:
+            show_rest_as_underscore: If True, show rest (space) as "_"
+
+        Returns:
+            String representation of the note
+        """
+        if self.type == NoteType.SINGLE:
+            key = self.keys[0]
+            assert isinstance(key, str), "SINGLE note key must be string"
+            if key == " ":
+                return "_" if show_rest_as_underscore else " "
+            return key
+
+        if self.type == NoteType.CHORD:
+            chord_keys = [k for k in self.keys if isinstance(k, str)]
+            return f"({''.join(chord_keys)})"
+
+        if self.type == NoteType.ARPEGGIO:
+            arp_content = ""
+            for key in self.keys:
+                if isinstance(key, str):
+                    arp_content += key
+                else:  # Nested chord
+                    nested_chord_keys = [k for k in key.keys if isinstance(k, str)]
+                    arp_content += f"({''.join(nested_chord_keys)})"
+            return f"[{arp_content}]"
+
+        if self.type == NoteType.EMPTY_LINE:
+            return "[Empty Line]"
+
+        return ""
+
 
 @dataclass
 class ParsedScore:

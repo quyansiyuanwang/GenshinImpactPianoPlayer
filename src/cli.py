@@ -359,26 +359,7 @@ class CLI:
 
     def _format_note(self, note: Note) -> str:
         """Format a single note for display."""
-        if note.type == NoteType.SINGLE:
-            if note.keys[0] == " ":
-                return "_"
-            else:
-                key = note.keys[0]
-                assert isinstance(key, str), "SINGLE note key must be string"
-                return key
-        elif note.type == NoteType.CHORD:
-            chord_keys = [k for k in note.keys if isinstance(k, str)]
-            return f"({''.join(chord_keys)})"
-        elif note.type == NoteType.ARPEGGIO:
-            arp_content = ""
-            for key in note.keys:
-                if isinstance(key, str):
-                    arp_content += key
-                else:
-                    nested_chord_keys = [k for k in key.keys if isinstance(k, str)]
-                    arp_content += f"({''.join(nested_chord_keys)})"
-            return f"[{arp_content}]"
-        return ""
+        return note.display(show_rest_as_underscore=True)
 
     def run(self) -> None:
         """Run the CLI interface."""
