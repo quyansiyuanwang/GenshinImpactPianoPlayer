@@ -311,7 +311,11 @@ class Player:
     def _play_note(self, note: Note) -> None:
         """Play a single note (single, chord, or arpeggio)."""
         if note.type == NoteType.SINGLE:
-            if note.keys[0] == ' ':
+            # For SINGLE notes, keys[0] is always a string
+            key = note.keys[0]
+            assert isinstance(key, str), "SINGLE note key must be string"
+
+            if key == ' ':
                 # Space is an empty note (rest) - no action needed, just skip
                 # In sustain mode, keep holding previous keys
                 pass
@@ -320,23 +324,26 @@ class Player:
                 if self._sustain_enabled:
                     self._release_sustained_keys()
                     # Press and hold the new key
-                    self.keyboard.press_key(note.keys[0])
-                    self._sustained_keys.append(note.keys[0])
+                    self.keyboard.press_key(key)
+                    self._sustained_keys.append(key)
                 else:
                     # Normal tap
-                    self.keyboard.tap_key(note.keys[0])
+                    self.keyboard.tap_key(key)
 
         elif note.type == NoteType.CHORD:
+            # For CHORD notes, all keys are strings
+            chord_keys = [k for k in note.keys if isinstance(k, str)]
+
             # Non-rest note: release previous sustained keys if in sustain mode
             if self._sustain_enabled:
                 self._release_sustained_keys()
                 # Press and hold all keys in the chord
-                for key in note.keys:
+                for key in chord_keys:
                     self.keyboard.press_key(key)
                     self._sustained_keys.append(key)
             else:
                 # Normal chord
-                self.keyboard.press_keys_simultaneously(note.keys)
+                self.keyboard.press_keys_simultaneously(chord_keys)
 
         elif note.type == NoteType.ARPEGGIO:
             # Non-rest note: release ALL previous sustained keys before starting arpeggio
@@ -370,13 +377,23 @@ class Player:
                                 self._sustained_keys.remove(prev_key)
                                 # Small delay after releasing to ensure registration
                                 time.sleep(0.02)
+                            elif isinstance(prev_key, Note):
+                                # Previous was also a chord, release all its keys
+                                for pk in prev_key.keys:
+                                    if isinstance(pk, str) and pk in self._sustained_keys:
+                                        self.keyboard.release_key(pk)
+                                        self._sustained_keys.remove(pk)
+                                time.sleep(0.02)
+
                         # Play nested chord (will add its keys to sustained_keys)
-                        for chord_key in key.keys:
+                        chord_keys = [k for k in key.keys if isinstance(k, str)]
+                        for chord_key in chord_keys:
                             self.keyboard.press_key(chord_key)
                             self._sustained_keys.append(chord_key)
                     else:
                         # Normal nested chord
-                        self.keyboard.press_keys_simultaneously(key.keys)
+                        chord_keys = [k for k in key.keys if isinstance(k, str)]
+                        self.keyboard.press_keys_simultaneously(chord_keys)
 
                 # Arpeggio interval (except after last key)
                 if idx < len(note.keys) - 1:

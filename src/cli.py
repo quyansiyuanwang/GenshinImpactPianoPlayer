@@ -36,7 +36,7 @@ class CLI:
         self.running = False
         self.score: Optional[ParsedScore] = None
         self.display_active = False
-        self.last_display_time = 0
+        self.last_display_time = 0.0  # float for time.time()
         self.original_content = ""
         self.stdscr = None  # curses screen object
 
@@ -416,8 +416,12 @@ class CLI:
 
         # Initialize player
         keyboard_controller = KeyboardController()
-        self.player = Player(self.score, keyboard_controller)
-        self.player.set_progress_callback(self._on_progress)
+        if self.score is not None:
+            self.player = Player(self.score, keyboard_controller)
+            self.player.set_progress_callback(self._on_progress)
+        else:
+            # This shouldn't happen as we check in run(), but handle gracefully
+            return
 
         # Setup keyboard shortcuts if available
         if keyboard is not None:
@@ -880,7 +884,7 @@ class CLI:
             self.player.set_segment_length(segment_length)
 
             # Restore position (clamp to new score length)
-            if current_line < len(self.score.lines):
+            if self.score and current_line < len(self.score.lines):
                 self.player.jump_to_line(current_line)
 
             # Resume playback if it was playing

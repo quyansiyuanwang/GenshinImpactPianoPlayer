@@ -195,7 +195,7 @@ class ScoreParser:
                 end = self._find_matching_bracket(line, i, "(", ")")
                 chord_content = line[i + 1 : end]
                 # Filter only valid keys
-                chord_keys = [
+                chord_keys: List[Union[str, Note]] = [
                     k.upper() for k in chord_content if k.upper() in VALID_KEYS
                 ]
                 if chord_keys:  # Only add if there are valid keys
@@ -211,7 +211,8 @@ class ScoreParser:
                 i = end + 1
             elif char.upper() in VALID_KEYS:
                 # Single note - only if it's a valid key
-                current_segment.append(Note(type=NoteType.SINGLE, keys=[char.upper()]))
+                single_key: List[Union[str, Note]] = [char.upper()]
+                current_segment.append(Note(type=NoteType.SINGLE, keys=single_key))
                 i += 1
             else:
                 # Skip invalid characters
@@ -262,7 +263,7 @@ class ScoreParser:
 
     def _parse_arpeggio(self, content: str) -> List[Union[str, Note]]:
         """Parse arpeggio content which may contain nested chords."""
-        notes = []
+        notes: List[Union[str, Note]] = []
         i = 0
 
         while i < len(content):
@@ -273,7 +274,7 @@ class ScoreParser:
                 end = self._find_matching_bracket(content, i, "(", ")")
                 chord_content = content[i + 1 : end]
                 # Filter only valid keys
-                chord_keys = [
+                chord_keys: List[Union[str, Note]] = [
                     k.upper() for k in chord_content if k.upper() in VALID_KEYS
                 ]
                 if chord_keys:  # Only add if there are valid keys
