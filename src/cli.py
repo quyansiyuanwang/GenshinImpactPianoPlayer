@@ -12,11 +12,7 @@ from src.constants import (
     DEFAULT_HOTKEYS,
     SKIP_SMALL,
     SKIP_LARGE,
-    SPEED_STEP,
-    ARPEGGIO_STEP,
-    INTERVAL_STEP,
     DISPLAY_REFRESH_RATE,
-    SPEED_STEP_LARGE,
 )
 
 
@@ -448,86 +444,23 @@ class CLI:
         self.display_active = False
 
     def _setup_hotkeys(self) -> None:
-        """Setup keyboard shortcuts using configured hotkeys."""
+        """Setup keyboard shortcuts using hotkey registry."""
         if keyboard is None:
             return
 
-        keyboard.add_hotkey(self.hotkeys["play_pause"], self._toggle_play_pause)
-        keyboard.add_hotkey(
-            self.hotkeys["speed_up"], lambda: self._adjust_speed(SPEED_STEP)
-        )
-        keyboard.add_hotkey(
-            self.hotkeys["speed_down"], lambda: self._adjust_speed(-SPEED_STEP)
-        )
-        keyboard.add_hotkey(
-            self.hotkeys["speed_up_large"], lambda: self._adjust_speed(SPEED_STEP_LARGE)
-        )
-        keyboard.add_hotkey(
-            self.hotkeys["speed_down_large"],
-            lambda: self._adjust_speed(-SPEED_STEP_LARGE),
-        )
-        keyboard.add_hotkey(
-            self.hotkeys["arpeggio_faster"],
-            lambda: self._adjust_arpeggio(-ARPEGGIO_STEP),
-        )
-        keyboard.add_hotkey(
-            self.hotkeys["arpeggio_slower"],
-            lambda: self._adjust_arpeggio(ARPEGGIO_STEP),
-        )
-        keyboard.add_hotkey(
-            self.hotkeys["interval_shorter"],
-            lambda: self._adjust_interval(-INTERVAL_STEP),
-        )
-        keyboard.add_hotkey(
-            self.hotkeys["interval_longer"],
-            lambda: self._adjust_interval(INTERVAL_STEP),
-        )
-        keyboard.add_hotkey(
-            self.hotkeys["line_interval_less"], lambda: self._adjust_line_interval(-1.0)
-        )  # Down = less
-        keyboard.add_hotkey(
-            self.hotkeys["line_interval_more"], lambda: self._adjust_line_interval(1.0)
-        )  # Up = more
-        keyboard.add_hotkey(
-            self.hotkeys["space_interval_less"],
-            lambda: self._adjust_space_interval(-0.1),
-        )  # Shift+Down = less
-        keyboard.add_hotkey(
-            self.hotkeys["space_interval_more"],
-            lambda: self._adjust_space_interval(0.1),
-        )  # Shift+Up = more
-        keyboard.add_hotkey(
-            self.hotkeys["empty_line_interval_less"],
-            lambda: self._adjust_empty_line_interval(-1.0),
-        )  # Ctrl+Down = less
-        keyboard.add_hotkey(
-            self.hotkeys["empty_line_interval_more"],
-            lambda: self._adjust_empty_line_interval(1.0),
-        )  # Ctrl+Up = more
-        keyboard.add_hotkey(
-            self.hotkeys["segment_length_less"], lambda: self._adjust_segment_length(-1)
-        )  # PgDn = less
-        keyboard.add_hotkey(
-            self.hotkeys["segment_length_more"], lambda: self._adjust_segment_length(1)
-        )  # PgUp = more
-        keyboard.add_hotkey(self.hotkeys["skip_backward"], self._skip_backward)
-        keyboard.add_hotkey(self.hotkeys["skip_forward"], self._skip_forward)
-        keyboard.add_hotkey(
-            self.hotkeys["skip_backward_large"], self._skip_backward_large
-        )
-        keyboard.add_hotkey(
-            self.hotkeys["skip_forward_large"], self._skip_forward_large
-        )
-        keyboard.add_hotkey(self.hotkeys["quit"], self._quit)
-        keyboard.add_hotkey("f9", self._save_config)  # F9 to save config
-        keyboard.add_hotkey(self.hotkeys["reload"], self._reload)  # F5 to reload
-        keyboard.add_hotkey(self.hotkeys["reparse"], self._reparse)  # F6 to reparse
-        keyboard.add_hotkey(
-            self.hotkeys["toggle_sustain"], self._toggle_sustain
-        )  # F7 to toggle sustain
-        keyboard.add_hotkey(
-            self.hotkeys["toggle_segment_strict"], self._toggle_segment_strict
-        )  # F4 to toggle segment strict
+        # Import and register default hotkeys
+        from src.default_hotkeys import register_default_hotkeys
+        from src.hotkey_registry import get_hotkey_registry
+
+        register_default_hotkeys(self)
+
+        # Get all registered hotkeys and bind them
+        registry = get_hotkey_registry()
+        for key, callback in registry.get_all_hotkeys().items():
+            try:
+                keyboard.add_hotkey(key, callback)
+            except Exception as e:
+                print(f"Warning: Failed to register hotkey '{key}': {e}")
 
     def _toggle_play_pause(self) -> None:
         """Toggle between play and pause."""
