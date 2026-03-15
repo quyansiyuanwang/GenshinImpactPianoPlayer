@@ -154,7 +154,7 @@ class Player:
             )
         self._empty_line_interval_rating = max(0.0, min(10.0, rating))
 
-    def set_segment_length(self, length: int) -> None:
+    def set_segment_length(self, length: int | float) -> None:
         """Set segment length (N notes per segment, 0 = disabled)."""
         if not isinstance(length, (int, float)):
             raise TypeError(
