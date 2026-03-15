@@ -297,6 +297,7 @@ class Player:
             if i < self._current_note:
                 continue
 
+            # Update position BEFORE playing (so UI shows the note about to be played)
             self._current_note = i
 
             # Update progress for every note to show real-time playback
@@ -308,7 +309,10 @@ class Player:
                     len(line),
                 )
 
-            # Play the note
+            # Small delay to let UI update before playing (visual preview)
+            time.sleep(0.05)  # 50ms preview time
+
+            # Play the note (after UI update and preview delay)
             self._play_note(note)
 
             # Every note (including space, chord, arpeggio) should have interval after it
