@@ -2,13 +2,9 @@
 
 import sys
 import os
-import time
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.parser import ScoreParser, Note
-from src.player import Player
-from src.keyboard_controller import KeyboardController
-from typing import List, Union
+from src.parser import ScoreParser
 
 
 def main() -> None:
@@ -27,7 +23,7 @@ def main() -> None:
 
     print(f"Score: {score_file}")
     print(f"Total lines: {len(score.lines)}")
-    print(f"\nConfiguration:")
+    print("\nConfiguration:")
     print(f"  ARPEGGIO_INTERVAL: {score.config.arpeggio_interval}s")
     print(f"  INTERVAL_RATING: {score.config.interval_rating}s")
     print(f"  SPACE_INTERVAL_RATING: {score.config.space_interval_rating}x")
@@ -91,20 +87,20 @@ def main() -> None:
 
     if score.config.interval_rating > 0.05:
         print(f"⚠ INTERVAL_RATING ({score.config.interval_rating}s) might be too high")
-        print(f"  Recommended: 0.01 - 0.05s for smooth playback")
+        print("  Recommended: 0.01 - 0.05s for smooth playback")
     else:
         print(f"✓ INTERVAL_RATING ({score.config.interval_rating}s) looks good")
 
     if score.config.arpeggio_interval > 0.03:
         print(f"⚠ ARPEGGIO_INTERVAL ({score.config.arpeggio_interval}s) might be too high")
-        print(f"  Recommended: 0.01 - 0.03s for fast arpeggios")
+        print("  Recommended: 0.01 - 0.03s for fast arpeggios")
     else:
         print(f"✓ ARPEGGIO_INTERVAL ({score.config.arpeggio_interval}s) looks good")
 
     print()
     print("Suggested optimized settings:")
-    print(f"  INTERVAL_RATING=0.02")
-    print(f"  ARPEGGIO_INTERVAL=0.02")
+    print("  INTERVAL_RATING=0.02")
+    print("  ARPEGGIO_INTERVAL=0.02")
     print(f"  SPACE_INTERVAL_RATING={score.config.space_interval_rating}")
     print(f"  LINE_INTERVAL_RATING={score.config.line_interval_rating}")
 

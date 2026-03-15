@@ -10,19 +10,13 @@ import time
 def main() -> None:
     print("Testing Keyboard Controller")
     print("=" * 50)
-
-    controller = KeyboardController()
-
-    if controller.use_keyboard:
-        print("✓ Using 'keyboard' library (raw key presses)")
-    else:
-        print("⚠ Using 'pynput' library (text input only)")
-        print("  Install 'keyboard' for game input support")
-
+    print("✓ Using 'keyboard' library (raw key presses)")
     print()
     print("Test will start in 3 seconds...")
     print("Please switch to a text editor (like Notepad) to see the output")
     time.sleep(3)
+
+    controller = KeyboardController()
 
     print("\nTesting single key press...")
     controller.tap_key('a')

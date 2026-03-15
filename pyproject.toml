@@ -5,7 +5,6 @@ description = "A Python piano playing script that simulates keyboard input"
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
-    "pynput>=1.7.6",
     "keyboard>=0.13.5",
     "windows-curses>=2.4.1",
 ]
@@ -14,6 +13,7 @@ dependencies = [
 dev = [
     "mypy>=1.14.1",
     "pyinstaller>=6.19.0",
+    "ruff>=0.15.6",
 ]
 
 [tool.uv.workspace]
@@ -27,5 +27,5 @@ strict = true
 disallow_untyped_calls = false
 
 [[tool.mypy.overrides]]
-module = ["keyboard.*", "pynput.*"]
+module = ["keyboard.*"]
 ignore_missing_imports = true

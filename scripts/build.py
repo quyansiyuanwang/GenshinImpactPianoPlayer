@@ -195,7 +195,7 @@ def create_release_package() -> None:
     print("✓ Created 使用说明.txt")
 
     print(f"\n✅ Release package created in: {release_dir.absolute()}")
-    print(f"\n📦 Package contents:")
+    print("\n📦 Package contents:")
     for item in release_dir.rglob("*"):
         if item.is_file():
             size = item.stat().st_size / 1024 / 1024  # MB

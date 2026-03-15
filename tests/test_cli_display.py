@@ -6,7 +6,7 @@ import time
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.parser import ScoreParser, NoteType, Note, ParsedScore
-from typing import List, Union
+from typing import List
 
 
 def format_score_line(line: List[Note]) -> str:

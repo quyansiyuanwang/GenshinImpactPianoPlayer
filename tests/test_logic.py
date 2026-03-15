@@ -4,8 +4,7 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.parser import ScoreParser, Note
-from typing import List, Union
+from src.parser import ScoreParser
 
 
 def main() -> None:
@@ -18,7 +17,7 @@ def main() -> None:
     parser = ScoreParser('tests/sample_score.txt')
     score = parser.parse()
 
-    print(f"Configuration:")
+    print("Configuration:")
     print(f"  INTERVAL_RATING: {score.config.interval_rating}s")
     print(f"  ARPEGGIO_INTERVAL: {score.config.arpeggio_interval}s")
     print()

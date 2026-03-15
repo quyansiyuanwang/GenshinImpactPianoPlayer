@@ -29,6 +29,13 @@
 
 ## 安装
 
+### 系统要求
+
+- Python 3.8 或更高版本
+- **管理员/root权限**（keyboard库需要）
+
+### 安装步骤
+
 1. 克隆或下载此项目
 
 2. 安装依赖：
@@ -36,7 +43,11 @@
 pip install -r requirements.txt
 ```
 
-**注意**：`keyboard` 库在某些系统上需要管理员权限。如果遇到权限问题，可以只安装 `pynput`，GUI模式不需要 `keyboard` 库。
+**重要提示**：
+- `keyboard` 库需要管理员/root权限才能正常工作
+- Windows: 以管理员身份运行命令提示符或PowerShell
+- Linux/Mac: 使用 `sudo` 运行程序
+- 如果无法获取管理员权限，程序将无法模拟键盘输入
 
 ## 谱面文件格式
 

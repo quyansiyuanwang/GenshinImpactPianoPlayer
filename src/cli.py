@@ -1,6 +1,5 @@
 """Command-line interface for GIPianoPlayer."""
 
-import sys
 import time
 import os
 import curses
@@ -16,8 +15,6 @@ from src.constants import (
     ARPEGGIO_STEP,
     INTERVAL_STEP,
     DISPLAY_REFRESH_RATE,
-    DISPLAY_LINES_BEFORE,
-    DISPLAY_LINES_AFTER,
     SPEED_STEP_LARGE,
 )
 
@@ -359,12 +356,12 @@ class CLI:
             # Refresh screen
             self.stdscr.refresh()
 
-        except curses.error as e:
+        except curses.error:
             # Handle specific curses errors gracefully
             # Most common: writing outside screen bounds when terminal is resized
             # We'll catch and ignore these, as they'll be fixed on next refresh
             pass
-        except Exception as e:
+        except Exception:
             # Unexpected error - log it but don't crash
             # In production, this should use proper logging
             pass
@@ -814,7 +811,7 @@ class CLI:
             # We can't use _print here as display is active, so we'll update display
             self._display_score()
 
-        except Exception as e:
+        except Exception:
             # Silently fail - don't disrupt playback
             pass
 
@@ -848,7 +845,7 @@ class CLI:
             # Force display update
             self._display_score()
 
-        except Exception as e:
+        except Exception:
             # Silently fail - don't disrupt
             pass
 
@@ -906,7 +903,7 @@ class CLI:
             # Force display update
             self._display_score()
 
-        except Exception as e:
+        except Exception:
             # Silently fail - don't disrupt
             pass
 

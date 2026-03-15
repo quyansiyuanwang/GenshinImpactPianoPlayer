@@ -4,7 +4,6 @@ This program reads a specially formatted text file and simulates keyboard
 input to "play" the piano in games or applications.
 """
 
-import sys
 import argparse
 from src.cli import CLI
 
