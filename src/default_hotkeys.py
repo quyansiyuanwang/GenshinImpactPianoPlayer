@@ -6,6 +6,7 @@ This module registers all default hotkeys for the player.
 from typing import TYPE_CHECKING
 
 from src.hotkey_registry import get_hotkey_registry
+from src.plugin_system import get_plugin_manager
 
 if TYPE_CHECKING:
     from src.cli import CLI
@@ -18,6 +19,7 @@ def register_default_hotkeys(cli: "CLI") -> None:
         cli: CLI instance with callback methods
     """
     registry = get_hotkey_registry()
+    plugin_manager = get_plugin_manager()
 
     # Playback control
     registry.register(
@@ -33,117 +35,142 @@ def register_default_hotkeys(cli: "CLI") -> None:
         "playback",
     )
 
-    # Speed control
-    registry.register(
-        "+",
-        lambda: cli._adjust_speed(0.01),
-        "Increase speed (small)",
-        "speed",
-    )
-    registry.register(
-        "-",
-        lambda: cli._adjust_speed(-0.01),
-        "Decrease speed (small)",
-        "speed",
-    )
-    registry.register(
-        "ctrl+=",
-        lambda: cli._adjust_speed(0.1),
-        "Increase speed (large)",
-        "speed",
-    )
-    registry.register(
-        "ctrl+_",
-        lambda: cli._adjust_speed(-0.1),
-        "Decrease speed (large)",
-        "speed",
-    )
+    # Get plugin instances for config operations
+    speed_plugin = plugin_manager.get_plugin("speed_adjustment")
+    interval_plugin = plugin_manager.get_plugin("interval_adjustment")
+    segment_plugin = plugin_manager.get_plugin("segment_adjustment")
+    mode_plugin = plugin_manager.get_plugin("mode_toggle")
 
-    # Arpeggio control
-    registry.register(
-        "[",
-        lambda: cli._adjust_arpeggio(-0.01),
-        "Faster arpeggio",
-        "timing",
-    )
-    registry.register(
-        "]",
-        lambda: cli._adjust_arpeggio(0.01),
-        "Slower arpeggio",
-        "timing",
-    )
+    # Speed control (via plugin)
+    if speed_plugin:
+        registry.register(
+            "+",
+            lambda: speed_plugin.adjust_speed(0.01),  # type: ignore[attr-defined]
+            "Increase speed (small)",
+            "speed",
+        )
+        registry.register(
+            "-",
+            lambda: speed_plugin.adjust_speed(-0.01),  # type: ignore[attr-defined]
+            "Decrease speed (small)",
+            "speed",
+        )
+        registry.register(
+            "ctrl+=",
+            lambda: speed_plugin.adjust_speed(0.1),  # type: ignore[attr-defined]
+            "Increase speed (large)",
+            "speed",
+        )
+        registry.register(
+            "ctrl+_",
+            lambda: speed_plugin.adjust_speed(-0.1),  # type: ignore[attr-defined]
+            "Decrease speed (large)",
+            "speed",
+        )
 
-    # Interval control
-    registry.register(
-        ",",
-        lambda: cli._adjust_interval(-0.01),
-        "Decrease note interval",
-        "timing",
-    )
-    registry.register(
-        ".",
-        lambda: cli._adjust_interval(0.01),
-        "Increase note interval",
-        "timing",
-    )
+    # Interval control (via plugin)
+    if interval_plugin:
+        # Arpeggio
+        registry.register(
+            "[",
+            lambda: interval_plugin.adjust_arpeggio(-0.01),  # type: ignore[attr-defined]
+            "Faster arpeggio",
+            "timing",
+        )
+        registry.register(
+            "]",
+            lambda: interval_plugin.adjust_arpeggio(0.01),  # type: ignore[attr-defined]
+            "Slower arpeggio",
+            "timing",
+        )
 
-    # Line interval control
-    registry.register(
-        "up",
-        lambda: cli._adjust_line_interval(1),
-        "Increase line interval",
-        "timing",
-    )
-    registry.register(
-        "down",
-        lambda: cli._adjust_line_interval(-1),
-        "Decrease line interval",
-        "timing",
-    )
+        # Note interval
+        registry.register(
+            ",",
+            lambda: interval_plugin.adjust_interval(-0.01),  # type: ignore[attr-defined]
+            "Decrease note interval",
+            "timing",
+        )
+        registry.register(
+            ".",
+            lambda: interval_plugin.adjust_interval(0.01),  # type: ignore[attr-defined]
+            "Increase note interval",
+            "timing",
+        )
 
-    # Space interval control
-    registry.register(
-        "shift+up",
-        lambda: cli._adjust_space_interval(0.1),
-        "Increase space interval",
-        "timing",
-    )
-    registry.register(
-        "shift+down",
-        lambda: cli._adjust_space_interval(-0.1),
-        "Decrease space interval",
-        "timing",
-    )
+        # Line interval
+        registry.register(
+            "up",
+            lambda: interval_plugin.adjust_line_interval(1),  # type: ignore[attr-defined]
+            "Increase line interval",
+            "timing",
+        )
+        registry.register(
+            "down",
+            lambda: interval_plugin.adjust_line_interval(-1),  # type: ignore[attr-defined]
+            "Decrease line interval",
+            "timing",
+        )
 
-    # Empty line interval control
-    registry.register(
-        "ctrl+up",
-        lambda: cli._adjust_empty_line_interval(1),
-        "Increase empty line interval",
-        "timing",
-    )
-    registry.register(
-        "ctrl+down",
-        lambda: cli._adjust_empty_line_interval(-1),
-        "Decrease empty line interval",
-        "timing",
-    )
+        # Space interval
+        registry.register(
+            "shift+up",
+            lambda: interval_plugin.adjust_space_interval(0.1),  # type: ignore[attr-defined]
+            "Increase space interval",
+            "timing",
+        )
+        registry.register(
+            "shift+down",
+            lambda: interval_plugin.adjust_space_interval(-0.1),  # type: ignore[attr-defined]
+            "Decrease space interval",
+            "timing",
+        )
 
-    # Segment length control
-    registry.register(
-        "page down",
-        lambda: cli._adjust_segment_length(-1),
-        "Decrease segment length",
-        "segment",
-    )
-    registry.register(
-        "page up",
-        lambda: cli._adjust_segment_length(1),
-        "Increase segment length",
-        "segment",
-    )
+        # Empty line interval
+        registry.register(
+            "ctrl+up",
+            lambda: interval_plugin.adjust_empty_line_interval(1),  # type: ignore[attr-defined]
+            "Increase empty line interval",
+            "timing",
+        )
+        registry.register(
+            "ctrl+down",
+            lambda: interval_plugin.adjust_empty_line_interval(-1),  # type: ignore[attr-defined]
+            "Decrease empty line interval",
+            "timing",
+        )
 
-    # Navigation
+    # Segment control (via plugin)
+    if segment_plugin:
+        registry.register(
+            "page down",
+            lambda: segment_plugin.adjust_segment_length(-1),  # type: ignore[attr-defined]
+            "Decrease segment length",
+            "segment",
+        )
+        registry.register(
+            "page up",
+            lambda: segment_plugin.adjust_segment_length(1),  # type: ignore[attr-defined]
+            "Increase segment length",
+            "segment",
+        )
+        registry.register(
+            "f4",
+            lambda: segment_plugin.toggle_segment_strict(),  # type: ignore[attr-defined]
+            "Toggle segment strict mode",
+            "segment",
+        )
+
+    # Mode toggles (via plugin)
+    if mode_plugin:
+        registry.register(
+            "f7",
+            lambda: mode_plugin.toggle_sustain(),  # type: ignore[attr-defined]
+            "Toggle sustain mode",
+            "mode",
+        )
+
+    # Navigation (still via CLI)
     registry.register(
         "left",
         cli._skip_backward,
@@ -169,7 +196,7 @@ def register_default_hotkeys(cli: "CLI") -> None:
         "navigation",
     )
 
-    # File operations
+    # File operations (still via CLI)
     registry.register(
         "f5",
         cli._reload,
@@ -182,23 +209,7 @@ def register_default_hotkeys(cli: "CLI") -> None:
         "Reparse with current config",
         "file",
     )
-    registry.register(
-        "f9",
-        cli._save_config,
-        "Save config to file",
-        "file",
-    )
 
-    # Mode toggles
-    registry.register(
-        "f7",
-        cli._toggle_sustain,
-        "Toggle sustain mode",
-        "mode",
-    )
-    registry.register(
-        "f4",
-        cli._toggle_segment_strict,
-        "Toggle segment strict mode",
-        "mode",
-    )
+    # Config save is now handled by ConfigManagerPlugin (F9)
+    # It registers itself in its initialize() method
+

@@ -64,6 +64,29 @@ def _load_plugin(name: str, config: dict[str, Any]) -> Plugin | None:
     Returns:
         Plugin instance or None if loading failed
     """
+    # Try to import from config_plugins first
+    try:
+        from src.plugins.config_plugins import (
+            ConfigManagerPlugin,
+            IntervalAdjustmentPlugin,
+            ModeTogglePlugin,
+            SegmentAdjustmentPlugin,
+            SpeedAdjustmentPlugin,
+        )
+
+        if name == "config_manager":
+            return ConfigManagerPlugin()
+        if name == "speed_adjustment":
+            return SpeedAdjustmentPlugin()
+        if name == "interval_adjustment":
+            return IntervalAdjustmentPlugin()
+        if name == "segment_adjustment":
+            return SegmentAdjustmentPlugin()
+        if name == "mode_toggle":
+            return ModeTogglePlugin()
+    except ImportError:
+        pass
+
     # Try to import from built-in plugins
     try:
         module = importlib.import_module("src.plugins")

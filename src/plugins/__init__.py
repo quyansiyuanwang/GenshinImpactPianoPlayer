@@ -4,6 +4,27 @@ from typing import Callable
 
 from src.plugin_system import Plugin, PluginContext
 
+# Import config plugins
+from src.plugins.config_plugins import (
+    ConfigManagerPlugin,
+    SpeedAdjustmentPlugin,
+    IntervalAdjustmentPlugin,
+    SegmentAdjustmentPlugin,
+    ModeTogglePlugin,
+)
+
+__all__ = [
+    "SpeedControlPlugin",
+    "LoopPlugin",
+    "MetronomePlugin",
+    "BookmarkPlugin",
+    "ConfigManagerPlugin",
+    "SpeedAdjustmentPlugin",
+    "IntervalAdjustmentPlugin",
+    "SegmentAdjustmentPlugin",
+    "ModeTogglePlugin",
+]
+
 
 class SpeedControlPlugin(Plugin):
     """Plugin for advanced speed control features."""

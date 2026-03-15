@@ -6,6 +6,14 @@
 [plugins]
 # Enable/disable plugins
 enabled = [
+    # Core config plugins (required for basic functionality)
+    "config_manager",
+    "speed_adjustment",
+    "interval_adjustment",
+    "segment_adjustment",
+    "mode_toggle",
+
+    # Optional feature plugins
     "speed_control",
     "loop",
     "metronome",
