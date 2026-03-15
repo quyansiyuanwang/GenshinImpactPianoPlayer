@@ -20,3 +20,12 @@ dev = [
 members = [
     "BGINoti",
 ]
+
+[tool.mypy]
+strict = true
+# Allow untyped calls to external libraries without stubs
+disallow_untyped_calls = false
+
+[[tool.mypy.overrides]]
+module = ["keyboard.*", "pynput.*"]
+ignore_missing_imports = true
