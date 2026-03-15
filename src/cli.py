@@ -3,6 +3,7 @@
 import time
 import os
 import curses
+import keyboard
 from typing import Optional, Dict, List, Any
 from src.parser import ScoreParser, NoteType, ParsedScore, Note
 from src.player import Player, PlayerState
@@ -17,11 +18,6 @@ from src.constants import (
     DISPLAY_REFRESH_RATE,
     SPEED_STEP_LARGE,
 )
-
-try:
-    import keyboard
-except ImportError:
-    keyboard = None
 
 
 class CLI:
@@ -40,22 +36,15 @@ class CLI:
         # Use custom hotkeys or defaults
         self.hotkeys = hotkeys if hotkeys is not None else DEFAULT_HOTKEYS.copy()
 
-        # Check if keyboard library is available
-        if keyboard is None:
-            print(
-                "Warning: 'keyboard' library not installed. Hotkeys will not be available."
-            )
-            print("Install with: pip install keyboard")
-
     def _format_score_line(self, line: List[Note]) -> str:
         """Format a score line as text, preserving visual separators."""
         # Check if this is an empty line
         if len(line) == 1 and line[0].type == NoteType.EMPTY_LINE:
             # Only show [Empty Line] if interval > 0
-            if self.player and self.player._empty_line_interval_rating > 0:
-                return "[Empty Line]"
-            else:
-                return ""
+            display_empty = (
+                self.player._empty_line_interval_rating > 0 if self.player else False
+            )
+            return "[Empty Line] " if display_empty else ""
 
         result = ""
 
@@ -93,6 +82,11 @@ class CLI:
             # Clear screen for fresh render
             self.stdscr.clear()
 
+            if not self.score:
+                self.stdscr.addstr(0, 0, "No score loaded.")
+                self.stdscr.refresh()
+                return
+
             # Get current position
             current_line, total_lines = (
                 self.player.get_progress()
@@ -104,7 +98,7 @@ class CLI:
             separator_width = min(width - 1, 100)
 
             # Build config lines to get actual count
-            config_lines = []
+            config_lines: List[str] = []
             if self.player:
                 speed = self.player._speed_multiplier
                 arp_interval = self.player._arpeggio_interval

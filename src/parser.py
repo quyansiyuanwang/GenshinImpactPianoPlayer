@@ -71,7 +71,7 @@ class ScoreParser:
     def _parse_config(self) -> PlayConfig:
         """Parse configuration parameters from file header."""
         lines = self.content.split("\n")
-        config_dict = {}
+        config_dict: dict[str, float] = {}
         score_start = 0
 
         for i, line in enumerate(lines):
@@ -118,11 +118,7 @@ class ScoreParser:
         )
         # Store segment_strict for use during line parsing
         segment_strict_value = config_dict.get("segment_strict", DEFAULT_SEGMENT_STRICT)
-        # Convert to boolean: handle both numeric (0.0/1.0) and boolean values
-        if isinstance(segment_strict_value, (int, float)):
-            self._segment_strict = bool(segment_strict_value)
-        else:
-            self._segment_strict = bool(segment_strict_value)
+        self._segment_strict = bool(segment_strict_value)
         # Store empty_line_interval_rating for use during score parsing
         self._empty_line_interval_rating = config_dict.get(
             "empty_line_interval_rating", DEFAULT_EMPTY_LINE_INTERVAL_RATING
@@ -156,7 +152,7 @@ class ScoreParser:
         Empty lines are preserved as special EMPTY_LINE markers only if
         empty_line_interval_rating > 0.
         """
-        lines = []
+        lines: List[List[Note]] = []
 
         for line in self.score_content.split("\n"):
             stripped = line.strip()
@@ -246,7 +242,7 @@ class ScoreParser:
         segment_length = self._get_segment_length()
         segment_strict = self._get_segment_strict()
         if segment_length > 0:
-            processed_segments = []
+            processed_segments: List[List[Note]] = []
             for segment in segments:
                 if len(segment) < segment_length:
                     # Pad with empty notes (rests)
@@ -265,7 +261,7 @@ class ScoreParser:
             segments = processed_segments
 
         # Flatten all segments into a single list of notes
-        notes = []
+        notes: List[Note] = []
         for segment in segments:
             notes.extend(segment)
 

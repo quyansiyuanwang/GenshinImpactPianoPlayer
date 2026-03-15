@@ -1,0 +1,38 @@
+# Plugin Configuration for GIPianoPlayer
+
+# This file defines which plugins are enabled and their settings.
+# Plugins extend the functionality of GIPianoPlayer with custom features.
+
+[plugins]
+# Enable/disable plugins
+enabled = [
+    "speed_control",
+    "loop",
+    "metronome",
+    "bookmark",
+]
+
+# Plugin-specific settings
+[plugins.speed_control]
+presets = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
+default_preset = 1.0
+
+[plugins.loop]
+auto_loop = false
+loop_count = -1  # -1 = infinite
+
+[plugins.metronome]
+default_bpm = 120
+sound_enabled = true
+visual_enabled = true
+
+[plugins.bookmark]
+max_bookmarks = 9
+persist_bookmarks = true  # Save bookmarks to file
+
+# Custom plugin paths
+# Add paths to load external plugins
+[plugins.custom_paths]
+paths = [
+    # "path/to/custom/plugins",
+]

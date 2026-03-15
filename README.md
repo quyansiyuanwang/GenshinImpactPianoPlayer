@@ -14,6 +14,8 @@
 - [自定义](docs/CUSTOMIZATION.md) - 自定义配置
 - [性能优化](docs/OPTIMIZATION.md) - 性能优化建议
 - [打包说明](docs/BUILD.md) - 如何打包成exe可执行文件
+- [代码质量](docs/LINTING.md) - Ruff/MyPy 配置和使用
+- [插件开发](docs/PLUGIN_DEVELOPMENT.md) - 插件系统开发指南
 - [更新日志](docs/CHANGELOG.md) - 版本更新记录
 - [开发指南](CLAUDE.md) - 给Claude Code的开发指南
 
@@ -26,6 +28,7 @@
 - ⏯️ 完整的播放控制（播放/暂停/停止）
 - ⚡ 实时调整播放速度和各种间隔参数
 - 🔧 完善的类型注解
+- 🔌 灵活的插件系统，支持功能扩展
 
 ## 安装
 
