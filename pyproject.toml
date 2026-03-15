@@ -14,7 +14,6 @@ dev = [
     "mypy>=1.14.1",
     "pyinstaller>=6.19.0",
     "ruff>=0.15.6",
-    "black>=24.0.0",
 ]
 
 [tool.uv.workspace]
@@ -38,7 +37,7 @@ ignore_missing_imports = true
 # Python version target
 target-version = "py38"
 
-# Line length (match Black's default)
+# Line length
 line-length = 100
 
 # Exclude directories
@@ -105,23 +104,3 @@ indent-style = "space"
 skip-magic-trailing-comma = false
 # Auto-detect line ending
 line-ending = "auto"
-
-# ============================================================================
-# Black Configuration
-# ============================================================================
-[tool.black]
-line-length = 100
-target-version = ["py38", "py39", "py310", "py311", "py312"]
-include = '\.pyi?$'
-exclude = '''
-/(
-    \.git
-  | \.mypy_cache
-  | \.ruff_cache
-  | \.venv
-  | __pycache__
-  | build
-  | dist
-  | BGINoti
-)/
-'''

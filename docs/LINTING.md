@@ -5,15 +5,12 @@
 ## 工具说明
 
 ### 1. Ruff - 快速 Python Linter 和 Formatter
-- **功能**: 代码检查和格式化
+- **功能**: 代码检查和格式化（二合一）
 - **速度**: 比 Flake8/Pylint 快 10-100 倍
 - **特点**: 集成了多个工具的规则（Flake8, isort, pyupgrade 等）
+- **格式化**: 基于 Black，但速度更快
 
-### 2. Black - Python 代码格式化工具
-- **功能**: 统一代码风格
-- **特点**: "无妥协"的格式化，减少代码审查中的格式争议
-
-### 3. MyPy - 静态类型检查
+### 2. MyPy - 静态类型检查
 - **功能**: 检查类型注解的正确性
 - **配置**: 启用了 `--strict` 模式
 
@@ -87,11 +84,8 @@ uv run ruff check --fix src/ tests/ scripts/
 # Ruff - 格式化代码
 uv run ruff format src/ tests/ scripts/
 
-# Black - 格式化代码
-uv run black src/ tests/ scripts/
-
-# Black - 只检查不修改
-uv run black --check src/ tests/ scripts/
+# Ruff - 检查格式（不修改）
+uv run ruff format --check src/ tests/ scripts/
 
 # MyPy - 类型检查
 uv run mypy . --strict
@@ -104,24 +98,9 @@ uv run mypy . --strict
 ### Ruff 配置
 - **行长度**: 100 字符
 - **目标版本**: Python 3.8+
-- **启用规则**:
-  - E/W (pycodestyle)
-  - F (pyflakes)
-  - I (isort)
-  - N (pep8-naming)
-  - UP (pyupgrade)
-  - B (flake8-bugbear)
-  - C4 (flake8-comprehensions)
-  - SIM (flake8-simplify)
-  - RET (flake8-return)
-  - ARG (flake8-unused-arguments)
-  - PTH (flake8-use-pathlib)
-  - PL (pylint)
-
-### Black 配置
-- **行长度**: 100 字符
-- **目标版本**: Python 3.8-3.12
-- **引号风格**: 双引号
+- **模式**: 严格模式（ALL 规则）
+- **启用规则**: 所有规则，精心配置 ignore 列表
+- **格式化**: 基于 Black 的格式化引擎
 
 ### MyPy 配置
 - **模式**: strict
@@ -150,7 +129,6 @@ pre-commit run --all-files
 
 安装扩展：
 - Ruff (charliermarsh.ruff)
-- Black Formatter (ms-python.black-formatter)
 - Pylance (ms-python.vscode-pylance)
 
 在 `.vscode/settings.json` 中添加：
@@ -172,8 +150,7 @@ pre-commit run --all-files
 ### PyCharm
 
 1. 安装 Ruff 插件
-2. Settings → Tools → Black → 启用
-3. Settings → Tools → Python Integrated Tools → Type Checker → MyPy
+2. Settings → Tools → Python Integrated Tools → Type Checker → MyPy
 
 ## CI/CD 集成
 
@@ -183,17 +160,14 @@ pre-commit run --all-files
 - name: Run linters
   run: |
     uv run ruff check src/ tests/ scripts/
-    uv run black --check src/ tests/ scripts/
+    uv run ruff format --check src/ tests/ scripts/
     uv run mypy . --strict
 ```
 
 ## 常见问题
 
-### Q: Ruff 和 Black 有什么区别？
-A: Ruff 是 linter（检查代码问题）+ formatter，Black 是纯 formatter。两者可以一起使用，Ruff 更快但 Black 更成熟。
-
-### Q: 为什么同时用 Ruff 和 Black？
-A: Ruff 的格式化功能还在发展中，Black 更稳定。可以只用 Ruff，但建议两者都用以确保最佳效果。
+### Q: 为什么不用 Black？
+A: Ruff 的格式化功能基于 Black，但速度快 10-100 倍。Ruff 现在已经足够成熟，可以替代 Black。使用单一工具（Ruff）做 linting + formatting 更简单。
 
 ### Q: MyPy 报错怎么办？
 A:

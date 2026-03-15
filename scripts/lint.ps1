@@ -33,9 +33,8 @@ switch ($Command) {
         uv run ruff check --fix src/ tests/ scripts/
     }
     "format" {
-        Write-Host "Running formatters..."
+        Write-Host "Running Ruff formatter..."
         uv run ruff format src/ tests/ scripts/
-        uv run black src/ tests/ scripts/
     }
     "mypy" {
         Write-Host "Running MyPy type checker..."

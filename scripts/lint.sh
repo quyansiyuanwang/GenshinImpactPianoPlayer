@@ -15,9 +15,8 @@ case "$1" in
         uv run ruff check --fix src/ tests/ scripts/
         ;;
     "format")
-        echo "Running formatters..."
+        echo "Running Ruff formatter..."
         uv run ruff format src/ tests/ scripts/
-        uv run black src/ tests/ scripts/
         ;;
     "mypy")
         echo "Running MyPy type checker..."

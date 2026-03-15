@@ -74,17 +74,7 @@ def main() -> None:
             "Ruff Format", ["uv", "run", "ruff", "format", "src/", "tests/", "scripts/"]
         )
 
-    # 3. Black (formatting)
-    if check_only:
-        results["Black"] = run_command(
-            "Black", ["uv", "run", "black", "--check", "src/", "tests/", "scripts/"]
-        )
-    else:
-        results["Black"] = run_command(
-            "Black", ["uv", "run", "black", "src/", "tests/", "scripts/"]
-        )
-
-    # 4. MyPy (type checking) - always check only
+    # 3. MyPy (type checking) - always check only
     results["MyPy"] = run_command("MyPy", ["uv", "run", "mypy", ".", "--strict"])
 
     # Summary

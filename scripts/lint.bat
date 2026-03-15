@@ -20,9 +20,8 @@ if "%1"=="ruff" (
 )
 
 if "%1"=="format" (
-    echo Running formatters...
+    echo Running Ruff formatter...
     uv run ruff format src/ tests/ scripts/
-    uv run black src/ tests/ scripts/
     goto :eof
 )
 
