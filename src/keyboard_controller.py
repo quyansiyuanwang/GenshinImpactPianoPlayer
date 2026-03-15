@@ -18,7 +18,7 @@ class KeyboardController:
     Falls back to 'pynput' for text input if 'keyboard' is not available.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         if USE_KEYBOARD:
             # keyboard library is available - better for game input
             self.use_keyboard = True

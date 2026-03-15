@@ -4,8 +4,8 @@ import sys
 import time
 import os
 import curses
-from typing import Optional, Dict
-from src.parser import ScoreParser, NoteType, ParsedScore
+from typing import Optional, Dict, List, Any
+from src.parser import ScoreParser, NoteType, ParsedScore, Note
 from src.player import Player, PlayerState
 from src.keyboard_controller import KeyboardController
 from src.constants import (
@@ -50,7 +50,7 @@ class CLI:
             )
             print("Install with: pip install keyboard")
 
-    def _format_score_line(self, line) -> str:
+    def _format_score_line(self, line: List[Note]) -> str:
         """Format a score line as text, preserving visual separators."""
         # Check if this is an empty line
         if len(line) == 1 and line[0].type == NoteType.EMPTY_LINE:
@@ -73,7 +73,8 @@ class CLI:
                     result += f"{note.keys[0]} "
                     prev_was_space = False
             elif note.type == NoteType.CHORD:
-                result += f"({''.join(note.keys)}) "
+                chord_keys = [k for k in note.keys if isinstance(k, str)]
+                result += f"({''.join(chord_keys)}) "
                 prev_was_space = False
             elif note.type == NoteType.ARPEGGIO:
                 arp_content = ""
@@ -81,7 +82,8 @@ class CLI:
                     if isinstance(key, str):
                         arp_content += key
                     else:  # Nested chord
-                        arp_content += f"({''.join(key.keys)})"
+                        nested_chord_keys = [k for k in key.keys if isinstance(k, str)]
+                        arp_content += f"({''.join(nested_chord_keys)})"
                 result += f"[{arp_content}] "
                 prev_was_space = False
 
@@ -367,22 +369,26 @@ class CLI:
             # In production, this should use proper logging
             pass
 
-    def _format_note(self, note) -> str:
+    def _format_note(self, note: Note) -> str:
         """Format a single note for display."""
         if note.type == NoteType.SINGLE:
             if note.keys[0] == " ":
                 return "_"
             else:
-                return note.keys[0]
+                key = note.keys[0]
+                assert isinstance(key, str), "SINGLE note key must be string"
+                return key
         elif note.type == NoteType.CHORD:
-            return f"({''.join(note.keys)})"
+            chord_keys = [k for k in note.keys if isinstance(k, str)]
+            return f"({''.join(chord_keys)})"
         elif note.type == NoteType.ARPEGGIO:
             arp_content = ""
             for key in note.keys:
                 if isinstance(key, str):
                     arp_content += key
                 else:
-                    arp_content += f"({''.join(key.keys)})"
+                    nested_chord_keys = [k for k in key.keys if isinstance(k, str)]
+                    arp_content += f"({''.join(nested_chord_keys)})"
             return f"[{arp_content}]"
         return ""
 
@@ -403,7 +409,7 @@ class CLI:
         # Run with curses
         curses.wrapper(self._run_with_curses)
 
-    def _run_with_curses(self, stdscr) -> None:
+    def _run_with_curses(self, stdscr: Any) -> None:
         """Run the CLI with curses screen."""
         self.stdscr = stdscr
 

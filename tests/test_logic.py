@@ -4,10 +4,11 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.parser import ScoreParser
+from src.parser import ScoreParser, Note
+from typing import List, Union
 
 
-def main():
+def main() -> None:
     print("Playback Logic Test")
     print("=" * 60)
     print()
@@ -32,12 +33,15 @@ def main():
         note_type = note.type.value
 
         if note_type == "single":
-            if note.keys[0] == '/':
+            key = note.keys[0]
+            assert isinstance(key, str), "SINGLE note key must be string"
+            if key == '/':
                 print(f"  [{i+1}] Space (empty note)")
             else:
-                print(f"  [{i+1}] Single: {note.keys[0]}")
+                print(f"  [{i+1}] Single: {key}")
         elif note_type == "chord":
-            print(f"  [{i+1}] Chord: {''.join(note.keys)}")
+            chord_keys = [k for k in note.keys if isinstance(k, str)]
+            print(f"  [{i+1}] Chord: {''.join(chord_keys)}")
         elif note_type == "arpeggio":
             print(f"  [{i+1}] Arpeggio: {len(note.keys)} keys")
 

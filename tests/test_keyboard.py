@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from src.keyboard_controller import KeyboardController
 import time
 
-def main():
+def main() -> None:
     print("Testing Keyboard Controller")
     print("=" * 50)
 

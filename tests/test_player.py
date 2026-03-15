@@ -10,7 +10,7 @@ from src.player import Player, PlayerState
 from src.keyboard_controller import KeyboardController
 
 
-def test_player_initialization():
+def test_player_initialization() -> None:
     """Test player initialization."""
     parser = ScoreParser('tests/sample_score.txt')
     score = parser.parse()
@@ -22,7 +22,7 @@ def test_player_initialization():
     print("✓ Player initialization test passed")
 
 
-def test_player_state_transitions():
+def test_player_state_transitions() -> None:
     """Test player state transitions."""
     parser = ScoreParser('tests/sample_score.txt')
     score = parser.parse()
@@ -54,7 +54,7 @@ def test_player_state_transitions():
     print("✓ Stop state test passed")
 
 
-def test_player_speed_adjustment():
+def test_player_speed_adjustment() -> None:
     """Test speed adjustment."""
     parser = ScoreParser('tests/sample_score.txt')
     score = parser.parse()
@@ -70,7 +70,7 @@ def test_player_speed_adjustment():
     print("✓ Speed adjustment test passed")
 
 
-def test_player_parameter_adjustment():
+def test_player_parameter_adjustment() -> None:
     """Test parameter adjustments."""
     parser = ScoreParser('tests/sample_score.txt')
     score = parser.parse()

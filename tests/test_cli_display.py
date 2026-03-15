@@ -5,32 +5,37 @@ import os
 import time
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.parser import ScoreParser, NoteType
+from src.parser import ScoreParser, NoteType, Note, ParsedScore
+from typing import List, Union
 
 
-def format_score_line(line) -> str:
+def format_score_line(line: List[Note]) -> str:
     """Format a score line as text."""
     result = ""
     for note in line:
         if note.type == NoteType.SINGLE:
-            if note.keys[0] == '/':
+            key = note.keys[0]
+            assert isinstance(key, str), "SINGLE note key must be string"
+            if key == '/':
                 result += "/ "
             else:
-                result += f"{note.keys[0]} "
+                result += f"{key} "
         elif note.type == NoteType.CHORD:
-            result += f"({''.join(note.keys)}) "
+            chord_keys = [k for k in note.keys if isinstance(k, str)]
+            result += f"({''.join(chord_keys)}) "
         elif note.type == NoteType.ARPEGGIO:
             arp_content = ""
             for key in note.keys:
                 if isinstance(key, str):
                     arp_content += key
                 else:  # Nested chord
-                    arp_content += f"({''.join(key.keys)})"
+                    nested_chord_keys = [k for k in key.keys if isinstance(k, str)]
+                    arp_content += f"({''.join(nested_chord_keys)})"
             result += f"[{arp_content}] "
     return result.rstrip()
 
 
-def display_score(score, current_line=0, current_note=0):
+def display_score(score: ParsedScore, current_line: int = 0, current_note: int = 0) -> None:
     """Display the full score with highlighting and auto-scroll."""
     # Clear screen
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -109,7 +114,7 @@ def display_score(score, current_line=0, current_note=0):
     print(f"Status: PLAYING | Line {current_line + 1}/{len(score.lines)} | Progress: {progress:.1f}%")
 
 
-def main():
+def main() -> None:
     if len(sys.argv) < 2:
         print("Usage: python test_cli_display.py <score_file>")
         sys.exit(1)

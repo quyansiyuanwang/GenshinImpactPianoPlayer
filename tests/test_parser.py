@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from src.parser import ScoreParser, NoteType
 
 
-def test_parse_config():
+def test_parse_config() -> None:
     """Test configuration parsing."""
     parser = ScoreParser('tests/sample_score.txt')
     score = parser.parse()
@@ -20,7 +20,7 @@ def test_parse_config():
     print("[OK] Config parsing test passed")
 
 
-def test_parse_single_note():
+def test_parse_single_note() -> None:
     """Test single note parsing."""
     parser = ScoreParser('tests/sample_score.txt')
     score = parser.parse()
@@ -30,12 +30,14 @@ def test_parse_single_note():
         for note in line:
             if note.type == NoteType.SINGLE and note.keys[0] != '/':
                 assert len(note.keys) == 1
-                assert note.keys[0] in 'QWERTYUASDFGHJZXCVBNM'
-                print(f"[OK] Single note test passed: {note.keys[0]}")
+                key = note.keys[0]
+                assert isinstance(key, str), "SINGLE note key must be string"
+                assert key in 'QWERTYUASDFGHJZXCVBNM'
+                print(f"[OK] Single note test passed: {key}")
                 return
 
 
-def test_parse_chord():
+def test_parse_chord() -> None:
     """Test chord parsing."""
     parser = ScoreParser('tests/sample_score.txt')
     score = parser.parse()
@@ -43,11 +45,12 @@ def test_parse_chord():
     # First note should be a chord (VAH)
     first_note = score.lines[0][0]
     assert first_note.type == NoteType.CHORD
-    assert set(first_note.keys) == {'V', 'A', 'H'}
+    chord_keys = {k for k in first_note.keys if isinstance(k, str)}
+    assert chord_keys == {'V', 'A', 'H'}
     print(f"[OK] Chord test passed: {first_note.keys}")
 
 
-def test_parse_space_marker():
+def test_parse_space_marker() -> None:
     """Test space marker parsing."""
     parser = ScoreParser('tests/sample_score.txt')
     score = parser.parse()
@@ -60,7 +63,7 @@ def test_parse_space_marker():
                 return
 
 
-def test_total_lines():
+def test_total_lines() -> None:
     """Test total number of lines parsed."""
     parser = ScoreParser('tests/sample_score.txt')
     score = parser.parse()
@@ -69,7 +72,7 @@ def test_total_lines():
     print(f"[OK] Total lines test passed: {len(score.lines)} lines")
 
 
-def test_invalid_keys_filtered():
+def test_invalid_keys_filtered() -> None:
     """Test that invalid keys are filtered out."""
     parser = ScoreParser('tests/sample_score.txt')
     score = parser.parse()

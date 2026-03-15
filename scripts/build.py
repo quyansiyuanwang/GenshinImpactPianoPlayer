@@ -13,7 +13,7 @@ os.chdir(PROJECT_ROOT)
 print(f"Working directory: {PROJECT_ROOT}\n")
 
 
-def clean_build_dirs():
+def clean_build_dirs() -> None:
     """Clean previous build directories."""
     dirs_to_clean = ["build", "dist", "__pycache__"]
     for dir_name in dirs_to_clean:
@@ -28,7 +28,7 @@ def clean_build_dirs():
         os.remove(spec_file)
 
 
-def create_version_file():
+def create_version_file() -> None:
     """Create version info file for Windows executable."""
     version_info = """# UTF-8
 #
@@ -71,7 +71,7 @@ VSVersionInfo(
     print("Created version_info.txt")
 
 
-def build_executable():
+def build_executable() -> None:
     """Build the executable using PyInstaller."""
     print("\n" + "="*60)
     print("Building GIPianoPlayer executable...")
@@ -116,7 +116,7 @@ def build_executable():
     print("\n✅ Build completed successfully!")
 
 
-def create_release_package():
+def create_release_package() -> None:
     """Create a release package with executable and documentation."""
     print("\n" + "="*60)
     print("Creating release package...")
@@ -202,7 +202,7 @@ def create_release_package():
             print(f"   {item.relative_to(release_dir)} ({size:.2f} MB)")
 
 
-def main():
+def main() -> None:
     """Main build process."""
     print("\n" + "="*60)
     print("GIPianoPlayer Build Script")

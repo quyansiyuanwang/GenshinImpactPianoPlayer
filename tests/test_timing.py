@@ -5,12 +5,13 @@ import os
 import time
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.parser import ScoreParser
+from src.parser import ScoreParser, Note
 from src.player import Player
 from src.keyboard_controller import KeyboardController
+from typing import List, Union
 
 
-def main():
+def main() -> None:
     if len(sys.argv) < 2:
         print("Usage: python test_timing.py <score_file>")
         sys.exit(1)
@@ -47,14 +48,17 @@ def main():
             note_time = 0.0
 
             if note.type.value == "single":
-                if note.keys[0] == '/':
+                key = note.keys[0]
+                assert isinstance(key, str), "SINGLE note key must be string"
+                if key == '/':
                     note_desc = "SPACE"
                     note_time = score.config.space_interval_rating * score.config.interval_rating
                 else:
-                    note_desc = f"Single: {note.keys[0]}"
+                    note_desc = f"Single: {key}"
                     note_time = score.config.interval_rating if note_idx < len(line) - 1 else 0
             elif note.type.value == "chord":
-                note_desc = f"Chord: {''.join(note.keys)}"
+                chord_keys = [k for k in note.keys if isinstance(k, str)]
+                note_desc = f"Chord: {''.join(chord_keys)}"
                 note_time = 0.005  # Chord internal delay
             elif note.type.value == "arpeggio":
                 num_keys = len(note.keys)
