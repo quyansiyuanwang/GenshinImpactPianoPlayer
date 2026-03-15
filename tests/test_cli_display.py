@@ -72,19 +72,23 @@ def display_score(score: ParsedScore, current_line: int = 0, current_note: int =
             for note in line:
                 note_text = ""
                 if note.type == NoteType.SINGLE:
-                    if note.keys[0] == '/':
+                    key = note.keys[0]
+                    assert isinstance(key, str), "SINGLE note key must be string"
+                    if key == '/':
                         note_text = "/"
                     else:
-                        note_text = note.keys[0]
+                        note_text = key
                 elif note.type == NoteType.CHORD:
-                    note_text = f"({''.join(note.keys)})"
+                    chord_keys = [k for k in note.keys if isinstance(k, str)]
+                    note_text = f"({''.join(chord_keys)})"
                 elif note.type == NoteType.ARPEGGIO:
                     arp_content = ""
                     for key in note.keys:
                         if isinstance(key, str):
                             arp_content += key
                         else:
-                            arp_content += f"({''.join(key.keys)})"
+                            nested_chord_keys = [k for k in key.keys if isinstance(k, str)]
+                            arp_content += f"({''.join(nested_chord_keys)})"
                     note_text = f"[{arp_content}]"
 
                 if note_idx < current_note:
