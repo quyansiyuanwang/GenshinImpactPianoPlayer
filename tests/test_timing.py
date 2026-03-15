@@ -2,7 +2,8 @@
 
 import sys
 import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from src.parser import ScoreParser
 
@@ -46,12 +47,17 @@ def main() -> None:
             if note.type.value == "single":
                 key = note.keys[0]
                 assert isinstance(key, str), "SINGLE note key must be string"
-                if key == '/':
+                if key == "/":
                     note_desc = "SPACE"
-                    note_time = score.config.space_interval_rating * score.config.interval_rating
+                    note_time = (
+                        score.config.space_interval_rating
+                        * score.config.interval_rating
+                    )
                 else:
                     note_desc = f"Single: {key}"
-                    note_time = score.config.interval_rating if note_idx < len(line) - 1 else 0
+                    note_time = (
+                        score.config.interval_rating if note_idx < len(line) - 1 else 0
+                    )
             elif note.type.value == "chord":
                 chord_keys = [k for k in note.keys if isinstance(k, str)]
                 note_desc = f"Chord: {''.join(chord_keys)}"
@@ -62,11 +68,13 @@ def main() -> None:
                 note_time = (num_keys - 1) * score.config.arpeggio_interval
 
             estimated_time += note_time
-            print(f"  [{note_idx+1}] {note_desc:20s} +{note_time:.3f}s")
+            print(f"  [{note_idx + 1}] {note_desc:20s} +{note_time:.3f}s")
 
         # Line interval
         if line_idx < len(score.lines) - 1:
-            line_interval = score.config.line_interval_rating * score.config.interval_rating
+            line_interval = (
+                score.config.line_interval_rating * score.config.interval_rating
+            )
             estimated_time += line_interval
             if line_interval > 0:
                 print(f"  [END] Line interval: +{line_interval:.3f}s")
@@ -92,7 +100,9 @@ def main() -> None:
         print(f"✓ INTERVAL_RATING ({score.config.interval_rating}s) looks good")
 
     if score.config.arpeggio_interval > 0.03:
-        print(f"⚠ ARPEGGIO_INTERVAL ({score.config.arpeggio_interval}s) might be too high")
+        print(
+            f"⚠ ARPEGGIO_INTERVAL ({score.config.arpeggio_interval}s) might be too high"
+        )
         print("  Recommended: 0.01 - 0.03s for fast arpeggios")
     else:
         print(f"✓ ARPEGGIO_INTERVAL ({score.config.arpeggio_interval}s) looks good")
@@ -105,5 +115,5 @@ def main() -> None:
     print(f"  LINE_INTERVAL_RATING={score.config.line_interval_rating}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -2,7 +2,8 @@
 
 import sys
 import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from src.parser import ScoreParser
 
@@ -14,7 +15,7 @@ def main() -> None:
     print("Testing with sample score...")
     print()
 
-    parser = ScoreParser('tests/sample_score.txt')
+    parser = ScoreParser("tests/sample_score.txt")
     score = parser.parse()
 
     print("Configuration:")
@@ -34,15 +35,15 @@ def main() -> None:
         if note_type == "single":
             key = note.keys[0]
             assert isinstance(key, str), "SINGLE note key must be string"
-            if key == '/':
-                print(f"  [{i+1}] Space (empty note)")
+            if key == "/":
+                print(f"  [{i + 1}] Space (empty note)")
             else:
-                print(f"  [{i+1}] Single: {key}")
+                print(f"  [{i + 1}] Single: {key}")
         elif note_type == "chord":
             chord_keys = [k for k in note.keys if isinstance(k, str)]
-            print(f"  [{i+1}] Chord: {''.join(chord_keys)}")
+            print(f"  [{i + 1}] Chord: {''.join(chord_keys)}")
         elif note_type == "arpeggio":
-            print(f"  [{i+1}] Arpeggio: {len(note.keys)} keys")
+            print(f"  [{i + 1}] Arpeggio: {len(note.keys)} keys")
 
         # Every note has interval after it (except last)
         if i < len(line) - 1:
@@ -58,5 +59,5 @@ def main() -> None:
     print("  [OK] Space '/' is treated as an empty note")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

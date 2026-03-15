@@ -3,7 +3,8 @@
 import sys
 import os
 import time
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from src.parser import ScoreParser
 from src.player import Player, PlayerState
@@ -12,7 +13,7 @@ from src.keyboard_controller import KeyboardController
 
 def test_player_initialization() -> None:
     """Test player initialization."""
-    parser = ScoreParser('tests/sample_score.txt')
+    parser = ScoreParser("tests/sample_score.txt")
     score = parser.parse()
     keyboard = KeyboardController()
     player = Player(score, keyboard)
@@ -24,7 +25,7 @@ def test_player_initialization() -> None:
 
 def test_player_state_transitions() -> None:
     """Test player state transitions."""
-    parser = ScoreParser('tests/sample_score.txt')
+    parser = ScoreParser("tests/sample_score.txt")
     score = parser.parse()
     keyboard = KeyboardController()
     player = Player(score, keyboard)
@@ -56,7 +57,7 @@ def test_player_state_transitions() -> None:
 
 def test_player_speed_adjustment() -> None:
     """Test speed adjustment."""
-    parser = ScoreParser('tests/sample_score.txt')
+    parser = ScoreParser("tests/sample_score.txt")
     score = parser.parse()
     keyboard = KeyboardController()
     player = Player(score, keyboard)
@@ -72,7 +73,7 @@ def test_player_speed_adjustment() -> None:
 
 def test_player_parameter_adjustment() -> None:
     """Test parameter adjustments."""
-    parser = ScoreParser('tests/sample_score.txt')
+    parser = ScoreParser("tests/sample_score.txt")
     score = parser.parse()
     keyboard = KeyboardController()
     player = Player(score, keyboard)
@@ -89,7 +90,7 @@ def test_player_parameter_adjustment() -> None:
     print("✓ Parameter adjustment test passed")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("Running player tests...")
     print()
 

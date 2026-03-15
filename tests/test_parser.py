@@ -2,14 +2,15 @@
 
 import sys
 import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from src.parser import ScoreParser, NoteType
 
 
 def test_parse_config() -> None:
     """Test configuration parsing."""
-    parser = ScoreParser('tests/sample_score.txt')
+    parser = ScoreParser("tests/sample_score.txt")
     score = parser.parse()
 
     assert score.config.version == 1.0
@@ -22,50 +23,50 @@ def test_parse_config() -> None:
 
 def test_parse_single_note() -> None:
     """Test single note parsing."""
-    parser = ScoreParser('tests/sample_score.txt')
+    parser = ScoreParser("tests/sample_score.txt")
     score = parser.parse()
 
     # Find a line with single notes
     for line in score.lines:
         for note in line:
-            if note.type == NoteType.SINGLE and note.keys[0] != '/':
+            if note.type == NoteType.SINGLE and note.keys[0] != "/":
                 assert len(note.keys) == 1
                 key = note.keys[0]
                 assert isinstance(key, str), "SINGLE note key must be string"
-                assert key in 'QWERTYUASDFGHJZXCVBNM'
+                assert key in "QWERTYUASDFGHJZXCVBNM"
                 print(f"[OK] Single note test passed: {key}")
                 return
 
 
 def test_parse_chord() -> None:
     """Test chord parsing."""
-    parser = ScoreParser('tests/sample_score.txt')
+    parser = ScoreParser("tests/sample_score.txt")
     score = parser.parse()
 
     # First note should be a chord (VAH)
     first_note = score.lines[0][0]
     assert first_note.type == NoteType.CHORD
     chord_keys = {k for k in first_note.keys if isinstance(k, str)}
-    assert chord_keys == {'V', 'A', 'H'}
+    assert chord_keys == {"V", "A", "H"}
     print(f"[OK] Chord test passed: {first_note.keys}")
 
 
 def test_parse_space_marker() -> None:
     """Test space marker parsing."""
-    parser = ScoreParser('tests/sample_score.txt')
+    parser = ScoreParser("tests/sample_score.txt")
     score = parser.parse()
 
     # Find a space marker
     for line in score.lines:
         for note in line:
-            if note.type == NoteType.SINGLE and note.keys[0] == '/':
+            if note.type == NoteType.SINGLE and note.keys[0] == "/":
                 print("[OK] Space marker test passed")
                 return
 
 
 def test_total_lines() -> None:
     """Test total number of lines parsed."""
-    parser = ScoreParser('tests/sample_score.txt')
+    parser = ScoreParser("tests/sample_score.txt")
     score = parser.parse()
 
     assert len(score.lines) > 0
@@ -74,11 +75,11 @@ def test_total_lines() -> None:
 
 def test_invalid_keys_filtered() -> None:
     """Test that invalid keys are filtered out."""
-    parser = ScoreParser('tests/sample_score.txt')
+    parser = ScoreParser("tests/sample_score.txt")
     score = parser.parse()
 
     # Check that all keys are valid
-    valid_keys = set('QWERTYUASDFGHJZXCVBNM/')
+    valid_keys = set("QWERTYUASDFGHJZXCVBNM/")
     for line in score.lines:
         for note in line:
             for key in note.keys:
@@ -87,7 +88,7 @@ def test_invalid_keys_filtered() -> None:
     print("[OK] Invalid keys filter test passed")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("Running parser tests...")
     print()
 

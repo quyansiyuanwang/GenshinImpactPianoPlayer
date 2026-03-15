@@ -46,4 +46,3 @@ class KeyboardController:
         for key in keys:
             self.tap_key(key)
             time.sleep(interval)
-

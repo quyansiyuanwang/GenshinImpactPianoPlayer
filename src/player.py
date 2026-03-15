@@ -10,6 +10,7 @@ from src.keyboard_controller import KeyboardController
 
 class PlayerState(Enum):
     """Playback state."""
+
     STOPPED = "stopped"
     PLAYING = "playing"
     PAUSED = "paused"
@@ -52,7 +53,9 @@ class Player:
         # Progress callback
         self._progress_callback: Optional[Callable[[int, int, int, int], None]] = None
 
-    def set_progress_callback(self, callback: Callable[[int, int, int, int], None]) -> None:
+    def set_progress_callback(
+        self, callback: Callable[[int, int, int, int], None]
+    ) -> None:
         """Set callback for progress updates: (current_line, total_lines, current_note, total_notes)."""
         self._progress_callback = callback
 
@@ -106,43 +109,57 @@ class Player:
     def set_speed(self, multiplier: float) -> None:
         """Set playback speed multiplier."""
         if not isinstance(multiplier, (int, float)):
-            raise TypeError(f"Speed multiplier must be numeric, got {type(multiplier).__name__}")
+            raise TypeError(
+                f"Speed multiplier must be numeric, got {type(multiplier).__name__}"
+            )
         self._speed_multiplier = max(0.1, min(10.0, multiplier))
 
     def set_arpeggio_interval(self, interval: float) -> None:
         """Set arpeggio interval in seconds."""
         if not isinstance(interval, (int, float)):
-            raise TypeError(f"Arpeggio interval must be numeric, got {type(interval).__name__}")
+            raise TypeError(
+                f"Arpeggio interval must be numeric, got {type(interval).__name__}"
+            )
         self._arpeggio_interval = max(0.01, min(1.0, interval))
 
     def set_interval_rating(self, rating: float) -> None:
         """Set base interval rating."""
         if not isinstance(rating, (int, float)):
-            raise TypeError(f"Interval rating must be numeric, got {type(rating).__name__}")
+            raise TypeError(
+                f"Interval rating must be numeric, got {type(rating).__name__}"
+            )
         self._interval_rating = max(0.01, min(5.0, rating))
 
     def set_line_interval_rating(self, rating: float) -> None:
         """Set line interval rating (N empty notes between lines)."""
         if not isinstance(rating, (int, float)):
-            raise TypeError(f"Line interval rating must be numeric, got {type(rating).__name__}")
+            raise TypeError(
+                f"Line interval rating must be numeric, got {type(rating).__name__}"
+            )
         self._line_interval_rating = max(0.0, min(10.0, rating))
 
     def set_space_interval_rating(self, rating: float) -> None:
         """Set space interval rating (multiplier for rest notes)."""
         if not isinstance(rating, (int, float)):
-            raise TypeError(f"Space interval rating must be numeric, got {type(rating).__name__}")
+            raise TypeError(
+                f"Space interval rating must be numeric, got {type(rating).__name__}"
+            )
         self._space_interval_rating = max(0.0, min(10.0, rating))
 
     def set_empty_line_interval_rating(self, rating: float) -> None:
         """Set empty line interval rating (N empty notes for empty lines)."""
         if not isinstance(rating, (int, float)):
-            raise TypeError(f"Empty line interval rating must be numeric, got {type(rating).__name__}")
+            raise TypeError(
+                f"Empty line interval rating must be numeric, got {type(rating).__name__}"
+            )
         self._empty_line_interval_rating = max(0.0, min(10.0, rating))
 
     def set_segment_length(self, length: int) -> None:
         """Set segment length (N notes per segment, 0 = disabled)."""
         if not isinstance(length, (int, float)):
-            raise TypeError(f"Segment length must be numeric, got {type(length).__name__}")
+            raise TypeError(
+                f"Segment length must be numeric, got {type(length).__name__}"
+            )
         self._segment_length = max(0, min(20, int(length)))
 
     def toggle_sustain(self) -> None:
@@ -230,7 +247,9 @@ class Player:
                 if self._current_line > 0:
                     self._current_line -= 1
                     # Set to last note of previous line (len - 1, not len)
-                    self._current_note = max(0, len(self.score.lines[self._current_line]) - 1)
+                    self._current_note = max(
+                        0, len(self.score.lines[self._current_line]) - 1
+                    )
                 else:
                     self._current_note = 0
                     remaining = 0
@@ -262,7 +281,10 @@ class Player:
             self._play_line(line)
 
             # Line interval (N empty notes between lines)
-            if self._current_line < len(self.score.lines) - 1 and self._line_interval_rating > 0:
+            if (
+                self._current_line < len(self.score.lines) - 1
+                and self._line_interval_rating > 0
+            ):
                 # Simulate N empty notes
                 for _ in range(int(self._line_interval_rating)):
                     if self._stop_event.is_set():
@@ -307,7 +329,7 @@ class Player:
                     self._current_line,
                     len(self.score.lines),
                     self._current_note,
-                    len(line)
+                    len(line),
                 )
 
             # Play the note
@@ -317,7 +339,7 @@ class Player:
             # Except the last note in the line
             if i < len(line) - 1:
                 # Use space_interval_rating for rest notes, normal interval for others
-                if note.type == NoteType.SINGLE and note.keys[0] == ' ':
+                if note.type == NoteType.SINGLE and note.keys[0] == " ":
                     self._sleep(self._interval_rating * self._space_interval_rating)
                 else:
                     self._sleep(self._interval_rating)
@@ -329,7 +351,7 @@ class Player:
             key = note.keys[0]
             assert isinstance(key, str), "SINGLE note key must be string"
 
-            if key == ' ':
+            if key == " ":
                 # Space is an empty note (rest) - no action needed, just skip
                 # In sustain mode, keep holding previous keys
                 pass
@@ -370,7 +392,10 @@ class Player:
                         # For arpeggio in sustain mode, release previous note in THIS arpeggio
                         if idx > 0:
                             prev_key = note.keys[idx - 1]
-                            if isinstance(prev_key, str) and prev_key in self._sustained_keys:
+                            if (
+                                isinstance(prev_key, str)
+                                and prev_key in self._sustained_keys
+                            ):
                                 self.keyboard.release_key(prev_key)
                                 self._sustained_keys.remove(prev_key)
                                 # Small delay after releasing to ensure registration
@@ -386,7 +411,10 @@ class Player:
                         # Release previous arpeggio note before nested chord
                         if idx > 0:
                             prev_key = note.keys[idx - 1]
-                            if isinstance(prev_key, str) and prev_key in self._sustained_keys:
+                            if (
+                                isinstance(prev_key, str)
+                                and prev_key in self._sustained_keys
+                            ):
                                 self.keyboard.release_key(prev_key)
                                 self._sustained_keys.remove(prev_key)
                                 # Small delay after releasing to ensure registration
@@ -394,7 +422,10 @@ class Player:
                             elif isinstance(prev_key, Note):
                                 # Previous was also a chord, release all its keys
                                 for pk in prev_key.keys:
-                                    if isinstance(pk, str) and pk in self._sustained_keys:
+                                    if (
+                                        isinstance(pk, str)
+                                        and pk in self._sustained_keys
+                                    ):
                                         self.keyboard.release_key(pk)
                                         self._sustained_keys.remove(pk)
                                 time.sleep(0.02)

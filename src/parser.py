@@ -113,7 +113,9 @@ class ScoreParser:
                 version = 1.0
 
         # Store segment_length for use during line parsing
-        self._segment_length = int(config_dict.get("segment_length", DEFAULT_SEGMENT_LENGTH))
+        self._segment_length = int(
+            config_dict.get("segment_length", DEFAULT_SEGMENT_LENGTH)
+        )
         # Store segment_strict for use during line parsing
         segment_strict_value = config_dict.get("segment_strict", DEFAULT_SEGMENT_STRICT)
         # Convert to boolean: handle both numeric (0.0/1.0) and boolean values
@@ -122,16 +124,28 @@ class ScoreParser:
         else:
             self._segment_strict = bool(segment_strict_value)
         # Store empty_line_interval_rating for use during score parsing
-        self._empty_line_interval_rating = config_dict.get("empty_line_interval_rating", DEFAULT_EMPTY_LINE_INTERVAL_RATING)
+        self._empty_line_interval_rating = config_dict.get(
+            "empty_line_interval_rating", DEFAULT_EMPTY_LINE_INTERVAL_RATING
+        )
 
         return PlayConfig(
             version=version or DEFAULT_VERSION,
-            speed_multiplier=config_dict.get("speed_multiplier", DEFAULT_SPEED_MULTIPLIER),
-            arpeggio_interval=config_dict.get("arpeggio_interval", DEFAULT_ARPEGGIO_INTERVAL),
+            speed_multiplier=config_dict.get(
+                "speed_multiplier", DEFAULT_SPEED_MULTIPLIER
+            ),
+            arpeggio_interval=config_dict.get(
+                "arpeggio_interval", DEFAULT_ARPEGGIO_INTERVAL
+            ),
             interval_rating=config_dict.get("interval_rating", DEFAULT_INTERVAL_RATING),
-            line_interval_rating=config_dict.get("line_interval_rating", DEFAULT_LINE_INTERVAL_RATING),
-            space_interval_rating=config_dict.get("space_interval_rating", DEFAULT_SPACE_INTERVAL_RATING),
-            empty_line_interval_rating=config_dict.get("empty_line_interval_rating", DEFAULT_EMPTY_LINE_INTERVAL_RATING),
+            line_interval_rating=config_dict.get(
+                "line_interval_rating", DEFAULT_LINE_INTERVAL_RATING
+            ),
+            space_interval_rating=config_dict.get(
+                "space_interval_rating", DEFAULT_SPACE_INTERVAL_RATING
+            ),
+            empty_line_interval_rating=config_dict.get(
+                "empty_line_interval_rating", DEFAULT_EMPTY_LINE_INTERVAL_RATING
+            ),
             segment_length=self._segment_length,
             segment_strict=self._segment_strict,
         )
@@ -154,7 +168,7 @@ class ScoreParser:
             # Empty line - only add if empty_line_interval_rating > 0
             if not stripped:
                 # Check if we should preserve empty lines
-                empty_line_rating = getattr(self, '_empty_line_interval_rating', 0)
+                empty_line_rating = getattr(self, "_empty_line_interval_rating", 0)
                 if empty_line_rating > 0:
                     lines.append([Note(type=NoteType.EMPTY_LINE, keys=[])])
                 continue
@@ -207,7 +221,9 @@ class ScoreParser:
                 arpeggio_content = line[i + 1 : end]
                 arpeggio_notes = self._parse_arpeggio(arpeggio_content)
                 if arpeggio_notes:  # Only add if there are valid notes
-                    current_segment.append(Note(type=NoteType.ARPEGGIO, keys=arpeggio_notes))
+                    current_segment.append(
+                        Note(type=NoteType.ARPEGGIO, keys=arpeggio_notes)
+                    )
                 i = end + 1
             elif char.upper() in VALID_KEYS:
                 # Single note - only if it's a valid key
@@ -235,7 +251,10 @@ class ScoreParser:
                 if len(segment) < segment_length:
                     # Pad with empty notes (rests)
                     padding_needed = segment_length - len(segment)
-                    processed_segment = segment + [Note(type=NoteType.SINGLE, keys=[" "])] * padding_needed
+                    processed_segment = (
+                        segment
+                        + [Note(type=NoteType.SINGLE, keys=[" "])] * padding_needed
+                    )
                     processed_segments.append(processed_segment)
                 elif len(segment) > segment_length and segment_strict:
                     # Strict mode: truncate to segment_length
@@ -255,11 +274,11 @@ class ScoreParser:
     def _get_segment_length(self) -> int:
         """Get segment_length from config if available."""
         # This will be called during parsing, need to access from stored config
-        return getattr(self, '_segment_length', 0)
+        return getattr(self, "_segment_length", 0)
 
     def _get_segment_strict(self) -> bool:
         """Get segment_strict from config if available."""
-        return getattr(self, '_segment_strict', False)
+        return getattr(self, "_segment_strict", False)
 
     def _parse_arpeggio(self, content: str) -> List[Union[str, Note]]:
         """Parse arpeggio content which may contain nested chords."""

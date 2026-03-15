@@ -58,21 +58,17 @@ class CLI:
                 return ""
 
         result = ""
-        prev_was_space = False
 
         for note in line:
             if note.type == NoteType.SINGLE:
                 if note.keys[0] == " ":
-                    # Space is a rest - track it
-                    prev_was_space = True
+                    # Space is a rest
                     result += "_ "
                 else:
                     result += f"{note.keys[0]} "
-                    prev_was_space = False
             elif note.type == NoteType.CHORD:
                 chord_keys = [k for k in note.keys if isinstance(k, str)]
                 result += f"({''.join(chord_keys)}) "
-                prev_was_space = False
             elif note.type == NoteType.ARPEGGIO:
                 arp_content = ""
                 for key in note.keys:
@@ -82,7 +78,6 @@ class CLI:
                         nested_chord_keys = [k for k in key.keys if isinstance(k, str)]
                         arp_content += f"({''.join(nested_chord_keys)})"
                 result += f"[{arp_content}] "
-                prev_was_space = False
 
         return result.rstrip()
 
@@ -142,7 +137,9 @@ class CLI:
                 segment_status = (
                     f"{segment_length} notes" if segment_length > 0 else "Disabled"
                 )
-                strict_indicator = " (Strict)" if segment_strict and segment_length > 0 else ""
+                strict_indicator = (
+                    " (Strict)" if segment_strict and segment_length > 0 else ""
+                )
                 config_lines.append(
                     f"  Segment Length: {segment_status}{strict_indicator}  [PgUp/PgDn] Adjust | [{self.hotkeys['toggle_segment_strict']}] Toggle Strict"
                 )
@@ -730,9 +727,13 @@ class CLI:
                     if any(not v for v in config_updated.values()):
                         insert_lines = []
                         if not config_updated["speed_multiplier"]:
-                            insert_lines.append(f"SPEED_MULTIPLIER = {speed_multiplier}")
+                            insert_lines.append(
+                                f"SPEED_MULTIPLIER = {speed_multiplier}"
+                            )
                         if not config_updated["arpeggio_interval"]:
-                            insert_lines.append(f"ARPEGGIO_INTERVAL = {arpeggio_interval}")
+                            insert_lines.append(
+                                f"ARPEGGIO_INTERVAL = {arpeggio_interval}"
+                            )
                         if not config_updated["interval_rating"]:
                             insert_lines.append(f"INTERVAL_RATING = {interval_rating}")
                         if not config_updated["line_interval_rating"]:

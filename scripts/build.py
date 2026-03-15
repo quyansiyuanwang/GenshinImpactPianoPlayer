@@ -6,7 +6,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 # Change to project root directory
 PROJECT_ROOT = Path(__file__).parent.parent
 os.chdir(PROJECT_ROOT)
@@ -73,9 +72,9 @@ VSVersionInfo(
 
 def build_executable() -> None:
     """Build the executable using PyInstaller."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Building GIPianoPlayer executable...")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     # PyInstaller command
     cmd = [
@@ -100,7 +99,7 @@ def build_executable() -> None:
         # Icon (if you have one)
         # "--icon=icon.ico",
         # Entry point
-        "main.py"
+        "main.py",
     ]
 
     print("Running PyInstaller with command:")
@@ -118,9 +117,9 @@ def build_executable() -> None:
 
 def create_release_package() -> None:
     """Create a release package with executable and documentation."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Creating release package...")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     release_dir = Path("release")
     if release_dir.exists():
@@ -204,9 +203,9 @@ def create_release_package() -> None:
 
 def main() -> None:
     """Main build process."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("GIPianoPlayer Build Script")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     # Step 1: Clean
     print("Step 1: Cleaning previous builds...")
@@ -226,9 +225,9 @@ def main() -> None:
     print("Step 4: Creating release package...")
     create_release_package()
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("🎉 Build process completed successfully!")
-    print("="*60)
+    print("=" * 60)
     print("\nYou can find the release package in the 'release/' directory.")
     print("The standalone executable is: release/GIPianoPlayer.exe")
     print("\n⚠️  Remember: The program must be run with administrator privileges!")
@@ -243,5 +242,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n\n❌ Build failed with error: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
