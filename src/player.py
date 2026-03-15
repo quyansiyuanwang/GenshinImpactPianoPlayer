@@ -108,58 +108,30 @@ class Player:
 
     def set_speed(self, multiplier: float) -> None:
         """Set playback speed multiplier."""
-        if not isinstance(multiplier, (int, float)):
-            raise TypeError(
-                f"Speed multiplier must be numeric, got {type(multiplier).__name__}"
-            )
         self._speed_multiplier = max(0.1, min(10.0, multiplier))
 
     def set_arpeggio_interval(self, interval: float) -> None:
         """Set arpeggio interval in seconds."""
-        if not isinstance(interval, (int, float)):
-            raise TypeError(
-                f"Arpeggio interval must be numeric, got {type(interval).__name__}"
-            )
         self._arpeggio_interval = max(0.01, min(1.0, interval))
 
     def set_interval_rating(self, rating: float) -> None:
         """Set base interval rating."""
-        if not isinstance(rating, (int, float)):
-            raise TypeError(
-                f"Interval rating must be numeric, got {type(rating).__name__}"
-            )
         self._interval_rating = max(0.01, min(5.0, rating))
 
     def set_line_interval_rating(self, rating: float) -> None:
         """Set line interval rating (N empty notes between lines)."""
-        if not isinstance(rating, (int, float)):
-            raise TypeError(
-                f"Line interval rating must be numeric, got {type(rating).__name__}"
-            )
         self._line_interval_rating = max(0.0, min(10.0, rating))
 
     def set_space_interval_rating(self, rating: float) -> None:
         """Set space interval rating (multiplier for rest notes)."""
-        if not isinstance(rating, (int, float)):
-            raise TypeError(
-                f"Space interval rating must be numeric, got {type(rating).__name__}"
-            )
         self._space_interval_rating = max(0.0, min(10.0, rating))
 
     def set_empty_line_interval_rating(self, rating: float) -> None:
         """Set empty line interval rating (N empty notes for empty lines)."""
-        if not isinstance(rating, (int, float)):
-            raise TypeError(
-                f"Empty line interval rating must be numeric, got {type(rating).__name__}"
-            )
         self._empty_line_interval_rating = max(0.0, min(10.0, rating))
 
     def set_segment_length(self, length: int | float) -> None:
         """Set segment length (N notes per segment, 0 = disabled)."""
-        if not isinstance(length, (int, float)):
-            raise TypeError(
-                f"Segment length must be numeric, got {type(length).__name__}"
-            )
         self._segment_length = max(0, min(20, int(length)))
 
     def toggle_sustain(self) -> None:
@@ -321,6 +293,10 @@ class Player:
             # Wait if paused
             self._pause_event.wait()
 
+            # Skip notes before current position (for skip support during playback)
+            if i < self._current_note:
+                continue
+
             self._current_note = i
 
             # Update progress for every note to show real-time playback
@@ -405,7 +381,7 @@ class Player:
                         self._sustained_keys.append(key)
                     else:
                         self.keyboard.tap_key(key)
-                elif isinstance(key, Note):
+                else:  # isinstance(key, Note) and it's a nested chord
                     # Nested chord within arpeggio
                     if self._sustain_enabled:
                         # Release previous arpeggio note before nested chord
