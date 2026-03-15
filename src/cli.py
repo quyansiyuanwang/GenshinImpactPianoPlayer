@@ -719,7 +719,7 @@ class CLI:
                     config_section = False
                     # Insert missing configs ONCE when we first exit config section
                     if any(not v for v in config_updated.values()):
-                        insert_lines = []
+                        insert_lines: list[str] = []
                         if not config_updated["speed_multiplier"]:
                             insert_lines.append(
                                 f"SPEED_MULTIPLIER = {speed_multiplier}"
