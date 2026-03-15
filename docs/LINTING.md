@@ -21,7 +21,25 @@
 
 ### 方式 1: 使用便捷脚本
 
-**Windows:**
+**Windows (PowerShell):**
+```powershell
+# 检查所有问题（不修复）
+.\scripts\lint.ps1 check
+
+# 检查并自动修复
+.\scripts\lint.ps1 fix
+
+# 只运行 Ruff
+.\scripts\lint.ps1 ruff
+
+# 只运行格式化
+.\scripts\lint.ps1 format
+
+# 只运行 MyPy
+.\scripts\lint.ps1 mypy
+```
+
+**Windows (CMD):**
 ```bash
 # 检查所有问题（不修复）
 scripts\lint.bat check
