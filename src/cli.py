@@ -66,7 +66,7 @@ class CLI:
         self.display_active = False
         self.last_display_time = 0.0  # float for time.time()
         self.original_content = ""
-        self.stdscr = None  # curses screen object
+        self.stdscr: Any | None = None  # curses screen object
         self._failed_hotkeys: list[
             tuple[str, str]
         ] = []  # Track failed hotkey registrations
@@ -245,9 +245,12 @@ class CLI:
             row += 1
             self.stdscr.addstr(row, 0, "=" * separator_width)
             row += 1
-            self.stdscr.addstr(
-                row, 0, f"File: {os.path.basename(self.file_path)}"[: width - 1]
+            display_file_name = (
+                os.path.basename(self.file_path)
+                .encode("ascii", "replace")
+                .decode("ascii")
             )
+            self.stdscr.addstr(row, 0, f"File: {display_file_name}"[: width - 1])
             row += 1
             self.stdscr.addstr(row, 0, f"Lines: {len(self.score.lines)}"[: width - 1])
             row += 2
@@ -363,9 +366,7 @@ class CLI:
                 # Show warning if hotkeys failed to register
                 if self._failed_hotkeys:
                     log_path = getattr(self, "_error_log_path", "hotkey_errors.log")
-                    warning_msg = (
-                        f"⚠ {len(self._failed_hotkeys)} hotkeys failed! See: {log_path}"
-                    )
+                    warning_msg = f"Warning: {len(self._failed_hotkeys)} hotkeys failed! See: {log_path}"
                     self.stdscr.addstr(
                         row,
                         0,
@@ -401,15 +402,15 @@ class CLI:
             # Refresh screen
             self.stdscr.refresh()
 
-        except curses.error:
-            # Handle specific curses errors gracefully
-            # Most common: writing outside screen bounds when terminal is resized
-            # We'll catch and ignore these, as they'll be fixed on next refresh
+        except (curses.error, UnicodeError):
+            # A narrow terminal or unsupported glyph can interrupt a late draw.
+            # The finally block still presents the content already rendered.
             pass
-        except Exception:
-            # Unexpected error - log it but don't crash
-            # In production, this should use proper logging
-            pass
+        finally:
+            try:
+                self.stdscr.refresh()
+            except curses.error:
+                pass
 
     def _format_note(self, note: Note) -> str:
         """Format a single note for display."""
