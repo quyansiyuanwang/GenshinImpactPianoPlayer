@@ -210,7 +210,7 @@ def create_release_package() -> None:
     for item in release_dir.rglob("*"):
         if item.is_file():
             size = item.stat().st_size / 1024 / 1024  # MB
-            print(f"   {item.relative_to(release_dir)} ({size:.2f} MB)")
+            print(f"   {size:.2f} MB")
 
 
 def main() -> None:
