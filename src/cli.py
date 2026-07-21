@@ -131,7 +131,7 @@ class CLI:
                 if self.player
                 else (0, len(self.score.lines))
             )
-            current_note = self.player._current_note if self.player else 0
+            current_note = self.player.get_position()[1] if self.player else 0
 
             separator_width = min(width - 1, 100)
 

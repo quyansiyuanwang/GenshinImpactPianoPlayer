@@ -318,6 +318,16 @@ class Player:
         with self._control_lock:
             return (self._current_line(), len(self.score.lines))
 
+    def get_position(self) -> tuple[int, int]:
+        """Get the next pending position as zero-based line and note indexes."""
+        with self._control_lock:
+            if not self._positions:
+                return (0, 0)
+            if self._cursor >= len(self._positions):
+                line, note = self._positions[-1]
+                return (line, note + 1)
+            return self._positions[self._cursor]
+
     def _current_line(self) -> int:
         """Return the cursor line, including a stable value at score end."""
         if not self._positions:
