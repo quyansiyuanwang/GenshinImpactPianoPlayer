@@ -52,7 +52,10 @@ def main() -> None:
 
     results = {}
 
-    # 1. Ruff check (linting)
+    # 1. Unit tests
+    results["Pytest"] = run_command("Pytest", ["uv", "run", "pytest"])
+
+    # 2. Ruff check (linting)
     if check_only:
         results["Ruff Lint"] = run_command(
             "Ruff Lint", ["uv", "run", "ruff", "check", "src/", "tests/", "scripts/"]
@@ -63,7 +66,7 @@ def main() -> None:
             ["uv", "run", "ruff", "check", "--fix", "src/", "tests/", "scripts/"],
         )
 
-    # 2. Ruff format (formatting)
+    # 3. Ruff format (formatting)
     if check_only:
         results["Ruff Format"] = run_command(
             "Ruff Format",
@@ -74,7 +77,7 @@ def main() -> None:
             "Ruff Format", ["uv", "run", "ruff", "format", "src/", "tests/", "scripts/"]
         )
 
-    # 3. MyPy (type checking) - always check only
+    # 4. MyPy (type checking) - always check only
     results["MyPy"] = run_command("MyPy", ["uv", "run", "mypy", ".", "--strict"])
 
     # Summary

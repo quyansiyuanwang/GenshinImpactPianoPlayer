@@ -1,103 +1,82 @@
-"""Tests for the player engine."""
+"""Playback navigation and state tests."""
 
-import sys
-import os
 import time
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from src.parser import ScoreParser
-from src.player import Player, PlayerState
-from src.keyboard_controller import KeyboardController
+from src.application.state.state_machine import PlayerState
+from src.core.player.player import Player
+from tests.conftest import FakeKeyboard, make_score
 
 
-def test_player_initialization() -> None:
-    """Test player initialization."""
-    parser = ScoreParser("tests/sample_score.txt")
-    score = parser.parse()
-    keyboard = KeyboardController()
-    player = Player(score, keyboard)
+def test_seek_forward_interrupts_wait_and_continues_at_target() -> None:
+    keyboard = FakeKeyboard()
+    player = Player(make_score([["Q", "W"], ["E", "R"]], interval=2.0), keyboard)
 
-    assert player.get_state() == PlayerState.STOPPED
-    assert player.get_progress() == (0, len(score.lines))
-    print("✓ Player initialization test passed")
-
-
-def test_player_state_transitions() -> None:
-    """Test player state transitions."""
-    parser = ScoreParser("tests/sample_score.txt")
-    score = parser.parse()
-    keyboard = KeyboardController()
-    player = Player(score, keyboard)
-
-    # Start playing
     player.play()
-    time.sleep(0.1)
-    assert player.get_state() == PlayerState.PLAYING
-    print("✓ Play state test passed")
+    assert keyboard.wait_for(("tap", ("Q",)))
+    started = time.monotonic()
+    player.skip_forward_notes()
 
-    # Pause
-    player.pause()
-    time.sleep(0.1)
-    assert player.get_state() == PlayerState.PAUSED
-    print("✓ Pause state test passed")
-
-    # Resume
-    player.resume()
-    time.sleep(0.1)
-    assert player.get_state() == PlayerState.PLAYING
-    print("✓ Resume state test passed")
-
-    # Stop
+    assert keyboard.wait_for(("tap", ("E",)))
+    assert time.monotonic() - started < 0.5
     player.stop()
-    time.sleep(0.1)
+
+
+def test_seek_backward_while_paused_replays_target_note() -> None:
+    keyboard = FakeKeyboard()
+    player = Player(make_score([["Q", "W"]], interval=2.0), keyboard)
+
+    player.play()
+    assert keyboard.wait_for(("tap", ("Q",)))
+    player.pause()
+    player.skip_backward_notes()
+    player.resume()
+
+    deadline = time.monotonic() + 1.0
+    while (
+        keyboard.operations.count(("tap", ("Q",))) < 2 and time.monotonic() < deadline
+    ):
+        time.sleep(0.01)
+    assert keyboard.operations.count(("tap", ("Q",))) == 2
+    player.stop()
+
+
+def test_navigation_crosses_lines_and_clamps_at_boundaries() -> None:
+    player = Player(make_score([["Q", "W"], ["E"]]), FakeKeyboard())
+
+    player.skip_backward_notes()
+    assert player.get_progress() == (0, 2)
+    player.skip_forward_notes(2)
+    assert player.get_progress() == (1, 2)
+    player.skip_backward_line()
+    assert player.get_progress() == (0, 2)
+    player.skip_forward_line()
+    assert player.get_progress() == (1, 2)
+    player.skip_forward_notes(100)
+    assert player.get_progress() == (2, 2)
+
+
+def test_seek_releases_sustained_keys() -> None:
+    keyboard = FakeKeyboard()
+    player = Player(make_score([["Q", "W"]], interval=2.0), keyboard)
+    player.toggle_sustain()
+    player.play()
+
+    assert keyboard.wait_for(("press", ("Q",)))
+    player.skip_forward_notes()
+    assert keyboard.wait_for(("release", ("Q",)))
+    player.stop()
+
+
+def test_playback_stops_and_resets_after_last_note() -> None:
+    keyboard = FakeKeyboard()
+    player = Player(make_score([["Q"]], interval=0.01), keyboard)
+
+    player.play()
+    assert keyboard.wait_for(("tap", ("Q",)))
+    deadline = time.monotonic() + 1.0
+    while player.get_state() != PlayerState.STOPPED and time.monotonic() < deadline:
+        time.sleep(0.01)
+
     assert player.get_state() == PlayerState.STOPPED
-    print("✓ Stop state test passed")
-
-
-def test_player_speed_adjustment() -> None:
-    """Test speed adjustment."""
-    parser = ScoreParser("tests/sample_score.txt")
-    score = parser.parse()
-    keyboard = KeyboardController()
-    player = Player(score, keyboard)
-
-    player.set_speed(2.0)
-    assert player._speed_multiplier == 2.0
-
-    player.set_speed(0.5)
-    assert player._speed_multiplier == 0.5
-
-    print("✓ Speed adjustment test passed")
-
-
-def test_player_parameter_adjustment() -> None:
-    """Test parameter adjustments."""
-    parser = ScoreParser("tests/sample_score.txt")
-    score = parser.parse()
-    keyboard = KeyboardController()
-    player = Player(score, keyboard)
-
-    player.set_arpeggio_interval(0.1)
-    assert player._arpeggio_interval == 0.1
-
-    player.set_space_interval_rating(2.0)
-    assert player._space_interval_rating == 2.0
-
-    player.set_line_interval_rating(1.5)
-    assert player._line_interval_rating == 1.5
-
-    print("✓ Parameter adjustment test passed")
-
-
-if __name__ == "__main__":
-    print("Running player tests...")
-    print()
-
-    test_player_initialization()
-    test_player_state_transitions()
-    test_player_speed_adjustment()
-    test_player_parameter_adjustment()
-
-    print()
-    print("All tests passed!")
+    assert player.get_progress() == (0, 1)
+    assert keyboard.operations.count(("tap", ("Q",))) == 1

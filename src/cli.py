@@ -2,18 +2,57 @@
 
 import time
 import os
+import sys
 import curses
 import keyboard
-from typing import Optional, Dict, List, Any
-from src.parser import ScoreParser, NoteType, ParsedScore, Note
-from src.player import Player, PlayerState
-from src.keyboard_controller import KeyboardController
-from src.constants import (
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
+from src.core.parser.score_parser import ScoreParser, NoteType, ParsedScore, Note
+from src.core.player.player import Player
+from src.application.state.state_machine import PlayerState as PSM_State
+from src.core.keyboard.controller import KeyboardController
+from src.application.config.constants import (
     DEFAULT_HOTKEYS,
     SKIP_SMALL,
     SKIP_LARGE,
     DISPLAY_REFRESH_RATE,
 )
+
+
+def get_log_file_path(filename: str) -> str:
+    """Get the path for a log file.
+
+    In packaged app, saves to exe directory or user's temp directory.
+    In development, saves to current directory.
+
+    Args:
+        filename: Name of the log file
+
+    Returns:
+        Full path to the log file
+    """
+    # Try to save next to the executable
+    if getattr(sys, "frozen", False):
+        # Running as packaged exe
+        exe_dir = Path(sys.executable).parent
+        log_path = exe_dir / filename
+
+        # Test if we can write to exe directory
+        try:
+            with open(log_path, "a", encoding="utf-8") as f:
+                f.write("")
+            return str(log_path)
+        except (PermissionError, OSError):
+            # Can't write to exe directory, use temp directory
+            import tempfile
+
+            temp_dir = Path(tempfile.gettempdir()) / "GIPianoPlayer"
+            temp_dir.mkdir(exist_ok=True)
+            log_path = temp_dir / filename
+            return str(log_path)
+    else:
+        # Running in development, use current directory
+        return filename
 
 
 class CLI:
@@ -28,6 +67,9 @@ class CLI:
         self.last_display_time = 0.0  # float for time.time()
         self.original_content = ""
         self.stdscr = None  # curses screen object
+        self._failed_hotkeys: list[
+            tuple[str, str]
+        ] = []  # Track failed hotkey registrations
 
         # Use custom hotkeys or defaults
         self.hotkeys = hotkeys if hotkeys is not None else DEFAULT_HOTKEYS.copy()
@@ -147,6 +189,8 @@ class CLI:
             footer_lines += 1  # blank after config
             if keyboard is not None:
                 footer_lines += 3  # control lines (now 3 lines instead of 2)
+                if self._failed_hotkeys:
+                    footer_lines += 1  # warning line
 
             header_lines = 5  # title, separator, file, lines, blank
 
@@ -316,6 +360,20 @@ class CLI:
             row += 1
 
             if keyboard is not None:
+                # Show warning if hotkeys failed to register
+                if self._failed_hotkeys:
+                    log_path = getattr(self, "_error_log_path", "hotkey_errors.log")
+                    warning_msg = (
+                        f"⚠ {len(self._failed_hotkeys)} hotkeys failed! See: {log_path}"
+                    )
+                    self.stdscr.addstr(
+                        row,
+                        0,
+                        warning_msg[: width - 1],
+                        curses.color_pair(2),  # Red color for warning
+                    )
+                    row += 1
+
                 self.stdscr.addstr(
                     row,
                     0,
@@ -388,8 +446,12 @@ class CLI:
         # Hide cursor
         curses.curs_set(0)
 
-        # Non-blocking input
+        # Non-blocking input - but we don't actually use curses for input
+        # since we use keyboard library for global hotkeys
         stdscr.nodelay(True)
+
+        # Disable curses input to avoid interfering with keyboard library
+        stdscr.keypad(False)
 
         # Initialize player
         keyboard_controller = KeyboardController()
@@ -399,6 +461,12 @@ class CLI:
         else:
             # This shouldn't happen as we check in run(), but handle gracefully
             return
+
+        # Load and initialize plugins
+        from src.plugins.core.loader import load_plugins_from_config, initialize_plugins
+
+        load_plugins_from_config()
+        initialize_plugins(player=self.player, cli=self)
 
         # Setup keyboard shortcuts if available
         if keyboard is not None:
@@ -417,15 +485,8 @@ class CLI:
         last_refresh = time.time()
         try:
             while self.running:
-                # Check for key events (including resize)
-                try:
-                    key = stdscr.getch()
-                    if key == curses.KEY_RESIZE:
-                        # Terminal was resized, force redraw
-                        curses.resize_term(*stdscr.getmaxyx())
-                        self._display_score()
-                except curses.error:
-                    pass
+                # Don't use curses getch() - it interferes with keyboard library
+                # The keyboard library handles all input via global hooks
 
                 # Periodic refresh (every 0.5 seconds) to catch any missed updates
                 current_time = time.time()
@@ -441,45 +502,309 @@ class CLI:
         if self.player:
             self.player.stop()
 
+        # Stop hotkey handler
+        if hasattr(self, "_hotkey_handler"):
+            try:
+                self._hotkey_handler.stop()
+            except Exception:
+                pass
+
         self.display_active = False
 
-    def _setup_hotkeys(self) -> None:
-        """Setup keyboard shortcuts using hotkey registry."""
+    def _setup_hotkeys_legacy(self) -> None:
+        """Setup keyboard shortcuts using scan code based hotkey handler."""
         if keyboard is None:
             return
 
-        # Import and register default hotkeys
-        from src.default_hotkeys import register_default_hotkeys
-        from src.hotkey_registry import get_hotkey_registry
+        from src.ui.cli.input.hotkey_handler import HotkeyHandler, SCAN_CODES
+        from src.plugins.core.manager import get_plugin_manager
 
-        register_default_hotkeys(self)
+        # Create hotkey handler
+        self._hotkey_handler = HotkeyHandler()
 
-        # Get all registered hotkeys and bind them
+        # Get plugin instances
+        plugin_manager = get_plugin_manager()
+        speed_plugin = plugin_manager.get_plugin("speed_adjustment")
+        interval_plugin = plugin_manager.get_plugin("interval_adjustment")
+        segment_plugin = plugin_manager.get_plugin("segment_adjustment")
+        mode_plugin = plugin_manager.get_plugin("mode_toggle")
+
+        failed_hotkeys: list[tuple[str, str]] = []
+
+        # Get log file paths
+        error_log = get_log_file_path("hotkey_errors.log")
+        debug_log = get_log_file_path("hotkey_debug.log")
+
+        try:
+            # Log where files are being saved
+            with open(error_log, "a", encoding="utf-8") as f:
+                f.write(f"\n{'=' * 70}\n")
+                f.write(f"Hotkey Setup - {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"Log file location: {error_log}\n")
+                f.write(f"{'=' * 70}\n\n")
+
+            # Playback control (function keys work fine)
+            self._hotkey_handler.register_by_name("f8", self.toggle_play_pause)
+            self._hotkey_handler.register_by_name("f2", self.quit)
+            self._hotkey_handler.register_by_name("f5", self.reload)
+            self._hotkey_handler.register_by_name("f6", self.reparse)
+
+            # Speed control - use SCAN CODES for symbol keys
+            if speed_plugin:
+                # Use scan codes for = and - keys (more reliable in packaged apps)
+                # Fix lambda closure issue by using default arguments
+                with open(error_log, "a", encoding="utf-8") as f:
+                    f.write("Registering speed hotkeys with scan codes...\n")
+                    f.write(f"  equals (scan {SCAN_CODES['equals']})\n")
+                    f.write(f"  minus (scan {SCAN_CODES['minus']})\n")
+
+                def speed_up_callback(log: str = debug_log, cli: "CLI" = self) -> None:
+                    try:
+                        with open(log, "a", encoding="utf-8") as f:
+                            f.write("Speed UP callback called\n")
+                        # Get plugin dynamically to handle reload
+                        from src.plugins.core.manager import get_plugin_manager
+
+                        plugin = get_plugin_manager().get_plugin("speed_adjustment")
+                        if plugin:
+                            # Log current speed before adjustment
+                            old_speed = (
+                                cli.player._speed_multiplier if cli.player else None
+                            )
+                            with open(log, "a", encoding="utf-8") as f:
+                                f.write(f"  Current speed: {old_speed}\n")
+
+                            plugin.adjust_speed(0.01)  # type: ignore
+
+                            # Log new speed after adjustment
+                            new_speed = (
+                                cli.player._speed_multiplier if cli.player else None
+                            )
+                            with open(log, "a", encoding="utf-8") as f:
+                                f.write(f"  New speed: {new_speed}\n")
+
+                            cli._display_score()  # Force display refresh
+                            with open(log, "a", encoding="utf-8") as f:
+                                f.write("Speed UP executed successfully\n")
+                        else:
+                            with open(log, "a", encoding="utf-8") as f:
+                                f.write("Speed UP error: plugin not found\n")
+                    except Exception as e:
+                        with open(log, "a", encoding="utf-8") as f:
+                            f.write(f"Speed UP error: {e}\n")
+                            import traceback
+
+                            f.write(traceback.format_exc())
+
+                def speed_down_callback(
+                    log: str = debug_log, cli: "CLI" = self
+                ) -> None:
+                    try:
+                        with open(log, "a", encoding="utf-8") as f:
+                            f.write("Speed DOWN callback called\n")
+                        # Get plugin dynamically to handle reload
+                        from src.plugins.core.manager import get_plugin_manager
+
+                        plugin = get_plugin_manager().get_plugin("speed_adjustment")
+                        if plugin:
+                            plugin.adjust_speed(-0.01)  # type: ignore
+                            cli._display_score()  # Force display refresh
+                            with open(log, "a", encoding="utf-8") as f:
+                                f.write("Speed DOWN executed successfully\n")
+                        else:
+                            with open(log, "a", encoding="utf-8") as f:
+                                f.write("Speed DOWN error: plugin not found\n")
+                    except Exception as e:
+                        with open(log, "a", encoding="utf-8") as f:
+                            f.write(f"Speed DOWN error: {e}\n")
+
+                self._hotkey_handler.register_by_scan_code(
+                    SCAN_CODES["equals"], speed_up_callback
+                )
+                self._hotkey_handler.register_by_scan_code(
+                    SCAN_CODES["minus"], speed_down_callback
+                )
+
+            # Interval control - use SCAN CODES
+            if interval_plugin:
+                with open(error_log, "a", encoding="utf-8") as f:
+                    f.write("Registering interval hotkeys with scan codes...\n")
+                    f.write(f"  left_bracket (scan {SCAN_CODES['left_bracket']})\n")
+                    f.write(f"  right_bracket (scan {SCAN_CODES['right_bracket']})\n")
+                    f.write(f"  comma (scan {SCAN_CODES['comma']})\n")
+                    f.write(f"  period (scan {SCAN_CODES['period']})\n")
+
+                # Brackets
+                def make_interval_callback(
+                    method_name: str, delta: float, cli_ref: "CLI" = self
+                ) -> Callable[[], None]:
+                    def callback() -> None:
+                        from src.plugins.core.manager import get_plugin_manager
+
+                        plugin = get_plugin_manager().get_plugin("interval_adjustment")
+                        if plugin:
+                            getattr(plugin, method_name)(delta)
+                            cli_ref._display_score()
+
+                    return callback
+
+                self._hotkey_handler.register_by_scan_code(
+                    SCAN_CODES["left_bracket"],
+                    make_interval_callback("adjust_arpeggio", -0.01),
+                )
+                self._hotkey_handler.register_by_scan_code(
+                    SCAN_CODES["right_bracket"],
+                    make_interval_callback("adjust_arpeggio", 0.01),
+                )
+                # Comma and period
+                self._hotkey_handler.register_by_scan_code(
+                    SCAN_CODES["comma"],
+                    make_interval_callback("adjust_interval", -0.01),
+                )
+                self._hotkey_handler.register_by_scan_code(
+                    SCAN_CODES["period"],
+                    make_interval_callback("adjust_interval", 0.01),
+                )
+                # Arrow keys (these work fine with names)
+                self._hotkey_handler.register_by_name(
+                    "up", make_interval_callback("adjust_line_interval", 1)
+                )
+                self._hotkey_handler.register_by_name(
+                    "down", make_interval_callback("adjust_line_interval", -1)
+                )
+
+            # Mode toggles
+            if mode_plugin:
+
+                def toggle_sustain_callback(cli_ref: "CLI" = self) -> None:
+                    from src.plugins.core.manager import get_plugin_manager
+
+                    plugin = get_plugin_manager().get_plugin("mode_toggle")
+                    if plugin:
+                        getattr(plugin, "toggle_sustain")()
+                        cli_ref._display_score()
+
+                self._hotkey_handler.register_by_name("f7", toggle_sustain_callback)
+
+            # Segment control
+            if segment_plugin:
+
+                def make_segment_callback(
+                    method_name: str, delta: int | None = None, cli_ref: "CLI" = self
+                ) -> Callable[[], None]:
+                    def callback() -> None:
+                        from src.plugins.core.manager import get_plugin_manager
+
+                        plugin = get_plugin_manager().get_plugin("segment_adjustment")
+                        if plugin:
+                            if delta is not None:
+                                getattr(plugin, method_name)(delta)
+                            else:
+                                getattr(plugin, method_name)()
+                            cli_ref._display_score()
+
+                    return callback
+
+                self._hotkey_handler.register_by_name(
+                    "page up", make_segment_callback("adjust_segment_length", 1)
+                )
+                self._hotkey_handler.register_by_name(
+                    "page down", make_segment_callback("adjust_segment_length", -1)
+                )
+                self._hotkey_handler.register_by_name(
+                    "f4", make_segment_callback("toggle_segment_strict")
+                )
+
+            # Navigation
+            self._hotkey_handler.register_by_name("left", self.skip_backward)
+            self._hotkey_handler.register_by_name("right", self.skip_forward)
+            self._hotkey_handler.register_by_name("ctrl+left", self.skip_backward_large)
+            self._hotkey_handler.register_by_name("ctrl+right", self.skip_forward_large)
+
+            # Register plugin hotkeys from registry
+            from src.ui.cli.input.hotkey_registry import get_hotkey_registry
+
+            registry = get_hotkey_registry()
+            for key, callback in registry.get_all_hotkeys().items():
+                try:
+                    with open(error_log, "a", encoding="utf-8") as f:
+                        f.write(f"Registering plugin hotkey: {key}\n")
+                    self._hotkey_handler.register_by_name(key, callback)
+                except Exception as e:
+                    with open(error_log, "a", encoding="utf-8") as f:
+                        f.write(f"Failed to register plugin hotkey {key}: {e}\n")
+
+            # Start the hotkey handler
+            self._hotkey_handler.start()
+
+            # Log success and show user where to find logs
+            with open(error_log, "a", encoding="utf-8") as f:
+                f.write("=== Hotkey Setup (Scan Code Method) ===\n")
+                f.write("Successfully registered hotkeys using scan codes\n")
+                f.write(
+                    "Symbol keys (=, -, [, ], ,, .) use scan codes for reliability\n\n"
+                )
+
+            # Store log paths for display
+            self._error_log_path = error_log
+            self._debug_log_path = debug_log
+
+        except Exception as e:
+            failed_hotkeys.append(("hotkey_setup", str(e)))
+            try:
+                with open(error_log, "a", encoding="utf-8") as f:
+                    f.write(f"Failed to setup hotkeys: {e}\n")
+            except Exception:
+                pass
+
+        # Store failed hotkeys for later reference
+        self._failed_hotkeys = failed_hotkeys
+
+    def _setup_hotkeys(self) -> None:
+        """Register CLI and plugin bindings with one global hook."""
+        if keyboard is None:
+            return
+
+        from src.ui.cli.input.default_hotkeys import register_default_hotkeys
+        from src.ui.cli.input.hotkey_handler import HotkeyHandler
+        from src.ui.cli.input.hotkey_registry import get_hotkey_registry
+
         registry = get_hotkey_registry()
+        register_default_hotkeys(self, registry)
+        handler = HotkeyHandler()
+        failures: list[tuple[str, str]] = []
         for key, callback in registry.get_all_hotkeys().items():
             try:
-                keyboard.add_hotkey(key, callback)
-            except Exception as e:
-                print(f"Warning: Failed to register hotkey '{key}': {e}")
+                handler.register(key, callback)
+            except (TypeError, ValueError) as error:
+                failures.append((key, str(error)))
 
-    def _toggle_play_pause(self) -> None:
+        if not failures:
+            try:
+                handler.start()
+                self._hotkey_handler = handler
+            except (OSError, RuntimeError) as error:
+                failures.append(("global hook", str(error)))
+        self._failed_hotkeys = failures
+
+    def toggle_play_pause(self) -> None:
         """Toggle between play and pause."""
         if not self.player:
             return
 
         state = self.player.get_state()
-        if state == PlayerState.PLAYING:
+        if state == PSM_State.PLAYING:
             self.player.pause()
             # Force display update when paused
             self._display_score()
-        elif state == PlayerState.PAUSED:
+        elif state == PSM_State.PAUSED:
             self.player.resume()
             # Force display update when resumed
             self._display_score()
-        elif state == PlayerState.STOPPED:
+        elif state in (PSM_State.STOPPED, PSM_State.LOADED):
             self.player.play()
 
-    def _adjust_speed(self, delta: float) -> None:
+    def adjust_speed(self, delta: float) -> None:
         """Adjust playback speed."""
         if not self.player:
             return
@@ -490,7 +815,7 @@ class CLI:
         # Always force display update
         self._display_score()
 
-    def _adjust_arpeggio(self, delta: float) -> None:
+    def adjust_arpeggio(self, delta: float) -> None:
         """Adjust arpeggio interval."""
         if not self.player:
             return
@@ -501,7 +826,7 @@ class CLI:
         # Always force display update
         self._display_score()
 
-    def _adjust_interval(self, delta: float) -> None:
+    def adjust_interval(self, delta: float) -> None:
         """Adjust note interval rating."""
         if not self.player:
             return
@@ -512,7 +837,7 @@ class CLI:
         # Always force display update
         self._display_score()
 
-    def _adjust_line_interval(self, delta: float) -> None:
+    def adjust_line_interval(self, delta: float) -> None:
         """Adjust line interval rating (N empty notes)."""
         if not self.player:
             return
@@ -523,7 +848,7 @@ class CLI:
         # Always force display update
         self._display_score()
 
-    def _adjust_space_interval(self, delta: float) -> None:
+    def adjust_space_interval(self, delta: float) -> None:
         """Adjust space interval rating (multiplier for rest notes)."""
         if not self.player:
             return
@@ -534,7 +859,7 @@ class CLI:
         # Always force display update
         self._display_score()
 
-    def _adjust_empty_line_interval(self, delta: float) -> None:
+    def adjust_empty_line_interval(self, delta: float) -> None:
         """Adjust empty line interval rating (N empty notes for empty lines)."""
         if not self.player:
             return
@@ -545,7 +870,7 @@ class CLI:
         # Always force display update
         self._display_score()
 
-    def _adjust_segment_length(self, delta: int) -> None:
+    def adjust_segment_length(self, delta: int) -> None:
         """Adjust segment length (N notes per segment)."""
         if not self.player:
             return
@@ -556,7 +881,7 @@ class CLI:
         # Always force display update
         self._display_score()
 
-    def _skip_backward(self) -> None:
+    def skip_backward(self) -> None:
         """Skip backward by 1 note."""
         if not self.player:
             return
@@ -564,7 +889,7 @@ class CLI:
         # Always force display update
         self._display_score()
 
-    def _skip_forward(self) -> None:
+    def skip_forward(self) -> None:
         """Skip forward by 1 note."""
         if not self.player:
             return
@@ -572,7 +897,7 @@ class CLI:
         # Always force display update
         self._display_score()
 
-    def _skip_backward_large(self) -> None:
+    def skip_backward_large(self) -> None:
         """Skip backward by 1 line."""
         if not self.player:
             return
@@ -580,7 +905,7 @@ class CLI:
         # Always force display update
         self._display_score()
 
-    def _skip_forward_large(self) -> None:
+    def skip_forward_large(self) -> None:
         """Skip forward by 1 line."""
         if not self.player:
             return
@@ -588,11 +913,20 @@ class CLI:
         # Always force display update
         self._display_score()
 
-    def _quit(self) -> None:
+    def quit(self) -> None:
         """Quit the application."""
+        # Cleanup plugins
+        from src.plugins.core.loader import cleanup_plugins
+
+        cleanup_plugins()
+
+        # Stop player
+        if self.player:
+            self.player.stop()
+
         self.running = False
 
-    def _save_config(self) -> None:
+    def save_config(self) -> None:
         """Save current configuration to file."""
         if not self.player or not self.original_content:
             return
@@ -724,28 +1058,44 @@ class CLI:
             # Silently fail - don't disrupt playback
             pass
 
-    def _reload(self) -> None:
+    def reload(self) -> None:
         """Reload the score file from disk (re-read and re-parse)."""
         if not self.player:
             return
 
         try:
             # Stop current playback
-            was_playing = self.player.get_state() == PlayerState.PLAYING
+            was_playing = self.player.get_state() == PSM_State.PLAYING
             self.player.stop()
 
             # Re-read file content
             with open(self.file_path, "r", encoding="utf-8") as f:
                 self.original_content = f.read()
 
-            # Re-parse the score
+            # Re-parse the score (will read config from file)
             parser = ScoreParser(self.file_path)
             self.score = parser.parse()
 
-            # Create new player with new score
+            # Create new player with new score (uses config from parsed score)
             keyboard_controller = KeyboardController()
             self.player = Player(self.score, keyboard_controller)
             self.player.set_progress_callback(self._on_progress)
+
+            # Re-initialize plugins with new player
+            # Force re-initialization by updating context and calling initialize directly
+            from src.plugins.core.manager import get_plugin_manager
+            from src.plugins.core.context import PluginContext
+
+            plugin_manager = get_plugin_manager()
+            new_context = PluginContext(player=self.player, cli=self)
+            plugin_manager.set_context(new_context)
+
+            # Force re-initialize all plugins (not just REGISTERED ones)
+            for plugin in plugin_manager.get_all_plugins():
+                try:
+                    plugin.initialize(new_context)
+                except Exception as e:
+                    print(f"Failed to re-initialize plugin '{plugin.name}': {e}")
 
             # Resume playback if it was playing
             if was_playing:
@@ -758,14 +1108,14 @@ class CLI:
             # Silently fail - don't disrupt
             pass
 
-    def _reparse(self) -> None:
+    def reparse(self) -> None:
         """Reparse the score with current configuration (apply new segment_length, etc.)."""
         if not self.player:
             return
 
         try:
             # Get current playback state and position
-            was_playing = self.player.get_state() == PlayerState.PLAYING
+            was_playing = self.player.get_state() == PSM_State.PLAYING
             current_line, _ = self.player.get_progress()
 
             # Get current configuration
@@ -781,7 +1131,7 @@ class CLI:
             self.player.stop()
 
             # Save current config to file first
-            self._save_config()
+            self.save_config()
 
             # Re-parse the score (will use updated config from file)
             parser = ScoreParser(self.file_path)
@@ -791,6 +1141,22 @@ class CLI:
             keyboard_controller = KeyboardController()
             self.player = Player(self.score, keyboard_controller)
             self.player.set_progress_callback(self._on_progress)
+
+            # Re-initialize plugins with new player
+            # Force re-initialization by updating context and calling initialize directly
+            from src.plugins.core.manager import get_plugin_manager
+            from src.plugins.core.context import PluginContext
+
+            plugin_manager = get_plugin_manager()
+            new_context = PluginContext(player=self.player, cli=self)
+            plugin_manager.set_context(new_context)
+
+            # Force re-initialize all plugins (not just REGISTERED ones)
+            for plugin in plugin_manager.get_all_plugins():
+                try:
+                    plugin.initialize(new_context)
+                except Exception as e:
+                    print(f"Failed to re-initialize plugin '{plugin.name}': {e}")
 
             # Restore configuration (in case file save failed)
             self.player.set_speed(speed_multiplier)
@@ -816,7 +1182,7 @@ class CLI:
             # Silently fail - don't disrupt
             pass
 
-    def _toggle_sustain(self) -> None:
+    def toggle_sustain(self) -> None:
         """Toggle sustain mode on/off."""
         if not self.player:
             return
@@ -825,7 +1191,7 @@ class CLI:
         # Force display update to show new sustain state
         self._display_score()
 
-    def _toggle_segment_strict(self) -> None:
+    def toggle_segment_strict(self) -> None:
         """Toggle segment strict mode on/off."""
         if not self.player:
             return

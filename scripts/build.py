@@ -86,11 +86,25 @@ def build_executable() -> None:
         "--noconfirm",
         # Add hidden imports
         "--hidden-import=keyboard",
+        "--hidden-import=keyboard._winkeyboard",
+        "--hidden-import=keyboard._canonical_names",
+        "--hidden-import=keyboard._keyboard_event",
         "--hidden-import=pynput",
         "--hidden-import=pynput.keyboard",
         "--hidden-import=curses",
         "--hidden-import=_curses",
+        # Plugin system
+        "--hidden-import=src.plugins",
+        "--hidden-import=src.plugins.core",
+        "--hidden-import=src.plugins.core.loader",
+        "--hidden-import=src.plugins.core.manager",
+        "--hidden-import=src.plugins.core.plugin",
+        "--hidden-import=src.plugins.core.context",
+        "--hidden-import=src.plugins.builtin",
+        "--hidden-import=src.plugins.builtin.config",
+        "--hidden-import=src.plugins.builtin.config.config_manager",
         # Add data files
+        "--add-data=plugins.toml;.",  # IMPORTANT: Include plugins config
         "--add-data=tests/sample_score.txt;tests",
         "--add-data=README.md;.",
         "--add-data=docs;docs",
@@ -165,7 +179,7 @@ def create_release_package() -> None:
 
 - **必须以管理员权限运行**，否则快捷键功能无法使用
 - 运行后将焦点切换到目标应用（如游戏窗口）
-- 使用快捷键控制播放（详见 docs/QUICKSTART.md）
+- 使用快捷键控制播放（详见 docs/USAGE.md）
 
 ## 快捷键
 
