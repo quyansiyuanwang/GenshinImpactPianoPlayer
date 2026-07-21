@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-package:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Install dependencies
+        run: uv sync --group dev --frozen
+
+      - name: Test and check quality
+        run: uv run python scripts/lint.py --check
+
+      - name: Build Windows release package
+        run: uv run python scripts/build.py
+
+      - name: Archive release package
+        shell: pwsh
+        run: Compress-Archive -Path release\* -DestinationPath GIPianoPlayer-windows-x64.zip
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GIPianoPlayer-windows-x64
+          path: GIPianoPlayer-windows-x64.zip
+          if-no-files-found: error
+          retention-days: 14

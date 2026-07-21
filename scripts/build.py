@@ -89,8 +89,6 @@ def build_executable() -> None:
         "--hidden-import=keyboard._winkeyboard",
         "--hidden-import=keyboard._canonical_names",
         "--hidden-import=keyboard._keyboard_event",
-        "--hidden-import=pynput",
-        "--hidden-import=pynput.keyboard",
         "--hidden-import=curses",
         "--hidden-import=_curses",
         # Plugin system
@@ -123,10 +121,10 @@ def build_executable() -> None:
     result = subprocess.run(cmd, check=False)
 
     if result.returncode != 0:
-        print("\n❌ Build failed!")
+        print("\nBuild failed.")
         sys.exit(1)
 
-    print("\n✅ Build completed successfully!")
+    print("\nBuild completed successfully!")
 
 
 def create_release_package() -> None:
@@ -145,23 +143,23 @@ def create_release_package() -> None:
     exe_path = Path("dist/GIPianoPlayer.exe")
     if exe_path.exists():
         shutil.copy(exe_path, release_dir / "GIPianoPlayer.exe")
-        print(f"✓ Copied {exe_path}")
+        print(f"Copied {exe_path}")
     else:
-        print(f"❌ Executable not found: {exe_path}")
+        print(f"Executable not found: {exe_path}")
         sys.exit(1)
 
     # Copy documentation
     shutil.copy("README.md", release_dir / "README.md")
-    print("✓ Copied README.md")
+    print("Copied README.md")
 
     # Copy docs directory
     shutil.copytree("docs", release_dir / "docs")
-    print("✓ Copied docs/")
+    print("Copied docs/")
 
     # Copy sample score
     (release_dir / "examples").mkdir()
     shutil.copy("tests/sample_score.txt", release_dir / "examples" / "sample_score.txt")
-    print("✓ Copied sample_score.txt")
+    print("Copied sample_score.txt")
 
     # Create usage instructions
     usage_text = """# GIPianoPlayer - 使用说明
@@ -205,10 +203,10 @@ def create_release_package() -> None:
 
     with open(release_dir / "使用说明.txt", "w", encoding="utf-8") as f:
         f.write(usage_text)
-    print("✓ Created 使用说明.txt")
+    print("Created usage instructions")
 
-    print(f"\n✅ Release package created in: {release_dir.absolute()}")
-    print("\n📦 Package contents:")
+    print(f"\nRelease package created in: {release_dir.absolute()}")
+    print("\nPackage contents:")
     for item in release_dir.rglob("*"):
         if item.is_file():
             size = item.stat().st_size / 1024 / 1024  # MB
@@ -224,12 +222,12 @@ def main() -> None:
     # Step 1: Clean
     print("Step 1: Cleaning previous builds...")
     clean_build_dirs()
-    print("✓ Clean completed\n")
+    print("Clean completed\n")
 
     # Step 2: Create version file
     print("Step 2: Creating version info...")
     create_version_file()
-    print("✓ Version info created\n")
+    print("Version info created\n")
 
     # Step 3: Build executable
     print("Step 3: Building executable...")
@@ -240,21 +238,21 @@ def main() -> None:
     create_release_package()
 
     print("\n" + "=" * 60)
-    print("🎉 Build process completed successfully!")
+    print("Build process completed successfully!")
     print("=" * 60)
     print("\nYou can find the release package in the 'release/' directory.")
     print("The standalone executable is: release/GIPianoPlayer.exe")
-    print("\n⚠️  Remember: The program must be run with administrator privileges!")
+    print("\nRemember: run with administrator privileges when required.")
 
 
 if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("\n\n❌ Build cancelled by user.")
+        print("\n\nBuild cancelled by user.")
         sys.exit(1)
     except Exception as e:
-        print(f"\n\n❌ Build failed with error: {e}")
+        print(f"\n\nBuild failed with error: {e}")
         import traceback
 
         traceback.print_exc()
