@@ -32,8 +32,8 @@ Supported piano keys are `QWERTYU`, `ASDFGHJ`, and `ZXCVBNM`. A single letter is
 | `F2` | Quit |
 | `Left` / `Right` | Move one pending note backward / forward |
 | `Ctrl+Left` / `Ctrl+Right` | Move to the previous / next line |
-| `+` / `-` | Adjust speed |
-| `[` / `]` | Adjust arpeggio interval |
+| `+` / `-` | Adjust speed by 0.01x |
+| `Ctrl+=` / `Ctrl+-` | Adjust speed by 0.1x |
 | `,` / `.` | Adjust note interval |
 | `Up` / `Down` | Adjust line interval |
 | `Page Up` / `Page Down` | Adjust segment length |
@@ -43,3 +43,5 @@ Supported piano keys are `QWERTYU`, `ASDFGHJ`, and `ZXCVBNM`. A single letter is
 | `F5` / `F6` | Reload / reparse the score |
 
 Seeking during playback cancels the current wait, releases sustained keys, and resumes from the selected pending note. At the end of the score, playback stops without replaying the final note.
+
+Arpeggio timing is inferred automatically: each interval is `INTERVAL_RATING / arpeggio element count`. The inferred interval is used only between arpeggio elements; no extra arpeggio delay is added after the final element.

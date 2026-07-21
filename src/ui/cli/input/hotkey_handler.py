@@ -84,6 +84,8 @@ class HotkeyHandler:
 
     def _qualified_name(self, name: str) -> str:
         """Return the registered representation of a key combination."""
+        if name == "+":
+            name = "="
         for modifier in ("ctrl", "shift", "alt"):
             if self._modifier_state[modifier]:
                 return f"{modifier}+{name}"

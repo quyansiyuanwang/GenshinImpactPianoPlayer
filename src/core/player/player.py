@@ -426,17 +426,18 @@ class Player:
 
             self._notify_progress(line_index, note_index, len(line))
 
-            if at_line_end and line_index < len(self.score.lines) - 1:
-                self._wait_repeated(
-                    self._interval_rating,
-                    int(self._line_interval_rating),
-                    generation,
-                )
+            if at_line_end:
+                if line_index < len(self.score.lines) - 1:
+                    self._wait_repeated(
+                        self._interval_rating,
+                        int(self._line_interval_rating),
+                        generation,
+                    )
             elif note.type == NoteType.SINGLE and note.keys[0] == " ":
                 self._wait(
                     self._interval_rating * self._space_interval_rating, generation
                 )
-            else:
+            elif note.type != NoteType.ARPEGGIO:
                 self._wait(self._interval_rating, generation)
 
         with self._control_lock:
@@ -462,6 +463,7 @@ class Player:
             return True
 
         if note.type == NoteType.ARPEGGIO:
+            interval = self._infer_arpeggio_interval(len(note.keys))
             for index, item in enumerate(note.keys):
                 keys = (
                     [item]
@@ -469,11 +471,16 @@ class Player:
                     else [key for key in item.keys if isinstance(key, str)]
                 )
                 self._play_keys(keys)
-                if index < len(note.keys) - 1 and not self._wait(
-                    self._arpeggio_interval, generation
-                ):
+                if index < len(note.keys) - 1 and not self._wait(interval, generation):
                     return False
         return True
+
+    def _infer_arpeggio_interval(self, note_count: int) -> float:
+        """Divide one note duration evenly across an arpeggio's elements."""
+        if note_count <= 0:
+            return 0.0
+        with self._control_lock:
+            return self._interval_rating / note_count
 
     def _play_keys(self, keys: List[str]) -> None:
         """Dispatch a single key or chord, honoring sustain mode."""

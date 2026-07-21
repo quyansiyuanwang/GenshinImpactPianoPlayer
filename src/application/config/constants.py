@@ -11,11 +11,8 @@ DEFAULT_HOTKEYS = {
     # Speed adjustment (use physical keys for better compatibility)
     "speed_up": "=",  # = key (not +)
     "speed_down": "-",
-    "speed_up_large": "shift+=",  # Shift + = (produces +)
-    "speed_down_large": "shift+-",  # Shift + - (produces _)
-    # Arpeggio interval adjustment
-    "arpeggio_faster": "[",
-    "arpeggio_slower": "]",
+    "speed_up_large": "ctrl+=",
+    "speed_down_large": "ctrl+-",
     # Note interval adjustment
     "interval_shorter": ",",  # < key
     "interval_longer": ".",  # > key

@@ -139,7 +139,6 @@ class CLI:
             config_lines: List[str] = []
             if self.player:
                 speed = self.player._speed_multiplier
-                arp_interval = self.player._arpeggio_interval
                 interval = self.player._interval_rating
                 line_interval = self.player._line_interval_rating
                 space_interval = self.player._space_interval_rating
@@ -152,7 +151,7 @@ class CLI:
                     f"  Speed: {speed:.2f}x          [+/- or Ctrl+ +/-] Adjust speed"
                 )
                 config_lines.append(
-                    f"  Arpeggio Interval: {arp_interval:.3f}s   [[/]] Adjust arpeggio"
+                    "  Arpeggio: automatic (note interval / arpeggio note count)"
                 )
                 config_lines.append(
                     f"  Note Interval: {interval:.3f}s       [</> or ,/.] Adjust interval"
