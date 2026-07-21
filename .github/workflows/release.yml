@@ -24,6 +24,17 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ env.RELEASE_TAG }}
+          fetch-depth: 0
+
+      - name: Verify release tag is on main
+        shell: pwsh
+        run: |
+          git fetch origin main
+          $releaseCommit = git rev-list -n 1 $env:RELEASE_TAG
+          git merge-base --is-ancestor $releaseCommit origin/main
+          if ($LASTEXITCODE -ne 0) {
+            throw "Release tags must reference a commit reachable from main."
+          }
 
       - name: Set up Python
         uses: actions/setup-python@v5
