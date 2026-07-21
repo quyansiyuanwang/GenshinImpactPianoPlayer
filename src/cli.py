@@ -66,7 +66,7 @@ class CLI:
         self.display_active = False
         self.last_display_time = 0.0  # float for time.time()
         self.original_content = ""
-        self.stdscr = None  # curses screen object
+        self.stdscr: Any | None = None  # curses screen object
         self._failed_hotkeys: list[
             tuple[str, str]
         ] = []  # Track failed hotkey registrations
@@ -131,7 +131,7 @@ class CLI:
                 if self.player
                 else (0, len(self.score.lines))
             )
-            current_note = self.player._current_note if self.player else 0
+            current_note = self.player.get_position()[1] if self.player else 0
 
             separator_width = min(width - 1, 100)
 
@@ -139,7 +139,6 @@ class CLI:
             config_lines: List[str] = []
             if self.player:
                 speed = self.player._speed_multiplier
-                arp_interval = self.player._arpeggio_interval
                 interval = self.player._interval_rating
                 line_interval = self.player._line_interval_rating
                 space_interval = self.player._space_interval_rating
@@ -152,7 +151,7 @@ class CLI:
                     f"  Speed: {speed:.2f}x          [+/- or Ctrl+ +/-] Adjust speed"
                 )
                 config_lines.append(
-                    f"  Arpeggio Interval: {arp_interval:.3f}s   [[/]] Adjust arpeggio"
+                    "  Arpeggio: automatic (note interval / arpeggio note count)"
                 )
                 config_lines.append(
                     f"  Note Interval: {interval:.3f}s       [</> or ,/.] Adjust interval"
@@ -245,9 +244,12 @@ class CLI:
             row += 1
             self.stdscr.addstr(row, 0, "=" * separator_width)
             row += 1
-            self.stdscr.addstr(
-                row, 0, f"File: {os.path.basename(self.file_path)}"[: width - 1]
+            display_file_name = (
+                os.path.basename(self.file_path)
+                .encode("ascii", "replace")
+                .decode("ascii")
             )
+            self.stdscr.addstr(row, 0, f"File: {display_file_name}"[: width - 1])
             row += 1
             self.stdscr.addstr(row, 0, f"Lines: {len(self.score.lines)}"[: width - 1])
             row += 2
@@ -363,9 +365,7 @@ class CLI:
                 # Show warning if hotkeys failed to register
                 if self._failed_hotkeys:
                     log_path = getattr(self, "_error_log_path", "hotkey_errors.log")
-                    warning_msg = (
-                        f"⚠ {len(self._failed_hotkeys)} hotkeys failed! See: {log_path}"
-                    )
+                    warning_msg = f"Warning: {len(self._failed_hotkeys)} hotkeys failed! See: {log_path}"
                     self.stdscr.addstr(
                         row,
                         0,
@@ -401,15 +401,15 @@ class CLI:
             # Refresh screen
             self.stdscr.refresh()
 
-        except curses.error:
-            # Handle specific curses errors gracefully
-            # Most common: writing outside screen bounds when terminal is resized
-            # We'll catch and ignore these, as they'll be fixed on next refresh
+        except (curses.error, UnicodeError):
+            # A narrow terminal or unsupported glyph can interrupt a late draw.
+            # The finally block still presents the content already rendered.
             pass
-        except Exception:
-            # Unexpected error - log it but don't crash
-            # In production, this should use proper logging
-            pass
+        finally:
+            try:
+                self.stdscr.refresh()
+            except curses.error:
+                pass
 
     def _format_note(self, note: Note) -> str:
         """Format a single note for display."""

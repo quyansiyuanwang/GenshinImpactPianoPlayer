@@ -33,6 +33,18 @@ def test_handler_dispatches_scan_codes_and_combinations() -> None:
     assert calls == ["speed", "line-back"]
 
 
+def test_handler_normalizes_ctrl_plus_to_ctrl_equals() -> None:
+    calls: list[str] = []
+    handler = HotkeyHandler()
+    handler.register("ctrl+=", lambda: calls.append("speed-up-large"))
+
+    handler._on_key_event(_event("ctrl", 29))
+    handler._on_key_event(_event("+", 13))
+    handler._on_key_event(_event("ctrl", 29, "up"))
+
+    assert calls == ["speed-up-large"]
+
+
 def test_handler_unhooks_only_its_own_callback(monkeypatch: pytest.MonkeyPatch) -> None:
     hooks: list[object] = []
     unhooks: list[object] = []

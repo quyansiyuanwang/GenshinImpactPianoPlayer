@@ -25,16 +25,6 @@ def register_default_hotkeys(cli: "CLI", registry: HotkeyRegistry) -> None:
             "Decrease speed by 0.1",
             "speed",
         ),
-        "arpeggio_faster": (
-            lambda: cli.adjust_arpeggio(-0.01),
-            "Decrease arpeggio interval",
-            "timing",
-        ),
-        "arpeggio_slower": (
-            lambda: cli.adjust_arpeggio(0.01),
-            "Increase arpeggio interval",
-            "timing",
-        ),
         "interval_shorter": (
             lambda: cli.adjust_interval(-0.01),
             "Decrease note interval",

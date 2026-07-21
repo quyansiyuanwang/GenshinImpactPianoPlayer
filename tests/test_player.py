@@ -3,8 +3,22 @@
 import time
 
 from src.application.state.state_machine import PlayerState
+from src.core.domain.note import Note, NoteType
+from src.core.domain.score import ParsedScore
 from src.core.player.player import Player
 from tests.conftest import FakeKeyboard, make_score
+
+
+class TimingPlayer(Player):
+    """Player variant that records waits without sleeping."""
+
+    def __init__(self, score: ParsedScore, keyboard: FakeKeyboard) -> None:
+        super().__init__(score, keyboard)
+        self.waits: list[float] = []
+
+    def _wait(self, duration: float, _generation: int) -> bool:
+        self.waits.append(duration)
+        return True
 
 
 def test_seek_forward_interrupts_wait_and_continues_at_target() -> None:
@@ -80,3 +94,21 @@ def test_playback_stops_and_resets_after_last_note() -> None:
     assert player.get_state() == PlayerState.STOPPED
     assert player.get_progress() == (0, 1)
     assert keyboard.operations.count(("tap", ("Q",))) == 1
+
+
+def test_arpeggio_interval_is_inferred_without_a_trailing_wait() -> None:
+    keyboard = FakeKeyboard()
+    player = TimingPlayer(make_score([["Q"]], interval=0.2), keyboard)
+    arpeggio = Note(NoteType.ARPEGGIO, ["X", "N", "A", "G"])
+    player.score.lines = [[arpeggio]]
+    player._positions = [(0, 0)]
+
+    player._playback_loop()
+
+    assert player.waits == [0.05, 0.05, 0.05]
+    assert keyboard.operations == [
+        ("tap", ("X",)),
+        ("tap", ("N",)),
+        ("tap", ("A",)),
+        ("tap", ("G",)),
+    ]
