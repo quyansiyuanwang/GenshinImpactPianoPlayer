@@ -74,6 +74,7 @@ class ConfigManagerPlugin(Plugin):
             empty_line_interval_rating=self.player._empty_line_interval_rating,
             segment_length=self.player._segment_length,
             segment_strict=self.player.get_segment_strict(),
+            arpeggio_auto=self.player.get_arpeggio_auto(),
         )
 
     def _write_config_file(self, path: Path, config: PlayConfig) -> None:
@@ -94,6 +95,9 @@ speed_multiplier = {config.speed_multiplier}
 
 # Arpeggio interval in seconds (0.01 - 1.0)
 arpeggio_interval = {config.arpeggio_interval}
+
+# Infer arpeggio timing from the note interval
+arpeggio_auto = {str(config.arpeggio_auto).lower()}
 
 # Base interval between notes in seconds (0.01 - 5.0)
 interval_rating = {config.interval_rating}
@@ -151,6 +155,7 @@ segment_strict = {str(config.segment_strict).lower()}
                 ),
                 segment_length=config_data.get("segment_length", 0),
                 segment_strict=config_data.get("segment_strict", False),
+                arpeggio_auto=config_data.get("arpeggio_auto", True),
             )
 
             self._config_state.transition_to(ConfigState.LOADED)
@@ -174,6 +179,7 @@ segment_strict = {str(config.segment_strict).lower()}
 
         self.player.set_speed(config.speed_multiplier)
         self.player.set_arpeggio_interval(config.arpeggio_interval)
+        self.player.set_arpeggio_auto(config.arpeggio_auto)
         self.player.set_interval_rating(config.interval_rating)
         self.player.set_line_interval_rating(config.line_interval_rating)
         self.player.set_space_interval_rating(config.space_interval_rating)

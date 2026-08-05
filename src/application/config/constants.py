@@ -16,6 +16,10 @@ DEFAULT_HOTKEYS = {
     # Note interval adjustment
     "interval_shorter": ",",  # < key
     "interval_longer": ".",  # > key
+    # Arpeggio adjustment switches to manual timing mode
+    "arpeggio_shorter": "[",
+    "arpeggio_longer": "]",
+    "toggle_arpeggio_auto": "f3",
     # Line interval adjustment
     "line_interval_less": "down",
     "line_interval_more": "up",
@@ -61,6 +65,7 @@ DISPLAY_LINES_AFTER = 6
 DEFAULT_VERSION = 1.0
 DEFAULT_SPEED_MULTIPLIER = 1.0
 DEFAULT_ARPEGGIO_INTERVAL = 0.05  # seconds
+DEFAULT_ARPEGGIO_AUTO = True
 DEFAULT_INTERVAL_RATING = 0.2  # seconds
 DEFAULT_LINE_INTERVAL_RATING = 1.0  # N empty notes between lines
 DEFAULT_SPACE_INTERVAL_RATING = 1.0  # multiplier for space (rest) notes

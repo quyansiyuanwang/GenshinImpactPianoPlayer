@@ -16,6 +16,7 @@ class PlayConfig:
     empty_line_interval_rating: float  # Empty line interval (N empty notes)
     segment_length: int  # Number of notes per segment (0 = disabled)
     segment_strict: bool  # True = truncate segments, False = pad only
+    arpeggio_auto: bool = True  # Infer interval from note duration when enabled
 
     def validate(self) -> None:
         """Validate configuration values.
@@ -72,4 +73,5 @@ class PlayConfig:
             empty_line_interval_rating=self.empty_line_interval_rating,
             segment_length=self.segment_length,
             segment_strict=self.segment_strict,
+            arpeggio_auto=self.arpeggio_auto,
         )

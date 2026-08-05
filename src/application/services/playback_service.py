@@ -280,6 +280,7 @@ class PlaybackService:
         return {
             "speed_multiplier": self._player._speed_multiplier,
             "arpeggio_interval": self._player._arpeggio_interval,
+            "arpeggio_auto": self._player.get_arpeggio_auto(),
             "interval_rating": self._player._interval_rating,
             "line_interval_rating": self._player._line_interval_rating,
             "space_interval_rating": self._player._space_interval_rating,

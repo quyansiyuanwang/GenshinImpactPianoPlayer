@@ -10,6 +10,7 @@ from src.application.config.constants import (
     DEFAULT_VERSION,
     DEFAULT_SPEED_MULTIPLIER,
     DEFAULT_ARPEGGIO_INTERVAL,
+    DEFAULT_ARPEGGIO_AUTO,
     DEFAULT_INTERVAL_RATING,
     DEFAULT_LINE_INTERVAL_RATING,
     DEFAULT_SPACE_INTERVAL_RATING,
@@ -79,9 +80,16 @@ class ScoreParser:
                 key = key.strip()
                 value = value.strip()
 
-                # Convert to appropriate type
+                normalized_key = key.lower()
+                if normalized_key == "arpeggio_auto":
+                    if value.lower() in {"true", "1", "yes", "on"}:
+                        config_dict[normalized_key] = 1.0
+                    elif value.lower() in {"false", "0", "no", "off"}:
+                        config_dict[normalized_key] = 0.0
+                    continue
+
                 try:
-                    config_dict[key.lower()] = float(value)
+                    config_dict[normalized_key] = float(value)
                 except ValueError:
                     pass
             else:
@@ -130,6 +138,9 @@ class ScoreParser:
             ),
             segment_length=self._segment_length,
             segment_strict=self._segment_strict,
+            arpeggio_auto=bool(
+                config_dict.get("arpeggio_auto", float(DEFAULT_ARPEGGIO_AUTO))
+            ),
         )
 
     def _parse_score(self) -> List[List[Note]]:

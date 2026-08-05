@@ -140,6 +140,8 @@ class CLI:
             if self.player:
                 speed = self.player._speed_multiplier
                 interval = self.player._interval_rating
+                arpeggio_interval = self.player._arpeggio_interval
+                arpeggio_auto = self.player.get_arpeggio_auto()
                 line_interval = self.player._line_interval_rating
                 space_interval = self.player._space_interval_rating
                 empty_line_interval = self.player._empty_line_interval_rating
@@ -150,8 +152,13 @@ class CLI:
                 config_lines.append(
                     f"  Speed: {speed:.2f}x          [+/- or Ctrl+ +/-] Adjust speed"
                 )
+                arpeggio_mode = (
+                    "automatic (note interval / arpeggio note count)"
+                    if arpeggio_auto
+                    else f"manual ({arpeggio_interval:.3f}s)"
+                )
                 config_lines.append(
-                    "  Arpeggio: automatic (note interval / arpeggio note count)"
+                    f"  Arpeggio: {arpeggio_mode}  [[/]] Manual | [{self.hotkeys['toggle_arpeggio_auto']}] Auto"
                 )
                 config_lines.append(
                     f"  Note Interval: {interval:.3f}s       [</> or ,/.] Adjust interval"
@@ -816,7 +823,7 @@ class CLI:
         self._display_score()
 
     def adjust_arpeggio(self, delta: float) -> None:
-        """Adjust arpeggio interval."""
+        """Adjust manual arpeggio interval and leave automatic mode."""
         if not self.player:
             return
 
@@ -824,6 +831,14 @@ class CLI:
         new_interval = current + delta
         self.player.set_arpeggio_interval(new_interval)
         # Always force display update
+        self._display_score()
+
+    def toggle_arpeggio_auto(self) -> None:
+        """Toggle inferred arpeggio timing."""
+        if not self.player:
+            return
+
+        self.player.set_arpeggio_auto(not self.player.get_arpeggio_auto())
         self._display_score()
 
     def adjust_interval(self, delta: float) -> None:
@@ -935,6 +950,7 @@ class CLI:
             # Get current configuration values
             speed_multiplier = self.player._speed_multiplier
             arpeggio_interval = self.player._arpeggio_interval
+            arpeggio_auto = self.player.get_arpeggio_auto()
             interval_rating = self.player._interval_rating
             line_interval_rating = self.player._line_interval_rating
             space_interval_rating = self.player._space_interval_rating
@@ -949,6 +965,7 @@ class CLI:
             config_updated = {
                 "speed_multiplier": False,
                 "arpeggio_interval": False,
+                "arpeggio_auto": False,
                 "interval_rating": False,
                 "line_interval_rating": False,
                 "space_interval_rating": False,
@@ -976,6 +993,8 @@ class CLI:
                             insert_lines.append(
                                 f"ARPEGGIO_INTERVAL = {arpeggio_interval}"
                             )
+                        if not config_updated["arpeggio_auto"]:
+                            insert_lines.append(f"ARPEGGIO_AUTO = {arpeggio_auto}")
                         if not config_updated["interval_rating"]:
                             insert_lines.append(f"INTERVAL_RATING = {interval_rating}")
                         if not config_updated["line_interval_rating"]:
@@ -1014,6 +1033,9 @@ class CLI:
                     elif key == "arpeggio_interval":
                         new_lines.append(f"ARPEGGIO_INTERVAL = {arpeggio_interval}")
                         config_updated["arpeggio_interval"] = True
+                    elif key == "arpeggio_auto":
+                        new_lines.append(f"ARPEGGIO_AUTO = {arpeggio_auto}")
+                        config_updated["arpeggio_auto"] = True
                     elif key == "interval_rating":
                         new_lines.append(f"INTERVAL_RATING = {interval_rating}")
                         config_updated["interval_rating"] = True
@@ -1121,6 +1143,7 @@ class CLI:
             # Get current configuration
             speed_multiplier = self.player._speed_multiplier
             arpeggio_interval = self.player._arpeggio_interval
+            arpeggio_auto = self.player.get_arpeggio_auto()
             interval_rating = self.player._interval_rating
             line_interval_rating = self.player._line_interval_rating
             space_interval_rating = self.player._space_interval_rating
@@ -1161,6 +1184,7 @@ class CLI:
             # Restore configuration (in case file save failed)
             self.player.set_speed(speed_multiplier)
             self.player.set_arpeggio_interval(arpeggio_interval)
+            self.player.set_arpeggio_auto(arpeggio_auto)
             self.player.set_interval_rating(interval_rating)
             self.player.set_line_interval_rating(line_interval_rating)
             self.player.set_space_interval_rating(space_interval_rating)

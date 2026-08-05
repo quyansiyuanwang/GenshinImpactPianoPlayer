@@ -15,6 +15,7 @@ Configuration lines appear before note content:
 ```text
 version = 1.0
 ARPEGGIO_INTERVAL = 0.05
+ARPEGGIO_AUTO = true
 INTERVAL_RATING = 0.2
 SPACE_INTERVAL_RATING = 1.0
 LINE_INTERVAL_RATING = 0.0
@@ -35,6 +36,8 @@ Supported piano keys are `QWERTYU`, `ASDFGHJ`, and `ZXCVBNM`. A single letter is
 | `+` / `-` | Adjust speed by 0.01x |
 | `Ctrl+=` / `Ctrl+-` | Adjust speed by 0.1x |
 | `,` / `.` | Adjust note interval |
+| `[` / `]` | Adjust manual arpeggio interval |
+| `F3` | Toggle automatic arpeggio timing |
 | `Up` / `Down` | Adjust line interval |
 | `Page Up` / `Page Down` | Adjust segment length |
 | `F4` | Toggle strict segment mode |
@@ -44,4 +47,4 @@ Supported piano keys are `QWERTYU`, `ASDFGHJ`, and `ZXCVBNM`. A single letter is
 
 Seeking during playback cancels the current wait, releases sustained keys, and resumes from the selected pending note. At the end of the score, playback stops without replaying the final note.
 
-Arpeggio timing is inferred automatically: each interval is `INTERVAL_RATING / arpeggio element count`. The inferred interval is used only between arpeggio elements; no extra arpeggio delay is added after the final element.
+Arpeggio timing defaults to automatic: each interval is `INTERVAL_RATING / arpeggio element count`. Press `[` or `]` to switch to manual timing and adjust `ARPEGGIO_INTERVAL`; press `F3` to switch back. The selected mode is saved as `ARPEGGIO_AUTO`. Both modes wait only between arpeggio elements, with no extra delay after the final element.
