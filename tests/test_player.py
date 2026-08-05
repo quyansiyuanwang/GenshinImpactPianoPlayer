@@ -5,7 +5,7 @@ import time
 from src.application.state.state_machine import PlayerState
 from src.core.domain.note import Note, NoteType
 from src.core.domain.score import ParsedScore
-from src.core.player.player import Player
+from src.core.player.player import SUSTAIN_RETRIGGER_INTERVAL, Player
 from tests.conftest import FakeKeyboard, make_score
 
 
@@ -112,3 +112,34 @@ def test_arpeggio_interval_is_inferred_without_a_trailing_wait() -> None:
         ("tap", ("A",)),
         ("tap", ("G",)),
     ]
+
+
+def test_repeated_sustained_key_is_released_before_retriggering() -> None:
+    keyboard = FakeKeyboard()
+    player = TimingPlayer(make_score([["Q"]]), keyboard)
+    player.toggle_sustain()
+
+    assert player._play_note(Note(NoteType.SINGLE, ["Q"]), 0)
+    assert player._play_note(Note(NoteType.SINGLE, ["Q"]), 0)
+
+    assert keyboard.operations == [
+        ("press", ("Q",)),
+        ("release", ("Q",)),
+        ("press", ("Q",)),
+    ]
+    assert player.waits == [SUSTAIN_RETRIGGER_INTERVAL]
+
+
+def test_manual_arpeggio_interval_overrides_inferred_timing() -> None:
+    keyboard = FakeKeyboard()
+    player = TimingPlayer(make_score([["Q"]], interval=0.2), keyboard)
+    arpeggio = Note(NoteType.ARPEGGIO, ["X", "N", "A", "G"])
+
+    player.set_arpeggio_interval(0.03)
+    assert not player.get_arpeggio_auto()
+    assert player._play_note(arpeggio, 0)
+
+    assert player.waits == [0.03, 0.03, 0.03]
+    player.set_arpeggio_auto(True)
+    assert player.get_arpeggio_auto()
+    assert player._get_arpeggio_interval(len(arpeggio.keys)) == 0.05

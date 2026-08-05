@@ -35,6 +35,21 @@ def register_default_hotkeys(cli: "CLI", registry: HotkeyRegistry) -> None:
             "Increase note interval",
             "timing",
         ),
+        "arpeggio_shorter": (
+            lambda: cli.adjust_arpeggio(-0.01),
+            "Decrease manual arpeggio interval",
+            "timing",
+        ),
+        "arpeggio_longer": (
+            lambda: cli.adjust_arpeggio(0.01),
+            "Increase manual arpeggio interval",
+            "timing",
+        ),
+        "toggle_arpeggio_auto": (
+            cli.toggle_arpeggio_auto,
+            "Toggle automatic arpeggio timing",
+            "timing",
+        ),
         "line_interval_less": (
             lambda: cli.adjust_line_interval(-1),
             "Decrease line interval",

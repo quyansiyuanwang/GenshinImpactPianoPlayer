@@ -8,6 +8,7 @@ from src.application.config.constants import (
     DEFAULT_VERSION,
     DEFAULT_SPEED_MULTIPLIER,
     DEFAULT_ARPEGGIO_INTERVAL,
+    DEFAULT_ARPEGGIO_AUTO,
     DEFAULT_INTERVAL_RATING,
     DEFAULT_LINE_INTERVAL_RATING,
     DEFAULT_SPACE_INTERVAL_RATING,
@@ -50,6 +51,7 @@ class ConfigManager:
             empty_line_interval_rating=DEFAULT_EMPTY_LINE_INTERVAL_RATING,
             segment_length=DEFAULT_SEGMENT_LENGTH,
             segment_strict=DEFAULT_SEGMENT_STRICT,
+            arpeggio_auto=DEFAULT_ARPEGGIO_AUTO,
         )
 
     def load_from_file(self, file_path: Path) -> PlayConfig:
@@ -98,6 +100,7 @@ class ConfigManager:
             ),
             segment_length=config_data.get("segment_length", DEFAULT_SEGMENT_LENGTH),
             segment_strict=config_data.get("segment_strict", DEFAULT_SEGMENT_STRICT),
+            arpeggio_auto=config_data.get("arpeggio_auto", DEFAULT_ARPEGGIO_AUTO),
         )
 
         # Validate configuration
@@ -150,6 +153,9 @@ speed_multiplier = {config.speed_multiplier}
 # Arpeggio interval in seconds (0.01 - 1.0)
 arpeggio_interval = {config.arpeggio_interval}
 
+# Infer arpeggio timing from the note interval
+arpeggio_auto = {str(config.arpeggio_auto).lower()}
+
 # Base interval between notes in seconds (0.01 - 5.0)
 interval_rating = {config.interval_rating}
 
@@ -192,6 +198,9 @@ segment_strict = {str(config.segment_strict).lower()}
             ),
             "arpeggio_interval": kwargs.get(
                 "arpeggio_interval", self._current_config.arpeggio_interval
+            ),
+            "arpeggio_auto": kwargs.get(
+                "arpeggio_auto", self._current_config.arpeggio_auto
             ),
             "interval_rating": kwargs.get(
                 "interval_rating", self._current_config.interval_rating

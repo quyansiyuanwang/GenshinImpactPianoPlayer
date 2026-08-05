@@ -17,6 +17,8 @@ PlayerState = PSM_State
 
 __all__ = ["Player", "PlayerState"]
 
+SUSTAIN_RETRIGGER_INTERVAL = 0.02
+
 
 class KeyboardControllerProtocol(Protocol):
     """Keyboard operations used by the playback engine."""
@@ -76,6 +78,7 @@ class Player:
         # Playback parameters (can be adjusted in real-time)
         self._speed_multiplier = score.config.speed_multiplier
         self._arpeggio_interval = score.config.arpeggio_interval
+        self._arpeggio_auto = score.config.arpeggio_auto
         self._interval_rating = score.config.interval_rating
         self._line_interval_rating = score.config.line_interval_rating
         self._space_interval_rating = score.config.space_interval_rating
@@ -174,8 +177,20 @@ class Player:
         self._speed_multiplier = max(0.1, min(10.0, multiplier))
 
     def set_arpeggio_interval(self, interval: float) -> None:
-        """Set arpeggio interval in seconds."""
-        self._arpeggio_interval = max(0.01, min(1.0, interval))
+        """Set a manual arpeggio interval in seconds."""
+        with self._control_lock:
+            self._arpeggio_interval = max(0.01, min(1.0, interval))
+            self._arpeggio_auto = False
+
+    def set_arpeggio_auto(self, enabled: bool) -> None:
+        """Choose inferred or manually configured arpeggio timing."""
+        with self._control_lock:
+            self._arpeggio_auto = enabled
+
+    def get_arpeggio_auto(self) -> bool:
+        """Return whether arpeggio timing is inferred automatically."""
+        with self._control_lock:
+            return self._arpeggio_auto
 
     def set_interval_rating(self, rating: float) -> None:
         """Set base interval rating."""
@@ -455,22 +470,24 @@ class Player:
             key = note.keys[0]
             assert isinstance(key, str), "SINGLE note key must be string"
             if key != " ":
-                self._play_keys([key])
+                return self._play_keys([key], generation)
             return True
 
         if note.type == NoteType.CHORD:
-            self._play_keys([key for key in note.keys if isinstance(key, str)])
-            return True
+            return self._play_keys(
+                [key for key in note.keys if isinstance(key, str)], generation
+            )
 
         if note.type == NoteType.ARPEGGIO:
-            interval = self._infer_arpeggio_interval(len(note.keys))
+            interval = self._get_arpeggio_interval(len(note.keys))
             for index, item in enumerate(note.keys):
                 keys = (
                     [item]
                     if isinstance(item, str)
                     else [key for key in item.keys if isinstance(key, str)]
                 )
-                self._play_keys(keys)
+                if not self._play_keys(keys, generation):
+                    return False
                 if index < len(note.keys) - 1 and not self._wait(interval, generation):
                     return False
         return True
@@ -482,10 +499,17 @@ class Player:
         with self._control_lock:
             return self._interval_rating / note_count
 
-    def _play_keys(self, keys: List[str]) -> None:
+    def _get_arpeggio_interval(self, note_count: int) -> float:
+        """Return the inferred or manually selected arpeggio spacing."""
+        with self._control_lock:
+            if not self._arpeggio_auto:
+                return self._arpeggio_interval
+        return self._infer_arpeggio_interval(note_count)
+
+    def _play_keys(self, keys: List[str], generation: int) -> bool:
         """Dispatch a single key or chord, honoring sustain mode."""
         if not keys:
-            return
+            return True
 
         with self._sustain_lock:
             sustain_enabled = self._sustain_enabled
@@ -494,10 +518,22 @@ class Player:
                 self.keyboard.tap_key(keys[0])
             else:
                 self.keyboard.press_keys_simultaneously(keys)
-            return
+            return True
 
-        self._release_sustained_keys()
         with self._sustain_lock:
+            repeats_held_key = bool(set(keys).intersection(self._sustained_keys))
+        self._release_sustained_keys()
+        if repeats_held_key and not self._wait(SUSTAIN_RETRIGGER_INTERVAL, generation):
+            return False
+
+        with self._sustain_lock:
+            if not self._sustain_enabled:
+                if len(keys) == 1:
+                    self.keyboard.tap_key(keys[0])
+                else:
+                    self.keyboard.press_keys_simultaneously(keys)
+                return True
             for key in keys:
                 self.keyboard.press_key(key)
                 self._sustained_keys.append(key)
+        return True

@@ -172,6 +172,7 @@ def render_config(context: DisplayContext, cli: "CLI") -> list[str]:
     # Get config values
     speed = context.player._speed_multiplier
     arp_interval = context.player._arpeggio_interval
+    arpeggio_auto = context.player.get_arpeggio_auto()
     interval = context.player._interval_rating
     line_interval = context.player._line_interval_rating
     space_interval = context.player._space_interval_rating
@@ -182,7 +183,8 @@ def render_config(context: DisplayContext, cli: "CLI") -> list[str]:
 
     # Format config lines
     lines.append(f"  Speed: {speed:.2f}x              [+/-] Adjust speed")
-    lines.append(f"  Arpeggio: {arp_interval:.3f}s        [[/]] Adjust arpeggio")
+    arpeggio_timing = "automatic" if arpeggio_auto else f"manual {arp_interval:.3f}s"
+    lines.append(f"  Arpeggio: {arpeggio_timing}  [[/]] Manual | [F3] Auto")
     lines.append(f"  Note Interval: {interval:.3f}s    [,/.] Adjust interval")
     lines.append(f"  Line Interval: {line_interval:.0f} notes  [Up/Down] Adjust line")
     lines.append(
