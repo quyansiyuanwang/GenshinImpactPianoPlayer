@@ -403,6 +403,62 @@ class Player:
 
         return True
 
+    def _next_pending_keys(self, generation: int) -> List[str]:
+        """Return the first physical keys of the next score event."""
+        with self._control_lock:
+            if self._cursor_generation != generation or self._cursor >= len(
+                self._positions
+            ):
+                return []
+            line_index, note_index = self._positions[self._cursor]
+            note = self.score.lines[line_index][note_index]
+
+        if note.type == NoteType.ARPEGGIO:
+            return self._keys_from_item(note.keys[0]) if note.keys else []
+        return [key for key in note.keys if isinstance(key, str) and key != " "]
+
+    @staticmethod
+    def _keys_from_item(item: str | Note) -> List[str]:
+        """Flatten one arpeggio element into physical keys."""
+        if isinstance(item, str):
+            return [item]
+        return [key for key in item.keys if isinstance(key, str)]
+
+    def _wait_before_next(
+        self, duration: float, generation: int, next_keys: List[str]
+    ) -> bool:
+        """Use an existing gap to release keys that must be retriggered next."""
+        with self._sustain_lock:
+            needs_early_release = bool(
+                set(next_keys).intersection(self._sustained_keys)
+            )
+        if not needs_early_release:
+            return self._wait(duration, generation)
+
+        with self._control_lock:
+            speed = self._speed_multiplier
+        release_lead = min(SUSTAIN_RETRIGGER_INTERVAL, duration / speed)
+        before_release = max(0.0, duration - release_lead * speed)
+        if not self._wait(before_release, generation):
+            return False
+
+        with self._control_lock:
+            if self._cursor_generation != generation:
+                return False
+        self._release_repeated_sustained_keys(next_keys)
+        return self._wait(release_lead * speed, generation)
+
+    def _wait_repeated_before_next(
+        self, duration: float, count: int, generation: int, next_keys: List[str]
+    ) -> bool:
+        """Wait for virtual rests while preserving time for a repeated next key."""
+        for _ in range(max(0, count - 1)):
+            if not self._wait(duration, generation):
+                return False
+        return (
+            self._wait_before_next(duration, generation, next_keys) if count else True
+        )
+
     def _playback_loop(self) -> None:
         """Main playback loop running in separate thread."""
         while not self._stop_event.is_set():
@@ -443,17 +499,24 @@ class Player:
 
             if at_line_end:
                 if line_index < len(self.score.lines) - 1:
-                    self._wait_repeated(
+                    self._wait_repeated_before_next(
                         self._interval_rating,
                         int(self._line_interval_rating),
                         generation,
+                        self._next_pending_keys(generation),
                     )
             elif note.type == NoteType.SINGLE and note.keys[0] == " ":
-                self._wait(
-                    self._interval_rating * self._space_interval_rating, generation
+                self._wait_before_next(
+                    self._interval_rating * self._space_interval_rating,
+                    generation,
+                    self._next_pending_keys(generation),
                 )
             elif note.type != NoteType.ARPEGGIO:
-                self._wait(self._interval_rating, generation)
+                self._wait_before_next(
+                    self._interval_rating,
+                    generation,
+                    self._next_pending_keys(generation),
+                )
 
         with self._control_lock:
             if self._state_machine.current_state == PSM_State.PLAYING:
@@ -481,14 +544,14 @@ class Player:
         if note.type == NoteType.ARPEGGIO:
             interval = self._get_arpeggio_interval(len(note.keys))
             for index, item in enumerate(note.keys):
-                keys = (
-                    [item]
-                    if isinstance(item, str)
-                    else [key for key in item.keys if isinstance(key, str)]
-                )
+                keys = self._keys_from_item(item)
                 if not self._play_keys(keys, generation):
                     return False
-                if index < len(note.keys) - 1 and not self._wait(interval, generation):
+                if index < len(note.keys) - 1 and not self._wait_before_next(
+                    interval,
+                    generation,
+                    self._keys_from_item(note.keys[index + 1]),
+                ):
                     return False
         return True
 
@@ -506,7 +569,7 @@ class Player:
                 return self._arpeggio_interval
         return self._infer_arpeggio_interval(note_count)
 
-    def _play_keys(self, keys: List[str], generation: int) -> bool:
+    def _play_keys(self, keys: List[str], _generation: int) -> bool:
         """Dispatch a single key or chord, honoring sustain mode."""
         if not keys:
             return True
@@ -520,12 +583,7 @@ class Player:
                 self.keyboard.press_keys_simultaneously(keys)
             return True
 
-        with self._sustain_lock:
-            repeats_held_key = bool(set(keys).intersection(self._sustained_keys))
         self._release_sustained_keys()
-        if repeats_held_key and not self._wait(SUSTAIN_RETRIGGER_INTERVAL, generation):
-            return False
-
         with self._sustain_lock:
             if not self._sustain_enabled:
                 if len(keys) == 1:
@@ -537,3 +595,17 @@ class Player:
                 self.keyboard.press_key(key)
                 self._sustained_keys.append(key)
         return True
+
+    def _release_repeated_sustained_keys(self, next_keys: List[str]) -> None:
+        """Release only held keys that the upcoming event must retrigger."""
+        next_key_set = set(next_keys)
+        with self._sustain_lock:
+            keys_to_release = [
+                key for key in self._sustained_keys if key in next_key_set
+            ]
+            self._sustained_keys = [
+                key for key in self._sustained_keys if key not in next_key_set
+            ]
+
+        for key in keys_to_release:
+            self.keyboard.release_key(key)
