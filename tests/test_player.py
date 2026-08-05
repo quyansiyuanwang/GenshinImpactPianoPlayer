@@ -116,18 +116,17 @@ def test_arpeggio_interval_is_inferred_without_a_trailing_wait() -> None:
 
 def test_repeated_sustained_key_is_released_before_retriggering() -> None:
     keyboard = FakeKeyboard()
-    player = TimingPlayer(make_score([["Q"]]), keyboard)
+    player = TimingPlayer(make_score([["Q", "Q"]], interval=0.1), keyboard)
     player.toggle_sustain()
 
-    assert player._play_note(Note(NoteType.SINGLE, ["Q"]), 0)
-    assert player._play_note(Note(NoteType.SINGLE, ["Q"]), 0)
+    player._playback_loop()
 
     assert keyboard.operations == [
         ("press", ("Q",)),
         ("release", ("Q",)),
         ("press", ("Q",)),
     ]
-    assert player.waits == [SUSTAIN_RETRIGGER_INTERVAL]
+    assert player.waits == [0.08, SUSTAIN_RETRIGGER_INTERVAL]
 
 
 def test_manual_arpeggio_interval_overrides_inferred_timing() -> None:
