@@ -81,7 +81,7 @@ class ScoreParser:
                 value = value.strip()
 
                 normalized_key = key.lower()
-                if normalized_key == "arpeggio_auto":
+                if normalized_key in {"arpeggio_auto", "segment_strict"}:
                     if value.lower() in {"true", "1", "yes", "on"}:
                         config_dict[normalized_key] = 1.0
                     elif value.lower() in {"false", "0", "no", "off"}:

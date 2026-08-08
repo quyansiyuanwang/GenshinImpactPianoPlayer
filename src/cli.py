@@ -893,8 +893,9 @@ class CLI:
         current = self.player._segment_length
         new_length = max(0, current + delta)
         self.player.set_segment_length(new_length)
-        # Always force display update
-        self._display_score()
+        # Segment padding/truncation happens at parse time, so reparse to
+        # apply the new length to the score currently loaded in memory.
+        self.reparse()
 
     def skip_backward(self) -> None:
         """Skip backward by 1 note."""
@@ -1221,8 +1222,9 @@ class CLI:
             return
 
         self.player.toggle_segment_strict()
-        # Force display update to show new strict state
-        self._display_score()
+        # Segment padding/truncation happens at parse time, so reparse to
+        # apply the new strict mode to the score currently loaded in memory.
+        self.reparse()
 
     def _on_progress(
         self, current_line: int, total_lines: int, current_note: int, total_notes: int

@@ -114,6 +114,25 @@ def test_arpeggio_interval_is_inferred_without_a_trailing_wait() -> None:
     ]
 
 
+def test_note_after_arpeggio_waits_a_full_interval() -> None:
+    keyboard = FakeKeyboard()
+    player = TimingPlayer(make_score([["Q"]], interval=0.2), keyboard)
+    arpeggio = Note(NoteType.ARPEGGIO, ["X", "N", "A", "G"])
+    player.score.lines = [[arpeggio, Note(NoteType.SINGLE, ["Q"])]]
+    player._positions = [(0, 0), (0, 1)]
+
+    player._playback_loop()
+
+    assert player.waits == [0.05, 0.05, 0.05, 0.05]
+    assert keyboard.operations == [
+        ("tap", ("X",)),
+        ("tap", ("N",)),
+        ("tap", ("A",)),
+        ("tap", ("G",)),
+        ("tap", ("Q",)),
+    ]
+
+
 def test_repeated_sustained_key_is_released_before_retriggering() -> None:
     keyboard = FakeKeyboard()
     player = TimingPlayer(make_score([["Q", "Q"]], interval=0.1), keyboard)
