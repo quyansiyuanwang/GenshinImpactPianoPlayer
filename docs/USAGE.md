@@ -47,4 +47,4 @@ Supported piano keys are `QWERTYU`, `ASDFGHJ`, and `ZXCVBNM`. A single letter is
 
 Seeking during playback cancels the current wait, releases sustained keys, and resumes from the selected pending note. At the end of the score, playback stops without replaying the final note.
 
-Arpeggio timing defaults to automatic: each interval is `INTERVAL_RATING / arpeggio element count`. Press `[` or `]` to switch to manual timing and adjust `ARPEGGIO_INTERVAL`; press `F3` to switch back. The selected mode is saved as `ARPEGGIO_AUTO`. Both modes wait only between arpeggio elements, with no extra delay after the final element.
+Arpeggio timing defaults to automatic: each interval is `INTERVAL_RATING / arpeggio element count`. Press `[` or `]` to switch to manual timing and adjust `ARPEGGIO_INTERVAL`; press `F3` to switch back. The selected mode is saved as `ARPEGGIO_AUTO`. Both modes wait only between arpeggio elements; after the final element, the next score event waits for the regular `INTERVAL_RATING`.
