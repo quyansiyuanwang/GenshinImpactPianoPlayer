@@ -513,7 +513,7 @@ class Player:
                 )
             elif note.type == NoteType.ARPEGGIO:
                 self._wait_before_next(
-                    self._get_arpeggio_interval(len(note.keys)),
+                    self._interval_rating,
                     generation,
                     self._next_pending_keys(generation),
                 )

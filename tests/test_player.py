@@ -114,7 +114,7 @@ def test_arpeggio_interval_is_inferred_without_a_trailing_wait() -> None:
     ]
 
 
-def test_note_after_arpeggio_waits_a_full_interval() -> None:
+def test_note_after_arpeggio_waits_the_regular_note_interval() -> None:
     keyboard = FakeKeyboard()
     player = TimingPlayer(make_score([["Q"]], interval=0.2), keyboard)
     arpeggio = Note(NoteType.ARPEGGIO, ["X", "N", "A", "G"])
@@ -123,7 +123,7 @@ def test_note_after_arpeggio_waits_a_full_interval() -> None:
 
     player._playback_loop()
 
-    assert player.waits == [0.05, 0.05, 0.05, 0.05]
+    assert player.waits == [0.05, 0.05, 0.05, 0.2]
     assert keyboard.operations == [
         ("tap", ("X",)),
         ("tap", ("N",)),
