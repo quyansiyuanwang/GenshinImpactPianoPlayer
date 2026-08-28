@@ -1,6 +1,7 @@
 """CLI display regression tests."""
 
 import curses
+from pathlib import Path
 
 import pytest
 
@@ -119,3 +120,22 @@ def test_separator_fills_as_playback_progresses(
     cli.player.jump_to_end()
     cli._display_score()
     assert full_bars() == 2  # header separator + completed progress bar
+
+
+def test_save_config_rounds_float_dust(tmp_path: Path) -> None:
+    from src.core.parser.score_parser import ScoreParser
+
+    score_path = tmp_path / "dust.qymusic"
+    score_path.write_text("SPEED_MULTIPLIER = 1.0\n---\nQ\n", encoding="utf-8")
+    cli = CLI(str(score_path))
+    cli.original_content = score_path.read_text(encoding="utf-8")
+    cli.score = ScoreParser(str(score_path)).parse()
+    cli.player = Player(cli.score, FakeKeyboard())
+
+    # Simulate dust from repeated +0.01 hotkey adjustments
+    cli.player.set_speed(1.3000000000000003)
+    cli.save_config()
+
+    content = score_path.read_text(encoding="utf-8")
+    assert "SPEED_MULTIPLIER = 1.3\n" in content
+    assert "0000003" not in content

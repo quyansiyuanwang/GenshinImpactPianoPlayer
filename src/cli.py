@@ -46,7 +46,9 @@ class CLI:
         """Show a transient status message on the status line."""
         self._message = message
         self._message_until = time.time() + duration
-        self._display_score()
+        # Throttled: a held key that keeps flashing (e.g. speed limit) must not
+        # flood the terminal; the main loop flushes the request within one tick.
+        self._request_refresh()
 
     def _request_refresh(self) -> None:
         """Throttled refresh for hotkey threads.
@@ -781,14 +783,17 @@ class CLI:
             return
 
         try:
-            # Get current configuration values
-            speed_multiplier = self.player._speed_multiplier
-            arpeggio_interval = self.player._arpeggio_interval
+            # Get current configuration values (rounded so float dust from
+            # repeated hotkey adjustments never reaches the score file)
+            speed_multiplier = round(self.player._speed_multiplier, 6)
+            arpeggio_interval = round(self.player._arpeggio_interval, 6)
             arpeggio_auto = self.player.get_arpeggio_auto()
-            interval_rating = self.player._interval_rating
-            line_interval_rating = self.player._line_interval_rating
-            space_interval_rating = self.player._space_interval_rating
-            empty_line_interval_rating = self.player._empty_line_interval_rating
+            interval_rating = round(self.player._interval_rating, 6)
+            line_interval_rating = round(self.player._line_interval_rating, 6)
+            space_interval_rating = round(self.player._space_interval_rating, 6)
+            empty_line_interval_rating = round(
+                self.player._empty_line_interval_rating, 6
+            )
             segment_length = self.player._segment_length
             segment_strict = self.player.get_segment_strict()
             loop = self.player.get_loop_enabled()
