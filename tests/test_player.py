@@ -205,6 +205,52 @@ def test_note_progress_tracks_the_cursor() -> None:
     assert player.get_note_progress() == (0, 3)
 
 
+def test_range_loop_returns_to_a_when_reaching_b() -> None:
+    keyboard = FakeKeyboard()
+    player = Player(make_score([["Q"], ["W"], ["E"]], interval=0.01), keyboard)
+
+    player.set_range_a()  # cursor 0
+    player.skip_forward_notes(2)
+    player.set_range_b()  # cursor 2 -> range [0, 2)
+    assert player.is_range_active()
+    assert player.get_range() == (0, 2)
+
+    player.play()
+    assert keyboard.wait_for(("tap", ("Q",)))
+    assert keyboard.wait_for(("tap", ("W",)))
+
+    deadline = time.monotonic() + 2.0
+    while (
+        keyboard.operations.count(("tap", ("Q",))) < 2 and time.monotonic() < deadline
+    ):
+        time.sleep(0.01)
+
+    assert keyboard.operations.count(("tap", ("Q",))) >= 2
+    # Playback never leaves the range
+    assert keyboard.operations.count(("tap", ("E",))) == 0
+    assert player.get_state() == PlayerState.PLAYING
+
+    # Clearing the range releases playback into the rest of the score
+    player.clear_range()
+    assert not player.is_range_active()
+    assert keyboard.wait_for(("tap", ("E",)))
+    player.stop()
+
+
+def test_range_markers_dropped_when_out_of_order() -> None:
+    player = Player(make_score([["Q", "W"], ["E"]]), FakeKeyboard())
+
+    player.skip_forward_notes(2)
+    player.set_range_a()  # (1, 0)
+    player.jump_to_start()
+    player.set_range_b()  # earlier than A -> stale A dropped
+    assert player.get_range() == (None, 0)
+    assert not player.is_range_active()
+
+    player.clear_range()
+    assert player.get_range() == (None, None)
+
+
 def test_speed_change_applies_to_active_wait() -> None:
     keyboard = FakeKeyboard()
     player = Player(make_score([["Q"]], interval=0.01), keyboard)

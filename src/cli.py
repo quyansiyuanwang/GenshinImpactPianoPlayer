@@ -194,6 +194,18 @@ class CLI:
                 config_lines.append(
                     f"  Line Repeat: {line_repeat}        [{self.hotkeys['toggle_line_loop']}] Toggle"
                 )
+                range_a, range_b = self.player.get_range()
+                if range_a is not None and range_b is not None and range_a < range_b:
+                    range_status = "looping"
+                elif range_a is not None:
+                    range_status = "A set"
+                elif range_b is not None:
+                    range_status = "B set"
+                else:
+                    range_status = "off"
+                config_lines.append(
+                    f"  Range: {range_status}       [{self.hotkeys['set_range_a']}/{self.hotkeys['set_range_b']}] Set | [{self.hotkeys['clear_range']}] Clear"
+                )
 
             # On short terminals drop the less-used rows so the controls stay
             # visible instead of being pushed off-screen.
@@ -1093,6 +1105,38 @@ class CLI:
         self.player.toggle_line_loop()
         state = "ON" if self.player.get_line_loop_enabled() else "OFF"
         self._flash(f"Line repeat {state}")
+
+    def set_range_a(self) -> None:
+        """Mark the current position as the A-B range start."""
+        if not self.player:
+            return
+
+        self.player.set_range_a()
+        line = self.player.get_position()[0] + 1
+        if self.player.is_range_active():
+            self._flash(f"Range start set at line {line} - looping")
+        else:
+            self._flash(f"Range start set at line {line}")
+
+    def set_range_b(self) -> None:
+        """Mark the current position as the A-B range end."""
+        if not self.player:
+            return
+
+        self.player.set_range_b()
+        line = self.player.get_position()[0] + 1
+        if self.player.is_range_active():
+            self._flash(f"Range end set at line {line} - looping")
+        else:
+            self._flash(f"Range end set at line {line}")
+
+    def clear_range(self) -> None:
+        """Clear the A-B range."""
+        if not self.player:
+            return
+
+        self.player.clear_range()
+        self._flash("Range cleared")
 
     def jump_to_start(self) -> None:
         """Jump to the first note of the score."""

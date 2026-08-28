@@ -111,6 +111,10 @@ class Player:
         # Practice aid: repeat the current line until toggled off
         self._line_loop_enabled = False
 
+        # A-B range playback: flattened position indexes, B exclusive
+        self._range_a: Optional[int] = None
+        self._range_b: Optional[int] = None
+
         # Playback thread
         self._playback_thread: Optional[Thread] = None
 
@@ -287,6 +291,42 @@ class Player:
         """Get current line repeat state."""
         with self._control_lock:
             return self._line_loop_enabled
+
+    def set_range_a(self) -> None:
+        """Mark the next note to play as the A-B range start."""
+        with self._control_lock:
+            self._range_a = self._cursor
+            if self._range_b is not None and self._range_b <= self._cursor:
+                # The new start passed the old end; drop the stale end
+                self._range_b = None
+
+    def set_range_b(self) -> None:
+        """Mark the next note to play as the A-B range end (exclusive)."""
+        with self._control_lock:
+            self._range_b = self._cursor
+            if self._range_a is not None and self._cursor <= self._range_a:
+                # The new end did not pass the old start; drop the stale start
+                self._range_a = None
+
+    def clear_range(self) -> None:
+        """Remove the A-B range."""
+        with self._control_lock:
+            self._range_a = None
+            self._range_b = None
+
+    def get_range(self) -> tuple[Optional[int], Optional[int]]:
+        """Get the raw A-B range markers (either may be None)."""
+        with self._control_lock:
+            return (self._range_a, self._range_b)
+
+    def is_range_active(self) -> bool:
+        """Check whether a valid A-B range is currently looping."""
+        with self._control_lock:
+            return bool(
+                self._range_a is not None
+                and self._range_b is not None
+                and self._range_a < self._range_b
+            )
 
     def get_segment_strict(self) -> bool:
         """Get current segment strict mode state."""
@@ -589,11 +629,25 @@ class Player:
                 break
 
             with self._control_lock:
-                if self._cursor >= len(self._positions):
-                    if not (self._loop_enabled and self._positions):
+                wrap_target: Optional[int] = None
+                range_a = self._range_a
+                range_b = self._range_b
+                if (
+                    range_a is not None
+                    and range_b is not None
+                    and range_a < range_b
+                    and self._cursor >= range_b
+                ):
+                    # A-B range: restart from A when playback reaches B
+                    wrap_target = range_a
+                elif self._cursor >= len(self._positions):
+                    if self._loop_enabled and self._positions:
+                        # Loop mode: rewind to the first note and keep playing
+                        wrap_target = 0
+                    else:
                         break
-                    # Loop mode: rewind to the first note and keep playing
-                    self._cursor = 0
+                if wrap_target is not None:
+                    self._cursor = wrap_target
                     self._cursor_generation += 1
                     self._playback_completed = False
                     wrap_generation = self._cursor_generation

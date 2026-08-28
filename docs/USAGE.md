@@ -37,6 +37,8 @@ Supported piano keys are `QWERTYU`, `ASDFGHJ`, and `ZXCVBNM`. A single letter is
 | `Home` / `End` | Jump to the start / end of the score |
 | `Insert` | Toggle looping playback |
 | `Delete` | Toggle repeating the current line |
+| `Ctrl+Home` / `Ctrl+End` | Set A-B range start / end at the current position |
+| `Ctrl+Backspace` | Clear the A-B range |
 | `+` / `-` | Adjust speed by 0.01x |
 | `Ctrl+=` / `Ctrl+-` | Adjust speed by 0.1x |
 | `,` / `.` | Adjust note interval |
@@ -54,6 +56,8 @@ Supported piano keys are `QWERTYU`, `ASDFGHJ`, and `ZXCVBNM`. A single letter is
 Seeking during playback cancels the current wait, releases sustained keys, and resumes from the selected pending note. At the end of the score, playback stops without replaying the final note; the status line reports `FINISHED` until you seek or play again. Speed changes apply to the current wait immediately.
 
 With loop enabled (`Insert`, persisted as `LOOP`), reaching the end restarts from the first note after a line-sized gap instead of stopping; seeking to the end while looping returns to the start. `Delete` toggles line repeat, a practice aid that replays the current line from its first note every time it ends; it is runtime-only and resets when a new score is loaded.
+
+For practicing a section, mark the current position as the range start with `Ctrl+Home` and a later position as the end with `Ctrl+End`: playback then loops between the two markers until you clear the range with `Ctrl+Backspace`. Setting an end before the start (or the reverse) drops the stale marker; the range is runtime-only and is cleared when the score is reparsed.
 
 Empty line interval changes (and segment length or strict mode changes) reparse the score so blank lines are added or removed to match the new setting; the file's configuration header is updated at the same time. Pressing the shifted `+` key works the same as `=` for speed.
 

@@ -42,6 +42,10 @@ DEFAULT_HOTKEYS = {
     # Loop playback
     "toggle_loop": "insert",
     "toggle_line_loop": "delete",
+    # A-B range playback
+    "set_range_a": "ctrl+home",
+    "set_range_b": "ctrl+end",
+    "clear_range": "ctrl+backspace",
     # Reload and reparse
     "reload": "f5",
     "reparse": "f6",
