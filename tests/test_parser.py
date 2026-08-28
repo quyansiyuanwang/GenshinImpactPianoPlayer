@@ -87,3 +87,33 @@ def test_segment_strict_pads_short_segments(tmp_path: Path) -> None:
     assert len(score.lines[0]) == 8
     assert [note.keys for note in score.lines[0][2:4]] == [[" "], [" "]]
     assert [note.keys for note in score.lines[0][5:8]] == [[" "], [" "], [" "]]
+
+
+def test_unclosed_chord_keeps_all_keys(tmp_path: Path) -> None:
+    score_path = tmp_path / "unclosed_chord.qymusic"
+    score_path.write_text("(QW\n", encoding="utf-8")
+
+    score = ScoreParser(str(score_path)).parse()
+
+    assert score.lines[0][0].type == NoteType.CHORD
+    assert score.lines[0][0].keys == ["Q", "W"]
+
+
+def test_unclosed_arpeggio_keeps_all_keys(tmp_path: Path) -> None:
+    score_path = tmp_path / "unclosed_arpeggio.qymusic"
+    score_path.write_text("[QWE\n", encoding="utf-8")
+
+    score = ScoreParser(str(score_path)).parse()
+
+    assert score.lines[0][0].type == NoteType.ARPEGGIO
+    assert score.lines[0][0].keys == ["Q", "W", "E"]
+
+
+def test_parses_files_with_utf8_bom(tmp_path: Path) -> None:
+    score_path = tmp_path / "bom.qymusic"
+    score_path.write_text("\ufeffINTERVAL_RATING = 0.3\n---\nQW\n", encoding="utf-8")
+
+    score = ScoreParser(str(score_path)).parse()
+
+    assert score.config.interval_rating == 0.3
+    assert [note.keys for note in score.lines[0]] == [["Q"], ["W"]]

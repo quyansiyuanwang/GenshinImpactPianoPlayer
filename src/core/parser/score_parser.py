@@ -45,7 +45,8 @@ class ScoreParser:
         Returns:
             Parsed score with configuration and notes
         """
-        with open(self.file_path, encoding="utf-8") as f:
+        # utf-8-sig tolerates files saved with a BOM (common on Windows editors)
+        with open(self.file_path, encoding="utf-8-sig") as f:
             self.content = f.read()
 
         config = self._parse_config()
@@ -309,7 +310,8 @@ class ScoreParser:
             close_char: Closing bracket character
 
         Returns:
-            Index of matching closing bracket
+            Index of matching closing bracket, or the text length when the
+            opening bracket is never closed (consume the rest of the text)
         """
         count = 1
         i = start + 1
@@ -321,4 +323,8 @@ class ScoreParser:
                 count -= 1
             i += 1
 
-        return i - 1
+        if count == 0:
+            return i - 1
+        # Unmatched opening bracket: use the whole remaining text instead of
+        # silently dropping the final character.
+        return len(text)
