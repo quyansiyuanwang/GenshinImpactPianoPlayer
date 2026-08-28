@@ -1,6 +1,7 @@
 """Playback navigation and state tests."""
 
 import time
+from threading import Thread
 
 from src.application.state.state_machine import PlayerState
 from src.core.domain.note import Note, NoteType
@@ -78,6 +79,264 @@ def test_seek_releases_sustained_keys() -> None:
     assert keyboard.wait_for(("press", ("Q",)))
     player.skip_forward_notes()
     assert keyboard.wait_for(("release", ("Q",)))
+    player.stop()
+
+
+def test_skip_backward_line_returns_to_start_of_previous_line() -> None:
+    player = Player(make_score([["Q", "W"], ["E", "R"]]), FakeKeyboard())
+
+    player.skip_forward_notes(3)  # cursor sits on the last note of line 2
+    assert player.get_position() == (1, 1)
+
+    player.skip_backward_line()
+    assert player.get_position() == (0, 0)
+
+    # Already on the first line: stay clamped at the start
+    player.skip_backward_line()
+    assert player.get_position() == (0, 0)
+
+
+def test_playback_reports_finished_and_clears_on_seek() -> None:
+    keyboard = FakeKeyboard()
+    player = Player(make_score([["Q"]], interval=0.01), keyboard)
+
+    player.play()
+    assert keyboard.wait_for(("tap", ("Q",)))
+    deadline = time.monotonic() + 1.0
+    while not player.is_finished() and time.monotonic() < deadline:
+        time.sleep(0.01)
+
+    assert player.is_finished()
+    assert player.get_state() == PlayerState.STOPPED
+
+    # Seeking away from the end clears the finished marker
+    player.skip_forward_notes()
+    assert not player.is_finished()
+    player.stop()
+
+
+def test_loop_restarts_from_the_beginning_after_the_last_note() -> None:
+    keyboard = FakeKeyboard()
+    player = Player(make_score([["Q"], ["W"]], interval=0.01), keyboard)
+    player.toggle_loop()
+    assert player.get_loop_enabled()
+
+    player.play()
+    assert keyboard.wait_for(("tap", ("Q",)))
+    assert keyboard.wait_for(("tap", ("W",)))
+
+    deadline = time.monotonic() + 2.0
+    while (
+        keyboard.operations.count(("tap", ("Q",))) < 2 and time.monotonic() < deadline
+    ):
+        time.sleep(0.01)
+
+    assert keyboard.operations.count(("tap", ("Q",))) >= 2
+    assert player.get_state() == PlayerState.PLAYING
+    assert not player.is_finished()
+    player.stop()
+
+
+def test_loop_disabled_stops_at_the_end() -> None:
+    keyboard = FakeKeyboard()
+    player = Player(make_score([["Q"]], interval=0.01), keyboard)
+    player.set_loop_enabled(True)
+    player.toggle_loop()  # back off
+    assert not player.get_loop_enabled()
+
+    player.play()
+    assert keyboard.wait_for(("tap", ("Q",)))
+    deadline = time.monotonic() + 1.0
+    while player.get_state() != PlayerState.STOPPED and time.monotonic() < deadline:
+        time.sleep(0.01)
+
+    assert player.get_state() == PlayerState.STOPPED
+    assert keyboard.operations.count(("tap", ("Q",))) == 1
+
+
+def test_jump_to_start_and_end() -> None:
+    player = Player(make_score([["Q", "W"], ["E"]]), FakeKeyboard())
+
+    player.skip_forward_notes(2)
+    assert player.get_position() == (1, 0)
+
+    player.jump_to_start()
+    assert player.get_position() == (0, 0)
+
+    player.jump_to_end()
+    assert player.get_progress() == (2, 2)
+
+    player.jump_to_start()
+    assert player.get_position() == (0, 0)
+
+
+def test_line_loop_repeats_the_current_line() -> None:
+    keyboard = FakeKeyboard()
+    player = Player(make_score([["Q", "W"], ["E"]], interval=0.01), keyboard)
+    player.toggle_line_loop()
+    assert player.get_line_loop_enabled()
+
+    player.play()
+    assert keyboard.wait_for(("tap", ("Q",)))
+    assert keyboard.wait_for(("tap", ("W",)))
+
+    deadline = time.monotonic() + 2.0
+    while (
+        keyboard.operations.count(("tap", ("Q",))) < 2 and time.monotonic() < deadline
+    ):
+        time.sleep(0.01)
+
+    assert keyboard.operations.count(("tap", ("Q",))) >= 2
+    # The player never advances into the second line while repeating
+    assert keyboard.operations.count(("tap", ("E",))) == 0
+    assert player.get_state() == PlayerState.PLAYING
+    player.stop()
+
+
+def test_note_progress_tracks_the_cursor() -> None:
+    player = Player(make_score([["Q", "W"], ["E"]]), FakeKeyboard())
+
+    assert player.get_note_progress() == (0, 3)
+    player.skip_forward_notes(2)
+    assert player.get_note_progress() == (2, 3)
+    player.jump_to_end()
+    assert player.get_note_progress() == (3, 3)
+    player.jump_to_start()
+    assert player.get_note_progress() == (0, 3)
+
+
+def test_range_loop_returns_to_a_when_reaching_b() -> None:
+    keyboard = FakeKeyboard()
+    player = Player(make_score([["Q"], ["W"], ["E"]], interval=0.01), keyboard)
+
+    player.set_range_a()  # cursor 0
+    player.skip_forward_notes(2)
+    player.set_range_b()  # cursor 2 -> range [0, 2)
+    assert player.is_range_active()
+    assert player.get_range() == (0, 2)
+
+    player.play()
+    assert keyboard.wait_for(("tap", ("Q",)))
+    assert keyboard.wait_for(("tap", ("W",)))
+
+    deadline = time.monotonic() + 2.0
+    while (
+        keyboard.operations.count(("tap", ("Q",))) < 2 and time.monotonic() < deadline
+    ):
+        time.sleep(0.01)
+
+    assert keyboard.operations.count(("tap", ("Q",))) >= 2
+    # Playback never leaves the range
+    assert keyboard.operations.count(("tap", ("E",))) == 0
+    assert player.get_state() == PlayerState.PLAYING
+
+    # Clearing the range releases playback into the rest of the score
+    player.clear_range()
+    assert not player.is_range_active()
+    assert keyboard.wait_for(("tap", ("E",)))
+    player.stop()
+
+
+def test_range_markers_dropped_when_out_of_order() -> None:
+    player = Player(make_score([["Q", "W"], ["E"]]), FakeKeyboard())
+
+    player.skip_forward_notes(2)
+    player.set_range_a()  # (1, 0)
+    player.jump_to_start()
+    player.set_range_b()  # earlier than A -> stale A dropped
+    assert player.get_range() == (None, 0)
+    assert not player.is_range_active()
+
+    player.clear_range()
+    assert player.get_range() == (None, None)
+
+
+def test_bookmark_returns_to_marked_position() -> None:
+    player = Player(make_score([["Q", "W"], ["E", "R"]]), FakeKeyboard())
+
+    player.skip_forward_notes(3)  # (1, 1)
+    player.set_bookmark()
+    assert player.get_bookmark() == (1, 1)
+
+    player.jump_to_start()
+    assert player.jump_to_bookmark()
+    assert player.get_position() == (1, 1)
+
+
+def test_bookmark_without_mark_or_stale_mark_reports_failure() -> None:
+    player = Player(make_score([["Q", "W"]]), FakeKeyboard())
+
+    assert not player.jump_to_bookmark()  # nothing marked
+
+    player.skip_forward_notes(1)
+    player.set_bookmark()  # (0, 1)
+    other = Player(make_score([["Q"]]), FakeKeyboard())
+    other.restore_bookmark(player.get_bookmark())
+    assert other.get_bookmark() == (0, 1)
+    assert not other.jump_to_bookmark()  # position does not exist here
+    assert other.get_position() == (0, 0)
+
+
+def test_bookmark_at_score_end_is_rejected() -> None:
+    player = Player(make_score([["Q"]]), FakeKeyboard())
+
+    player.jump_to_end()
+    player.set_bookmark()
+    assert player.get_bookmark() is None
+
+
+def test_output_lock_suppresses_keys_but_advances() -> None:
+    keyboard = FakeKeyboard()
+    player = Player(make_score([["Q"]], interval=0.01), keyboard)
+    player.toggle_output_lock()
+    assert player.get_output_locked()
+
+    player.play()
+    deadline = time.monotonic() + 1.0
+    while player.get_state() != PlayerState.STOPPED and time.monotonic() < deadline:
+        time.sleep(0.01)
+
+    # The score played through silently: no keys reached the keyboard
+    assert player.get_state() == PlayerState.STOPPED
+    assert keyboard.operations == []
+
+    # Unlocking restores output from the reset position
+    player.toggle_output_lock()
+    assert not player.get_output_locked()
+    player.play()
+    assert keyboard.wait_for(("tap", ("Q",)))
+    player.stop()
+
+
+def test_output_lock_releases_sustained_keys() -> None:
+    keyboard = FakeKeyboard()
+    player = Player(make_score([["Q"]], interval=0.01), keyboard)
+    player.toggle_sustain()
+
+    player.play()
+    assert keyboard.wait_for(("press", ("Q",)))
+
+    player.toggle_output_lock()
+    assert keyboard.wait_for(("release", ("Q",)))
+    player.stop()
+
+
+def test_speed_change_applies_to_active_wait() -> None:
+    keyboard = FakeKeyboard()
+    player = Player(make_score([["Q"]], interval=0.01), keyboard)
+
+    results: list[bool] = []
+    waiter = Thread(target=lambda: results.append(player._wait(5.0, 0)))
+    waiter.start()
+    time.sleep(0.2)
+
+    started = time.monotonic()
+    player.set_speed(5.0)  # 4.8 unscaled seconds now take ~0.96s
+    waiter.join(timeout=3.0)
+
+    assert not waiter.is_alive()
+    assert results == [True]
+    assert time.monotonic() - started < 4.0
     player.stop()
 
 

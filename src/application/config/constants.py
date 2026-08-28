@@ -37,6 +37,20 @@ DEFAULT_HOTKEYS = {
     "skip_forward": "right",
     "skip_backward_large": "ctrl+left",
     "skip_forward_large": "ctrl+right",
+    "jump_to_start": "home",
+    "jump_to_end": "end",
+    # Loop playback
+    "toggle_loop": "insert",
+    "toggle_line_loop": "delete",
+    # A-B range playback
+    "set_range_a": "ctrl+home",
+    "set_range_b": "ctrl+end",
+    "clear_range": "ctrl+backspace",
+    # Bookmark
+    "set_bookmark": "ctrl+k",
+    "jump_to_bookmark": "ctrl+l",
+    # Key output lock (panic switch)
+    "toggle_output_lock": "f12",
     # Reload and reparse
     "reload": "f5",
     "reparse": "f6",
@@ -55,6 +69,7 @@ SPEED_STEP = 0.01
 SPEED_STEP_LARGE = 0.1
 ARPEGGIO_STEP = 0.01  # seconds
 INTERVAL_STEP = 0.01  # seconds
+SPACE_INTERVAL_STEP = 0.1  # multiplier for rest notes
 
 # Display settings
 DISPLAY_REFRESH_RATE = 0.042  # seconds (~24 FPS)
@@ -74,10 +89,11 @@ DEFAULT_SEGMENT_LENGTH = 0  # 0 = disabled, >0 = force N notes per segment
 DEFAULT_SEGMENT_STRICT = (
     False  # True = truncate segments exceeding length, False = pad only
 )
+DEFAULT_LOOP = False  # True = restart from the beginning after the last note
 
 # Playback limits
 MIN_SPEED = 0.1
-MAX_SPEED = 5.0
+MAX_SPEED = 10.0
 MIN_ARPEGGIO_INTERVAL = 0.01
 MAX_ARPEGGIO_INTERVAL = 1.0
 MIN_INTERVAL = 0.01

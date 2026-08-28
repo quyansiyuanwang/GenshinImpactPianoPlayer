@@ -13,16 +13,24 @@ class ParsedScore:
 
     config: PlayConfig
     lines: List[List[Note]]  # Each line contains multiple notes
+    warnings: List[str]  # Human-readable notes about ignored characters
 
-    def __init__(self, config: PlayConfig, lines: List[List[Note]]) -> None:
+    def __init__(
+        self,
+        config: PlayConfig,
+        lines: List[List[Note]],
+        warnings: List[str] | None = None,
+    ) -> None:
         """Initialize parsed score.
 
         Args:
             config: Playback configuration
             lines: List of lines, each containing notes
+            warnings: Notes about characters the parser skipped
         """
         self.config = config
         self.lines = lines
+        self.warnings = warnings if warnings is not None else []
 
     def get_total_lines(self) -> int:
         """Get total number of lines in the score.

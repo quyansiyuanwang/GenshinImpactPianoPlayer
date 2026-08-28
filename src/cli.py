@@ -2,11 +2,11 @@
 
 import time
 import os
-import sys
 import curses
 import keyboard
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from threading import Lock
+from typing import Any, Dict, List, Optional
 from src.core.parser.score_parser import ScoreParser, NoteType, ParsedScore, Note
 from src.core.player.player import Player
 from src.application.state.state_machine import PlayerState as PSM_State
@@ -17,42 +17,6 @@ from src.application.config.constants import (
     SKIP_LARGE,
     DISPLAY_REFRESH_RATE,
 )
-
-
-def get_log_file_path(filename: str) -> str:
-    """Get the path for a log file.
-
-    In packaged app, saves to exe directory or user's temp directory.
-    In development, saves to current directory.
-
-    Args:
-        filename: Name of the log file
-
-    Returns:
-        Full path to the log file
-    """
-    # Try to save next to the executable
-    if getattr(sys, "frozen", False):
-        # Running as packaged exe
-        exe_dir = Path(sys.executable).parent
-        log_path = exe_dir / filename
-
-        # Test if we can write to exe directory
-        try:
-            with open(log_path, "a", encoding="utf-8") as f:
-                f.write("")
-            return str(log_path)
-        except (PermissionError, OSError):
-            # Can't write to exe directory, use temp directory
-            import tempfile
-
-            temp_dir = Path(tempfile.gettempdir()) / "GIPianoPlayer"
-            temp_dir.mkdir(exist_ok=True)
-            log_path = temp_dir / filename
-            return str(log_path)
-    else:
-        # Running in development, use current directory
-        return filename
 
 
 class CLI:
@@ -70,9 +34,35 @@ class CLI:
         self._failed_hotkeys: list[
             tuple[str, str]
         ] = []  # Track failed hotkey registrations
+        self._message = ""  # Transient status message shown on the status line
+        self._message_until = 0.0  # time.time() after which the message hides
+        self._render_lock = Lock()  # Serializes curses writes across threads
+        self._refresh_requested = False  # Pending throttled refresh from a hotkey
 
         # Use custom hotkeys or defaults
         self.hotkeys = hotkeys if hotkeys is not None else DEFAULT_HOTKEYS.copy()
+
+    def _flash(self, message: str, duration: float = 2.5) -> None:
+        """Show a transient status message on the status line."""
+        self._message = message
+        self._message_until = time.time() + duration
+        # Throttled: a held key that keeps flashing (e.g. speed limit) must not
+        # flood the terminal; the main loop flushes the request within one tick.
+        self._request_refresh()
+
+    def _request_refresh(self) -> None:
+        """Throttled refresh for hotkey threads.
+
+        Renders immediately when the previous frame is old enough; otherwise
+        flags a pending refresh that the main loop flushes within one tick, so
+        held-down adjustment keys cannot flood the terminal with repaints.
+        """
+        now = time.time()
+        if now - self.last_display_time >= DISPLAY_REFRESH_RATE:
+            self.last_display_time = now
+            self._display_score()
+            return
+        self._refresh_requested = True
 
     def _format_score_line(self, line: List[Note]) -> str:
         """Format a score line as text, preserving visual separators."""
@@ -109,20 +99,30 @@ class CLI:
         return result.rstrip()
 
     def _display_score(self) -> None:
-        """Display the full score with current position highlighted using curses."""
+        """Display the full score with current position highlighted using curses.
+
+        The playback thread (progress callbacks), the keyboard hook thread
+        (hotkey actions), and the main loop can all request a frame, so the
+        curses work is serialized behind a lock.
+        """
         if not self.display_active or not self.stdscr:
             return
 
+        with self._render_lock:
+            self._render_frame(self.stdscr)
+
+    def _render_frame(self, stdscr: Any) -> None:
+        """Render one full frame (caller must hold the render lock)."""
         try:
             # Get terminal size (recalculate every time for real-time adaptation)
-            height, width = self.stdscr.getmaxyx()
+            height, width = stdscr.getmaxyx()
 
-            # Clear screen for fresh render
-            self.stdscr.clear()
+            # Erase (not clear) to avoid full-repaint flicker on fast refreshes
+            stdscr.erase()
 
             if not self.score:
-                self.stdscr.addstr(0, 0, "No score loaded.")
-                self.stdscr.refresh()
+                stdscr.addstr(0, 0, "No score loaded.")
+                stdscr.refresh()
                 return
 
             # Get current position
@@ -185,6 +185,44 @@ class CLI:
                 config_lines.append(
                     f"  Sustain Mode: {sustain_status}        [{self.hotkeys['toggle_sustain']}] Toggle"
                 )
+                loop_enabled = self.player.get_loop_enabled()
+                loop_status = "ON" if loop_enabled else "OFF"
+                config_lines.append(
+                    f"  Loop: {loop_status}              [{self.hotkeys['toggle_loop']}] Toggle"
+                )
+                line_repeat = "ON" if self.player.get_line_loop_enabled() else "OFF"
+                config_lines.append(
+                    f"  Line Repeat: {line_repeat}        [{self.hotkeys['toggle_line_loop']}] Toggle"
+                )
+                range_a, range_b = self.player.get_range()
+                if range_a is not None and range_b is not None and range_a < range_b:
+                    range_status = "looping"
+                elif range_a is not None:
+                    range_status = "A set"
+                elif range_b is not None:
+                    range_status = "B set"
+                else:
+                    range_status = "off"
+                config_lines.append(
+                    f"  Range: {range_status}       [{self.hotkeys['set_range_a']}/{self.hotkeys['set_range_b']}] Set | [{self.hotkeys['clear_range']}] Clear"
+                )
+                bookmark = self.player.get_bookmark()
+                bookmark_status = f"line {bookmark[0] + 1}" if bookmark else "none"
+                config_lines.append(
+                    f"  Bookmark: {bookmark_status}    [{self.hotkeys['set_bookmark']}] Set | [{self.hotkeys['jump_to_bookmark']}] Jump"
+                )
+                key_status = "LOCKED" if self.player.get_output_locked() else "sending"
+                config_lines.append(
+                    f"  Key Output: {key_status}  [{self.hotkeys['toggle_output_lock']}] Toggle"
+                )
+
+            # On short terminals drop the less-used rows so the controls stay
+            # visible instead of being pushed off-screen.
+            if len(config_lines) > 5 and height < 32:
+                essential = ("Speed:", "Arpeggio:", "Note Interval:", "Loop:")
+                config_lines = [
+                    line for line in config_lines if any(k in line for k in essential)
+                ]
 
             # Calculate footer size
             footer_lines = 0
@@ -199,6 +237,9 @@ class CLI:
                     footer_lines += 1  # warning line
 
             header_lines = 5  # title, separator, file, lines, blank
+            score_warnings = self.score.warnings
+            if score_warnings:
+                header_lines += 1  # warning line
 
             # Calculate available lines for score display
             available_lines = max(3, height - header_lines - footer_lines)
@@ -245,25 +286,41 @@ class CLI:
             row = 0
 
             # Header
-            self.stdscr.addstr(
-                row, 0, "GIPianoPlayer - Command Line Interface"[: width - 1]
-            )
+            stdscr.addstr(row, 0, "GIPianoPlayer - Command Line Interface"[: width - 1])
             row += 1
-            self.stdscr.addstr(row, 0, "=" * separator_width)
+            stdscr.addstr(row, 0, "=" * separator_width)
             row += 1
             display_file_name = (
                 os.path.basename(self.file_path)
                 .encode("ascii", "replace")
                 .decode("ascii")
             )
-            self.stdscr.addstr(row, 0, f"File: {display_file_name}"[: width - 1])
+            stdscr.addstr(row, 0, f"File: {display_file_name}"[: width - 1])
             row += 1
-            self.stdscr.addstr(row, 0, f"Lines: {len(self.score.lines)}"[: width - 1])
-            row += 2
+            stdscr.addstr(row, 0, f"Lines: {len(self.score.lines)}"[: width - 1])
+            row += 1
+
+            # Surface characters the parser could not interpret (ASCII-folded
+            # like the file name, since they may be arbitrary text)
+            if score_warnings:
+                preview = "; ".join(score_warnings[:2])
+                more = (
+                    f" (+{len(score_warnings) - 2} more)"
+                    if len(score_warnings) > 2
+                    else ""
+                )
+                warning_text = (
+                    f"Warning: {len(score_warnings)} unknown characters ignored: "
+                    f"{preview}{more}"
+                )
+                warning_text = warning_text.encode("ascii", "replace").decode("ascii")
+                stdscr.addstr(row, 0, warning_text[: width - 1], curses.color_pair(2))
+                row += 1
+            row += 1
 
             # Show indicator if there are lines before
             if start_line > 0:
-                self.stdscr.addstr(
+                stdscr.addstr(
                     row, 0, f"    ... ({start_line} lines above) ..."[: width - 1]
                 )
                 row += 2
@@ -279,7 +336,7 @@ class CLI:
                 if line_idx < current_line:
                     # Already played - cyan/浅蓝色
                     line_text = self._format_score_line(line)
-                    self.stdscr.addstr(
+                    stdscr.addstr(
                         row,
                         0,
                         (line_num + line_text)[: width - 1],
@@ -288,7 +345,7 @@ class CLI:
                 elif line_idx == current_line:
                     # Current line - with highlighting
                     col = 0
-                    self.stdscr.addstr(row, col, line_num)
+                    stdscr.addstr(row, col, line_num)
                     col += len(line_num)
 
                     for note_idx, note in enumerate(line):
@@ -297,29 +354,29 @@ class CLI:
                             break
 
                         if note_idx < current_note:
-                            self.stdscr.addstr(
+                            stdscr.addstr(
                                 row, col, note_text, curses.color_pair(2)
                             )  # Red
                         elif note_idx == current_note:
-                            self.stdscr.addstr(
+                            stdscr.addstr(
                                 row,
                                 col,
                                 note_text,
                                 curses.color_pair(3) | curses.A_BOLD,
                             )  # Yellow bold
                         else:
-                            self.stdscr.addstr(row, col, note_text)
+                            stdscr.addstr(row, col, note_text)
                         col += len(note_text)
                 else:
                     # Not yet played
                     line_text = self._format_score_line(line)
-                    self.stdscr.addstr(row, 0, (line_num + line_text)[: width - 1])
+                    stdscr.addstr(row, 0, (line_num + line_text)[: width - 1])
                 row += 1
 
             # Show indicator if there are lines after
             if end_line < len(self.score.lines):
                 row += 1
-                self.stdscr.addstr(
+                stdscr.addstr(
                     row,
                     0,
                     f"    ... ({len(self.score.lines) - end_line} lines below) ..."[
@@ -328,28 +385,48 @@ class CLI:
                 )
                 row += 1
 
-            row += 1
-            self.stdscr.addstr(row, 0, "=" * separator_width)
-            row += 1
-
-            # Status line
-            state = self.player.get_state().value.upper() if self.player else "STOPPED"
-
-            # Calculate note-level progress
-            if self.player and total_lines > 0:
-                # Count total notes in all lines
-                total_notes = sum(len(line) for line in self.score.lines)
-                # Count notes up to current position
-                played_notes = sum(
-                    len(self.score.lines[i]) for i in range(current_line)
+            # Status line state and note-level progress (O(1) prefix sums)
+            finished = bool(self.player and self.player.is_finished())
+            if finished:
+                state = "FINISHED"
+            else:
+                state = (
+                    self.player.get_state().value.upper() if self.player else "STOPPED"
                 )
-                played_notes += current_note
-                progress = (played_notes / total_notes * 100) if total_notes > 0 else 0
+
+            played_notes = 0
+            total_notes = 0
+            if self.player and total_lines > 0:
+                played_notes, total_notes = self.player.get_note_progress()
+                if finished:
+                    played_notes = total_notes
+
+            # The separator above the status doubles as a progress bar
+            row += 1
+            if total_notes > 0:
+                fraction = played_notes / total_notes
+            else:
+                fraction = 1.0 if finished else 0.0
+            filled = min(separator_width, max(0, int(separator_width * fraction)))
+            stdscr.addstr(row, 0, "=" * filled + "-" * (separator_width - filled))
+            row += 1
+
+            if finished:
+                progress_text = (
+                    f"Status: {state} | Line {total_lines}/{total_lines} | "
+                    f"Note {total_notes}/{total_notes} | Progress: 100.0%"
+                )
+            elif total_notes > 0:
+                progress = played_notes / total_notes * 100
                 progress_text = f"Status: {state} | Line {current_line + 1}/{total_lines} | Note {played_notes}/{total_notes} | Progress: {progress:.1f}%"
             else:
                 progress_text = f"Status: {state} | Line {current_line + 1}/{total_lines} | Progress: 0.0%"
 
-            self.stdscr.addstr(
+            # Append the transient message while it is still active
+            if self._message and time.time() < self._message_until:
+                progress_text = f"{progress_text}  |  {self._message}"
+
+            stdscr.addstr(
                 row,
                 0,
                 progress_text[: width - 1],
@@ -357,23 +434,29 @@ class CLI:
             row += 2
 
             # Configuration panel
-            self.stdscr.addstr(row, 0, "Configuration:")
+            stdscr.addstr(row, 0, "Configuration:")
             row += 1
-            self.stdscr.addstr(row, 0, "-" * separator_width)
+            stdscr.addstr(row, 0, "-" * separator_width)
             row += 1
 
             # Render config lines
             for config_line in config_lines:
-                self.stdscr.addstr(row, 0, config_line[: width - 1])
+                stdscr.addstr(row, 0, config_line[: width - 1])
                 row += 1
             row += 1
 
             if keyboard is not None:
                 # Show warning if hotkeys failed to register
                 if self._failed_hotkeys:
-                    log_path = getattr(self, "_error_log_path", "hotkey_errors.log")
-                    warning_msg = f"Warning: {len(self._failed_hotkeys)} hotkeys failed! See: {log_path}"
-                    self.stdscr.addstr(
+                    failed_keys = ", ".join(
+                        key for key, _error in self._failed_hotkeys[:4]
+                    )
+                    more = "…" if len(self._failed_hotkeys) > 4 else ""
+                    warning_msg = (
+                        f"Warning: {len(self._failed_hotkeys)} hotkeys failed: "
+                        f"{failed_keys}{more}"
+                    )
+                    stdscr.addstr(
                         row,
                         0,
                         warning_msg[: width - 1],
@@ -381,7 +464,9 @@ class CLI:
                     )
                     row += 1
 
-                self.stdscr.addstr(
+                skip_small_unit = "note" if SKIP_SMALL == 1 else "notes"
+                skip_large_unit = "line" if SKIP_LARGE == 1 else "lines"
+                stdscr.addstr(
                     row,
                     0,
                     f"Controls: [{self.hotkeys['play_pause']}] Play/Pause | [{self.hotkeys['quit']}] Quit | [F9] Save"[
@@ -389,24 +474,24 @@ class CLI:
                     ],
                 )
                 row += 1
-                self.stdscr.addstr(
+                stdscr.addstr(
                     row,
                     0,
-                    f"          [{self.hotkeys['skip_backward']}/{self.hotkeys['skip_forward']}] Skip {SKIP_SMALL} notes | [{self.hotkeys['skip_backward_large']}/{self.hotkeys['skip_forward_large']}] Skip {SKIP_LARGE} lines"[
+                    f"          [{self.hotkeys['skip_backward']}/{self.hotkeys['skip_forward']}] Skip {SKIP_SMALL} {skip_small_unit} | [{self.hotkeys['skip_backward_large']}/{self.hotkeys['skip_forward_large']}] Skip {SKIP_LARGE} {skip_large_unit}"[
                         : width - 1
                     ],
                 )
                 row += 1
-                self.stdscr.addstr(
+                stdscr.addstr(
                     row,
                     0,
-                    f"          [{self.hotkeys['reload']}] Reload | [{self.hotkeys['reparse']}] Reparse"[
+                    f"          [{self.hotkeys['reload']}] Reload | [{self.hotkeys['reparse']}] Reparse | [{self.hotkeys['toggle_loop']}] Loop | [{self.hotkeys['jump_to_start']}/{self.hotkeys['jump_to_end']}] Start/End"[
                         : width - 1
                     ],
                 )
 
             # Refresh screen
-            self.stdscr.refresh()
+            stdscr.refresh()
 
         except (curses.error, UnicodeError):
             # A narrow terminal or unsupported glyph can interrupt a late draw.
@@ -414,7 +499,7 @@ class CLI:
             pass
         finally:
             try:
-                self.stdscr.refresh()
+                stdscr.refresh()
             except curses.error:
                 pass
 
@@ -426,8 +511,12 @@ class CLI:
         """Run the CLI interface."""
         # Parse score
         try:
-            # Read original file content
-            with open(self.file_path, "r", encoding="utf-8") as f:
+            if not Path(self.file_path).exists():
+                print(f"Error: score file not found: {self.file_path}")
+                return
+
+            # Read original file content (utf-8-sig tolerates a BOM)
+            with open(self.file_path, "r", encoding="utf-8-sig") as f:
                 self.original_content = f.read()
 
             parser = ScoreParser(self.file_path)
@@ -443,15 +532,21 @@ class CLI:
         """Run the CLI with curses screen."""
         self.stdscr = stdscr
 
-        # Initialize colors
-        curses.start_color()
-        curses.use_default_colors()
-        curses.init_pair(1, curses.COLOR_CYAN, -1)  # Cyan/浅蓝色 (played)
-        curses.init_pair(2, curses.COLOR_RED, -1)  # Red (played in current line)
-        curses.init_pair(3, curses.COLOR_YELLOW, -1)  # Yellow (current note)
+        # Initialize colors (guard calls that unsupported terminals reject)
+        try:
+            curses.start_color()
+            curses.use_default_colors()
+            curses.init_pair(1, curses.COLOR_CYAN, -1)  # Cyan/浅蓝色 (played)
+            curses.init_pair(2, curses.COLOR_RED, -1)  # Red (played in current line)
+            curses.init_pair(3, curses.COLOR_YELLOW, -1)  # Yellow (current note)
+        except curses.error:
+            pass
 
-        # Hide cursor
-        curses.curs_set(0)
+        # Hide cursor where the terminal supports it
+        try:
+            curses.curs_set(0)
+        except curses.error:
+            pass
 
         # Non-blocking input - but we don't actually use curses for input
         # since we use keyboard library for global hotkeys
@@ -500,6 +595,11 @@ class CLI:
                 if current_time - last_refresh >= 0.5:
                     self._display_score()
                     last_refresh = current_time
+                elif self._refresh_requested:
+                    # A throttled hotkey refresh is waiting for its time slot
+                    self._refresh_requested = False
+                    self.last_display_time = current_time
+                    self._display_score()
 
                 time.sleep(0.05)
         except KeyboardInterrupt:
@@ -517,255 +617,6 @@ class CLI:
                 pass
 
         self.display_active = False
-
-    def _setup_hotkeys_legacy(self) -> None:
-        """Setup keyboard shortcuts using scan code based hotkey handler."""
-        if keyboard is None:
-            return
-
-        from src.ui.cli.input.hotkey_handler import HotkeyHandler, SCAN_CODES
-        from src.plugins.core.manager import get_plugin_manager
-
-        # Create hotkey handler
-        self._hotkey_handler = HotkeyHandler()
-
-        # Get plugin instances
-        plugin_manager = get_plugin_manager()
-        speed_plugin = plugin_manager.get_plugin("speed_adjustment")
-        interval_plugin = plugin_manager.get_plugin("interval_adjustment")
-        segment_plugin = plugin_manager.get_plugin("segment_adjustment")
-        mode_plugin = plugin_manager.get_plugin("mode_toggle")
-
-        failed_hotkeys: list[tuple[str, str]] = []
-
-        # Get log file paths
-        error_log = get_log_file_path("hotkey_errors.log")
-        debug_log = get_log_file_path("hotkey_debug.log")
-
-        try:
-            # Log where files are being saved
-            with open(error_log, "a", encoding="utf-8") as f:
-                f.write(f"\n{'=' * 70}\n")
-                f.write(f"Hotkey Setup - {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
-                f.write(f"Log file location: {error_log}\n")
-                f.write(f"{'=' * 70}\n\n")
-
-            # Playback control (function keys work fine)
-            self._hotkey_handler.register_by_name("f8", self.toggle_play_pause)
-            self._hotkey_handler.register_by_name("f2", self.quit)
-            self._hotkey_handler.register_by_name("f5", self.reload)
-            self._hotkey_handler.register_by_name("f6", self.reparse)
-
-            # Speed control - use SCAN CODES for symbol keys
-            if speed_plugin:
-                # Use scan codes for = and - keys (more reliable in packaged apps)
-                # Fix lambda closure issue by using default arguments
-                with open(error_log, "a", encoding="utf-8") as f:
-                    f.write("Registering speed hotkeys with scan codes...\n")
-                    f.write(f"  equals (scan {SCAN_CODES['equals']})\n")
-                    f.write(f"  minus (scan {SCAN_CODES['minus']})\n")
-
-                def speed_up_callback(log: str = debug_log, cli: "CLI" = self) -> None:
-                    try:
-                        with open(log, "a", encoding="utf-8") as f:
-                            f.write("Speed UP callback called\n")
-                        # Get plugin dynamically to handle reload
-                        from src.plugins.core.manager import get_plugin_manager
-
-                        plugin = get_plugin_manager().get_plugin("speed_adjustment")
-                        if plugin:
-                            # Log current speed before adjustment
-                            old_speed = (
-                                cli.player._speed_multiplier if cli.player else None
-                            )
-                            with open(log, "a", encoding="utf-8") as f:
-                                f.write(f"  Current speed: {old_speed}\n")
-
-                            plugin.adjust_speed(0.01)  # type: ignore
-
-                            # Log new speed after adjustment
-                            new_speed = (
-                                cli.player._speed_multiplier if cli.player else None
-                            )
-                            with open(log, "a", encoding="utf-8") as f:
-                                f.write(f"  New speed: {new_speed}\n")
-
-                            cli._display_score()  # Force display refresh
-                            with open(log, "a", encoding="utf-8") as f:
-                                f.write("Speed UP executed successfully\n")
-                        else:
-                            with open(log, "a", encoding="utf-8") as f:
-                                f.write("Speed UP error: plugin not found\n")
-                    except Exception as e:
-                        with open(log, "a", encoding="utf-8") as f:
-                            f.write(f"Speed UP error: {e}\n")
-                            import traceback
-
-                            f.write(traceback.format_exc())
-
-                def speed_down_callback(
-                    log: str = debug_log, cli: "CLI" = self
-                ) -> None:
-                    try:
-                        with open(log, "a", encoding="utf-8") as f:
-                            f.write("Speed DOWN callback called\n")
-                        # Get plugin dynamically to handle reload
-                        from src.plugins.core.manager import get_plugin_manager
-
-                        plugin = get_plugin_manager().get_plugin("speed_adjustment")
-                        if plugin:
-                            plugin.adjust_speed(-0.01)  # type: ignore
-                            cli._display_score()  # Force display refresh
-                            with open(log, "a", encoding="utf-8") as f:
-                                f.write("Speed DOWN executed successfully\n")
-                        else:
-                            with open(log, "a", encoding="utf-8") as f:
-                                f.write("Speed DOWN error: plugin not found\n")
-                    except Exception as e:
-                        with open(log, "a", encoding="utf-8") as f:
-                            f.write(f"Speed DOWN error: {e}\n")
-
-                self._hotkey_handler.register_by_scan_code(
-                    SCAN_CODES["equals"], speed_up_callback
-                )
-                self._hotkey_handler.register_by_scan_code(
-                    SCAN_CODES["minus"], speed_down_callback
-                )
-
-            # Interval control - use SCAN CODES
-            if interval_plugin:
-                with open(error_log, "a", encoding="utf-8") as f:
-                    f.write("Registering interval hotkeys with scan codes...\n")
-                    f.write(f"  left_bracket (scan {SCAN_CODES['left_bracket']})\n")
-                    f.write(f"  right_bracket (scan {SCAN_CODES['right_bracket']})\n")
-                    f.write(f"  comma (scan {SCAN_CODES['comma']})\n")
-                    f.write(f"  period (scan {SCAN_CODES['period']})\n")
-
-                # Brackets
-                def make_interval_callback(
-                    method_name: str, delta: float, cli_ref: "CLI" = self
-                ) -> Callable[[], None]:
-                    def callback() -> None:
-                        from src.plugins.core.manager import get_plugin_manager
-
-                        plugin = get_plugin_manager().get_plugin("interval_adjustment")
-                        if plugin:
-                            getattr(plugin, method_name)(delta)
-                            cli_ref._display_score()
-
-                    return callback
-
-                self._hotkey_handler.register_by_scan_code(
-                    SCAN_CODES["left_bracket"],
-                    make_interval_callback("adjust_arpeggio", -0.01),
-                )
-                self._hotkey_handler.register_by_scan_code(
-                    SCAN_CODES["right_bracket"],
-                    make_interval_callback("adjust_arpeggio", 0.01),
-                )
-                # Comma and period
-                self._hotkey_handler.register_by_scan_code(
-                    SCAN_CODES["comma"],
-                    make_interval_callback("adjust_interval", -0.01),
-                )
-                self._hotkey_handler.register_by_scan_code(
-                    SCAN_CODES["period"],
-                    make_interval_callback("adjust_interval", 0.01),
-                )
-                # Arrow keys (these work fine with names)
-                self._hotkey_handler.register_by_name(
-                    "up", make_interval_callback("adjust_line_interval", 1)
-                )
-                self._hotkey_handler.register_by_name(
-                    "down", make_interval_callback("adjust_line_interval", -1)
-                )
-
-            # Mode toggles
-            if mode_plugin:
-
-                def toggle_sustain_callback(cli_ref: "CLI" = self) -> None:
-                    from src.plugins.core.manager import get_plugin_manager
-
-                    plugin = get_plugin_manager().get_plugin("mode_toggle")
-                    if plugin:
-                        getattr(plugin, "toggle_sustain")()
-                        cli_ref._display_score()
-
-                self._hotkey_handler.register_by_name("f7", toggle_sustain_callback)
-
-            # Segment control
-            if segment_plugin:
-
-                def make_segment_callback(
-                    method_name: str, delta: int | None = None, cli_ref: "CLI" = self
-                ) -> Callable[[], None]:
-                    def callback() -> None:
-                        from src.plugins.core.manager import get_plugin_manager
-
-                        plugin = get_plugin_manager().get_plugin("segment_adjustment")
-                        if plugin:
-                            if delta is not None:
-                                getattr(plugin, method_name)(delta)
-                            else:
-                                getattr(plugin, method_name)()
-                            cli_ref._display_score()
-
-                    return callback
-
-                self._hotkey_handler.register_by_name(
-                    "page up", make_segment_callback("adjust_segment_length", 1)
-                )
-                self._hotkey_handler.register_by_name(
-                    "page down", make_segment_callback("adjust_segment_length", -1)
-                )
-                self._hotkey_handler.register_by_name(
-                    "f4", make_segment_callback("toggle_segment_strict")
-                )
-
-            # Navigation
-            self._hotkey_handler.register_by_name("left", self.skip_backward)
-            self._hotkey_handler.register_by_name("right", self.skip_forward)
-            self._hotkey_handler.register_by_name("ctrl+left", self.skip_backward_large)
-            self._hotkey_handler.register_by_name("ctrl+right", self.skip_forward_large)
-
-            # Register plugin hotkeys from registry
-            from src.ui.cli.input.hotkey_registry import get_hotkey_registry
-
-            registry = get_hotkey_registry()
-            for key, callback in registry.get_all_hotkeys().items():
-                try:
-                    with open(error_log, "a", encoding="utf-8") as f:
-                        f.write(f"Registering plugin hotkey: {key}\n")
-                    self._hotkey_handler.register_by_name(key, callback)
-                except Exception as e:
-                    with open(error_log, "a", encoding="utf-8") as f:
-                        f.write(f"Failed to register plugin hotkey {key}: {e}\n")
-
-            # Start the hotkey handler
-            self._hotkey_handler.start()
-
-            # Log success and show user where to find logs
-            with open(error_log, "a", encoding="utf-8") as f:
-                f.write("=== Hotkey Setup (Scan Code Method) ===\n")
-                f.write("Successfully registered hotkeys using scan codes\n")
-                f.write(
-                    "Symbol keys (=, -, [, ], ,, .) use scan codes for reliability\n\n"
-                )
-
-            # Store log paths for display
-            self._error_log_path = error_log
-            self._debug_log_path = debug_log
-
-        except Exception as e:
-            failed_hotkeys.append(("hotkey_setup", str(e)))
-            try:
-                with open(error_log, "a", encoding="utf-8") as f:
-                    f.write(f"Failed to setup hotkeys: {e}\n")
-            except Exception:
-                pass
-
-        # Store failed hotkeys for later reference
-        self._failed_hotkeys = failed_hotkeys
 
     def _setup_hotkeys(self) -> None:
         """Register CLI and plugin bindings with one global hook."""
@@ -819,8 +670,12 @@ class CLI:
         current = self.player._speed_multiplier
         new_speed = current + delta
         self.player.set_speed(new_speed)
-        # Always force display update
-        self._display_score()
+        if self.player._speed_multiplier == current:
+            # The player clamped the request: report the limit reached
+            self._flash("Speed limit reached")
+        else:
+            # Always force display update
+            self._request_refresh()
 
     def adjust_arpeggio(self, delta: float) -> None:
         """Adjust manual arpeggio interval and leave automatic mode."""
@@ -831,7 +686,7 @@ class CLI:
         new_interval = current + delta
         self.player.set_arpeggio_interval(new_interval)
         # Always force display update
-        self._display_score()
+        self._request_refresh()
 
     def toggle_arpeggio_auto(self) -> None:
         """Toggle inferred arpeggio timing."""
@@ -850,7 +705,7 @@ class CLI:
         new_interval = max(0.01, current + delta)  # Minimum 0.01s
         self.player.set_interval_rating(new_interval)
         # Always force display update
-        self._display_score()
+        self._request_refresh()
 
     def adjust_line_interval(self, delta: float) -> None:
         """Adjust line interval rating (N empty notes)."""
@@ -861,7 +716,7 @@ class CLI:
         new_rating = max(0.0, current + delta)
         self.player.set_line_interval_rating(new_rating)
         # Always force display update
-        self._display_score()
+        self._request_refresh()
 
     def adjust_space_interval(self, delta: float) -> None:
         """Adjust space interval rating (multiplier for rest notes)."""
@@ -872,7 +727,7 @@ class CLI:
         new_rating = max(0.0, current + delta)
         self.player.set_space_interval_rating(new_rating)
         # Always force display update
-        self._display_score()
+        self._request_refresh()
 
     def adjust_empty_line_interval(self, delta: float) -> None:
         """Adjust empty line interval rating (N empty notes for empty lines)."""
@@ -882,8 +737,9 @@ class CLI:
         current = self.player._empty_line_interval_rating
         new_rating = max(0.0, current + delta)
         self.player.set_empty_line_interval_rating(new_rating)
-        # Always force display update
-        self._display_score()
+        # Empty lines are included or dropped at parse time, so reparse to
+        # apply the new rating to the score currently loaded in memory.
+        self.reparse("Empty line interval updated")
 
     def adjust_segment_length(self, delta: int) -> None:
         """Adjust segment length (N notes per segment)."""
@@ -895,7 +751,7 @@ class CLI:
         self.player.set_segment_length(new_length)
         # Segment padding/truncation happens at parse time, so reparse to
         # apply the new length to the score currently loaded in memory.
-        self.reparse()
+        self.reparse("Segment length updated")
 
     def skip_backward(self) -> None:
         """Skip backward by 1 note."""
@@ -903,7 +759,7 @@ class CLI:
             return
         self.player.skip_backward_notes(1)
         # Always force display update
-        self._display_score()
+        self._request_refresh()
 
     def skip_forward(self) -> None:
         """Skip forward by 1 note."""
@@ -911,7 +767,7 @@ class CLI:
             return
         self.player.skip_forward_notes(1)
         # Always force display update
-        self._display_score()
+        self._request_refresh()
 
     def skip_backward_large(self) -> None:
         """Skip backward by 1 line."""
@@ -919,7 +775,7 @@ class CLI:
             return
         self.player.skip_backward_line()
         # Always force display update
-        self._display_score()
+        self._request_refresh()
 
     def skip_forward_large(self) -> None:
         """Skip forward by 1 line."""
@@ -927,7 +783,7 @@ class CLI:
             return
         self.player.skip_forward_line()
         # Always force display update
-        self._display_score()
+        self._request_refresh()
 
     def quit(self) -> None:
         """Quit the application."""
@@ -948,16 +804,20 @@ class CLI:
             return
 
         try:
-            # Get current configuration values
-            speed_multiplier = self.player._speed_multiplier
-            arpeggio_interval = self.player._arpeggio_interval
+            # Get current configuration values (rounded so float dust from
+            # repeated hotkey adjustments never reaches the score file)
+            speed_multiplier = round(self.player._speed_multiplier, 6)
+            arpeggio_interval = round(self.player._arpeggio_interval, 6)
             arpeggio_auto = self.player.get_arpeggio_auto()
-            interval_rating = self.player._interval_rating
-            line_interval_rating = self.player._line_interval_rating
-            space_interval_rating = self.player._space_interval_rating
-            empty_line_interval_rating = self.player._empty_line_interval_rating
+            interval_rating = round(self.player._interval_rating, 6)
+            line_interval_rating = round(self.player._line_interval_rating, 6)
+            space_interval_rating = round(self.player._space_interval_rating, 6)
+            empty_line_interval_rating = round(
+                self.player._empty_line_interval_rating, 6
+            )
             segment_length = self.player._segment_length
             segment_strict = self.player.get_segment_strict()
+            loop = self.player.get_loop_enabled()
 
             # Parse the original content
             lines = self.original_content.split("\n")
@@ -973,6 +833,7 @@ class CLI:
                 "empty_line_interval_rating": False,
                 "segment_length": False,
                 "segment_strict": False,
+                "loop": False,
             }
 
             for line in lines:
@@ -1014,6 +875,8 @@ class CLI:
                             insert_lines.append(f"SEGMENT_LENGTH = {segment_length}")
                         if not config_updated["segment_strict"]:
                             insert_lines.append(f"SEGMENT_STRICT = {segment_strict}")
+                        if not config_updated["loop"]:
+                            insert_lines.append(f"LOOP = {loop}")
 
                         if insert_lines:
                             # Insert before the separator or first score line
@@ -1061,6 +924,9 @@ class CLI:
                     elif key == "segment_strict":
                         new_lines.append(f"SEGMENT_STRICT = {segment_strict}")
                         config_updated["segment_strict"] = True
+                    elif key == "loop":
+                        new_lines.append(f"LOOP = {loop}")
+                        config_updated["loop"] = True
                     else:
                         new_lines.append(line)
                 else:
@@ -1073,13 +939,10 @@ class CLI:
             # Update original content
             self.original_content = "\n".join(new_lines)
 
-            # Show success message briefly (will be cleared on next display update)
-            # We can't use _print here as display is active, so we'll update display
-            self._display_score()
+            self._flash("Configuration saved")
 
         except Exception:
-            # Silently fail - don't disrupt playback
-            pass
+            self._flash("Save failed - see terminal for details")
 
     def reload(self) -> None:
         """Reload the score file from disk (re-read and re-parse)."""
@@ -1089,10 +952,12 @@ class CLI:
         try:
             # Stop current playback
             was_playing = self.player.get_state() == PSM_State.PLAYING
+            sustain_enabled = self.player.get_sustain_enabled()
+            bookmark = self.player.get_bookmark()
             self.player.stop()
 
-            # Re-read file content
-            with open(self.file_path, "r", encoding="utf-8") as f:
+            # Re-read file content (utf-8-sig tolerates a BOM)
+            with open(self.file_path, "r", encoding="utf-8-sig") as f:
                 self.original_content = f.read()
 
             # Re-parse the score (will read config from file)
@@ -1103,35 +968,53 @@ class CLI:
             keyboard_controller = KeyboardController()
             self.player = Player(self.score, keyboard_controller)
             self.player.set_progress_callback(self._on_progress)
+            if sustain_enabled:
+                self.player.toggle_sustain()
+            self.player.restore_bookmark(bookmark)
 
             # Re-initialize plugins with new player
             # Force re-initialization by updating context and calling initialize directly
-            from src.plugins.core.manager import get_plugin_manager
-            from src.plugins.core.context import PluginContext
 
-            plugin_manager = get_plugin_manager()
-            new_context = PluginContext(player=self.player, cli=self)
-            plugin_manager.set_context(new_context)
-
-            # Force re-initialize all plugins (not just REGISTERED ones)
-            for plugin in plugin_manager.get_all_plugins():
-                try:
-                    plugin.initialize(new_context)
-                except Exception as e:
-                    print(f"Failed to re-initialize plugin '{plugin.name}': {e}")
+            plugin_errors = self._reinitialize_plugins()
 
             # Resume playback if it was playing
             if was_playing:
                 self.player.play()
 
-            # Force display update
-            self._display_score()
+            self._flash(self._reload_message("Score reloaded", plugin_errors))
 
         except Exception:
-            # Silently fail - don't disrupt
-            pass
+            self._flash("Reload failed")
 
-    def reparse(self) -> None:
+    def _reinitialize_plugins(self) -> int:
+        """Point all loaded plugins at the current player and CLI.
+
+        Returns:
+            Number of plugins that failed to re-initialize
+        """
+        from src.plugins.core.manager import get_plugin_manager
+        from src.plugins.core.context import PluginContext
+
+        plugin_manager = get_plugin_manager()
+        new_context = PluginContext(player=self.player, cli=self)
+        plugin_manager.set_context(new_context)
+
+        failures = 0
+        for plugin in plugin_manager.get_all_plugins():
+            try:
+                plugin.initialize(new_context)
+            except Exception:
+                failures += 1
+        return failures
+
+    @staticmethod
+    def _reload_message(base: str, plugin_errors: int) -> str:
+        """Compose a status message, mentioning plugin failures if any."""
+        if plugin_errors:
+            return f"{base} ({plugin_errors} plugin error{'s' if plugin_errors != 1 else ''})"
+        return base
+
+    def reparse(self, message: str = "Score reparsed") -> None:
         """Reparse the score with current configuration (apply new segment_length, etc.)."""
         if not self.player:
             return
@@ -1150,6 +1033,10 @@ class CLI:
             space_interval_rating = self.player._space_interval_rating
             empty_line_interval_rating = self.player._empty_line_interval_rating
             segment_length = self.player._segment_length
+            segment_strict = self.player.get_segment_strict()
+            sustain_enabled = self.player.get_sustain_enabled()
+            loop_enabled = self.player.get_loop_enabled()
+            bookmark = self.player.get_bookmark()
 
             # Stop current playback
             self.player.stop()
@@ -1166,21 +1053,7 @@ class CLI:
             self.player = Player(self.score, keyboard_controller)
             self.player.set_progress_callback(self._on_progress)
 
-            # Re-initialize plugins with new player
-            # Force re-initialization by updating context and calling initialize directly
-            from src.plugins.core.manager import get_plugin_manager
-            from src.plugins.core.context import PluginContext
-
-            plugin_manager = get_plugin_manager()
-            new_context = PluginContext(player=self.player, cli=self)
-            plugin_manager.set_context(new_context)
-
-            # Force re-initialize all plugins (not just REGISTERED ones)
-            for plugin in plugin_manager.get_all_plugins():
-                try:
-                    plugin.initialize(new_context)
-                except Exception as e:
-                    print(f"Failed to re-initialize plugin '{plugin.name}': {e}")
+            plugin_errors = self._reinitialize_plugins()
 
             # Restore configuration (in case file save failed)
             self.player.set_speed(speed_multiplier)
@@ -1191,6 +1064,11 @@ class CLI:
             self.player.set_space_interval_rating(space_interval_rating)
             self.player.set_empty_line_interval_rating(empty_line_interval_rating)
             self.player.set_segment_length(segment_length)
+            self.player.set_segment_strict(segment_strict)
+            self.player.set_loop_enabled(loop_enabled)
+            self.player.restore_bookmark(bookmark)
+            if sustain_enabled:
+                self.player.toggle_sustain()
 
             # Restore position (clamp to new score length)
             if self.score and current_line < len(self.score.lines):
@@ -1200,12 +1078,10 @@ class CLI:
             if was_playing:
                 self.player.play()
 
-            # Force display update
-            self._display_score()
+            self._flash(self._reload_message(message, plugin_errors))
 
         except Exception:
-            # Silently fail - don't disrupt
-            pass
+            self._flash("Reparse failed")
 
     def toggle_sustain(self) -> None:
         """Toggle sustain mode on/off."""
@@ -1224,7 +1100,110 @@ class CLI:
         self.player.toggle_segment_strict()
         # Segment padding/truncation happens at parse time, so reparse to
         # apply the new strict mode to the score currently loaded in memory.
-        self.reparse()
+        self.reparse("Strict segment mode updated")
+
+    def toggle_loop(self) -> None:
+        """Toggle looping playback on/off."""
+        if not self.player:
+            return
+
+        self.player.toggle_loop()
+        self._flash(f"Loop {'ON' if self.player.get_loop_enabled() else 'OFF'}")
+
+    def toggle_line_loop(self) -> None:
+        """Toggle repeating the current line (practice aid)."""
+        if not self.player:
+            return
+
+        self.player.toggle_line_loop()
+        state = "ON" if self.player.get_line_loop_enabled() else "OFF"
+        self._flash(f"Line repeat {state}")
+
+    def set_range_a(self) -> None:
+        """Mark the current position as the A-B range start."""
+        if not self.player:
+            return
+
+        self.player.set_range_a()
+        line = self.player.get_position()[0] + 1
+        if self.player.is_range_active():
+            self._flash(f"Range start set at line {line} - looping")
+        else:
+            self._flash(f"Range start set at line {line}")
+
+    def set_range_b(self) -> None:
+        """Mark the current position as the A-B range end."""
+        if not self.player:
+            return
+
+        self.player.set_range_b()
+        line = self.player.get_position()[0] + 1
+        if self.player.is_range_active():
+            self._flash(f"Range end set at line {line} - looping")
+        else:
+            self._flash(f"Range end set at line {line}")
+
+    def clear_range(self) -> None:
+        """Clear the A-B range."""
+        if not self.player:
+            return
+
+        self.player.clear_range()
+        self._flash("Range cleared")
+
+    def set_bookmark(self) -> None:
+        """Bookmark the current position."""
+        if not self.player:
+            return
+
+        self.player.set_bookmark()
+        bookmark = self.player.get_bookmark()
+        if bookmark is None:
+            self._flash("Nothing to bookmark - score is at its end")
+        else:
+            self._flash(f"Bookmark set at line {bookmark[0] + 1}")
+
+    def jump_to_bookmark(self) -> None:
+        """Jump back to the bookmarked position."""
+        if not self.player:
+            return
+
+        if self.player.jump_to_bookmark():
+            self._request_refresh()
+            self._flash(
+                f"Jumped to bookmark at line {self.player.get_position()[0] + 1}"
+            )
+        elif self.player.get_bookmark() is not None:
+            self._flash("Bookmark position is outside the current score")
+        else:
+            self._flash("No bookmark set")
+
+    def toggle_output_lock(self) -> None:
+        """Lock or unlock the simulated key output (panic switch)."""
+        if not self.player:
+            return
+
+        self.player.toggle_output_lock()
+        if self.player.get_output_locked():
+            self._flash("Key output LOCKED - position keeps advancing")
+        else:
+            self._flash("Key output unlocked")
+
+    def jump_to_start(self) -> None:
+        """Jump to the first note of the score."""
+        if not self.player:
+            return
+
+        self.player.jump_to_start()
+        self._display_score()
+
+    def jump_to_end(self) -> None:
+        """Jump past the last note of the score."""
+        if not self.player:
+            return
+
+        self.player.jump_to_end()
+        self._display_score()
 
     def _on_progress(
         self, current_line: int, total_lines: int, current_note: int, total_notes: int

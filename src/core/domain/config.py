@@ -17,6 +17,7 @@ class PlayConfig:
     segment_length: int  # Number of notes per segment (0 = disabled)
     segment_strict: bool  # True = truncate segments, False = pad only
     arpeggio_auto: bool = True  # Infer interval from note duration when enabled
+    loop: bool = False  # Restart from the beginning after the last note
 
     def validate(self) -> None:
         """Validate configuration values.
@@ -74,4 +75,5 @@ class PlayConfig:
             segment_length=self.segment_length,
             segment_strict=self.segment_strict,
             arpeggio_auto=self.arpeggio_auto,
+            loop=self.loop,
         )

@@ -4,6 +4,14 @@ import time
 from threading import Event, RLock, Thread
 from typing import Callable, List, Optional, Protocol
 
+from src.application.config.constants import (
+    MAX_ARPEGGIO_INTERVAL,
+    MAX_INTERVAL,
+    MAX_SPEED,
+    MIN_ARPEGGIO_INTERVAL,
+    MIN_INTERVAL,
+    MIN_SPEED,
+)
 from src.core.domain.note import Note, NoteType
 from src.core.domain.score import ParsedScore
 from src.application.state.state_machine import (
@@ -66,6 +74,12 @@ class Player:
         ]
         self._cursor = 0
         self._cursor_generation = 0
+
+        # Prefix sums of line lengths give O(1) note-progress lookups for the
+        # UI instead of rescanning the whole score on every frame.
+        self._note_prefix = [0]
+        for line in score.lines:
+            self._note_prefix.append(self._note_prefix[-1] + len(line))
         self._control_lock = RLock()
         self._sustain_lock = RLock()
 
@@ -85,10 +99,27 @@ class Player:
         self._empty_line_interval_rating = score.config.empty_line_interval_rating
         self._segment_length = score.config.segment_length
         self._segment_strict = score.config.segment_strict
+        self._loop_enabled = score.config.loop
 
         # Sustain mode
         self._sustain_enabled = False
         self._sustained_keys: List[str] = []  # Keys currently being held
+
+        # True when the last playback ran to the end of the score naturally
+        self._playback_completed = False
+
+        # Practice aid: repeat the current line until toggled off
+        self._line_loop_enabled = False
+
+        # A-B range playback: flattened position indexes, B exclusive
+        self._range_a: Optional[int] = None
+        self._range_b: Optional[int] = None
+
+        # Bookmark as (line_index, note_index) so it survives reparse
+        self._bookmark: Optional[tuple[int, int]] = None
+
+        # Panic switch: suppress all simulated key output while locked
+        self._output_locked = False
 
         # Playback thread
         self._playback_thread: Optional[Thread] = None
@@ -119,6 +150,7 @@ class Player:
                     self._state_machine.transition_to(PSM_State.BUFFERING)
 
                 self._state_machine.transition_to(PSM_State.PLAYING)
+                self._playback_completed = False
                 self._stop_event.clear()
                 self._pause_event.set()
                 self._wake_event.set()
@@ -174,12 +206,17 @@ class Player:
 
     def set_speed(self, multiplier: float) -> None:
         """Set playback speed multiplier."""
-        self._speed_multiplier = max(0.1, min(10.0, multiplier))
+        self._speed_multiplier = max(MIN_SPEED, min(MAX_SPEED, multiplier))
+        # Wake an in-flight wait so the new speed applies immediately instead
+        # of waiting for the current gap to finish.
+        self._wake_event.set()
 
     def set_arpeggio_interval(self, interval: float) -> None:
         """Set a manual arpeggio interval in seconds."""
         with self._control_lock:
-            self._arpeggio_interval = max(0.01, min(1.0, interval))
+            self._arpeggio_interval = max(
+                MIN_ARPEGGIO_INTERVAL, min(MAX_ARPEGGIO_INTERVAL, interval)
+            )
             self._arpeggio_auto = False
 
     def set_arpeggio_auto(self, enabled: bool) -> None:
@@ -194,7 +231,7 @@ class Player:
 
     def set_interval_rating(self, rating: float) -> None:
         """Set base interval rating."""
-        self._interval_rating = max(0.01, min(5.0, rating))
+        self._interval_rating = max(MIN_INTERVAL, min(MAX_INTERVAL, rating))
 
     def set_line_interval_rating(self, rating: float) -> None:
         """Set line interval rating (N empty notes between lines)."""
@@ -226,10 +263,132 @@ class Player:
         with self._sustain_lock:
             return self._sustain_enabled
 
+    def set_segment_strict(self, strict: bool) -> None:
+        """Set segment strict mode explicitly."""
+        with self._control_lock:
+            self._segment_strict = bool(strict)
+
     def toggle_segment_strict(self) -> None:
         """Toggle segment strict mode on/off."""
         with self._control_lock:
             self._segment_strict = not self._segment_strict
+
+    def set_loop_enabled(self, enabled: bool) -> None:
+        """Choose whether playback restarts after the last note."""
+        with self._control_lock:
+            self._loop_enabled = bool(enabled)
+
+    def toggle_loop(self) -> None:
+        """Toggle looping playback on/off."""
+        with self._control_lock:
+            self._loop_enabled = not self._loop_enabled
+
+    def get_loop_enabled(self) -> bool:
+        """Get current loop mode state."""
+        with self._control_lock:
+            return self._loop_enabled
+
+    def toggle_line_loop(self) -> None:
+        """Toggle repeating the current line on/off (practice aid, not persisted)."""
+        with self._control_lock:
+            self._line_loop_enabled = not self._line_loop_enabled
+
+    def get_line_loop_enabled(self) -> bool:
+        """Get current line repeat state."""
+        with self._control_lock:
+            return self._line_loop_enabled
+
+    def set_range_a(self) -> None:
+        """Mark the next note to play as the A-B range start."""
+        with self._control_lock:
+            self._range_a = self._cursor
+            if self._range_b is not None and self._range_b <= self._cursor:
+                # The new start passed the old end; drop the stale end
+                self._range_b = None
+
+    def set_range_b(self) -> None:
+        """Mark the next note to play as the A-B range end (exclusive)."""
+        with self._control_lock:
+            self._range_b = self._cursor
+            if self._range_a is not None and self._cursor <= self._range_a:
+                # The new end did not pass the old start; drop the stale start
+                self._range_a = None
+
+    def clear_range(self) -> None:
+        """Remove the A-B range."""
+        with self._control_lock:
+            self._range_a = None
+            self._range_b = None
+
+    def get_range(self) -> tuple[Optional[int], Optional[int]]:
+        """Get the raw A-B range markers (either may be None)."""
+        with self._control_lock:
+            return (self._range_a, self._range_b)
+
+    def is_range_active(self) -> bool:
+        """Check whether a valid A-B range is currently looping."""
+        with self._control_lock:
+            return bool(
+                self._range_a is not None
+                and self._range_b is not None
+                and self._range_a < self._range_b
+            )
+
+    def set_bookmark(self) -> None:
+        """Bookmark the next note to play as (line, note)."""
+        with self._control_lock:
+            if self._cursor >= len(self._positions):
+                self._bookmark = None
+                return
+            self._bookmark = self._positions[self._cursor]
+
+    def jump_to_bookmark(self) -> bool:
+        """Seek back to the bookmarked position.
+
+        Returns:
+            True when the bookmark existed and playback moved to it
+        """
+        with self._control_lock:
+            bookmark = self._bookmark
+        if bookmark is None:
+            return False
+
+        for index, position in enumerate(self._positions):
+            if position == bookmark:
+                self._seek(index)
+                return True
+        return False
+
+    def get_bookmark(self) -> Optional[tuple[int, int]]:
+        """Get the bookmarked (line, note) position, or None."""
+        with self._control_lock:
+            return self._bookmark
+
+    def restore_bookmark(self, bookmark: Optional[tuple[int, int]]) -> None:
+        """Restore a bookmark carried over from a previous player."""
+        with self._control_lock:
+            self._bookmark = bookmark
+
+    def set_output_lock(self, locked: bool) -> None:
+        """Suppress or restore simulated key output.
+
+        While locked the playback position keeps advancing, so unlocking
+        resumes exactly where the score would be; locking also releases any
+        keys currently held by sustain mode.
+        """
+        with self._sustain_lock:
+            self._output_locked = locked
+        if locked:
+            self._release_sustained_keys()
+
+    def toggle_output_lock(self) -> None:
+        """Toggle the key-output lock."""
+        self.set_output_lock(not self.get_output_locked())
+
+    def get_output_locked(self) -> bool:
+        """Check whether simulated key output is currently locked."""
+        with self._sustain_lock:
+            return self._output_locked
 
     def get_segment_strict(self) -> bool:
         """Get current segment strict mode state."""
@@ -269,6 +428,15 @@ class Player:
         """
         return self.get_state() == PSM_State.STOPPED
 
+    def is_finished(self) -> bool:
+        """Check if the last playback ran to the end of the score naturally.
+
+        Returns:
+            True if playback completed the whole score
+        """
+        with self._control_lock:
+            return self._playback_completed
+
     def _release_sustained_keys(self) -> None:
         """Release all currently sustained keys."""
         with self._sustain_lock:
@@ -288,6 +456,14 @@ class Player:
                 self._seek(index)
                 return
 
+    def jump_to_start(self) -> None:
+        """Seek to the first note of the score."""
+        self._seek(0)
+
+    def jump_to_end(self) -> None:
+        """Seek past the last note of the score."""
+        self._seek(len(self._positions))
+
     def skip_forward_line(self) -> None:
         """Skip forward by 1 line."""
         with self._control_lock:
@@ -303,17 +479,21 @@ class Player:
         self._seek(target)
 
     def skip_backward_line(self) -> None:
-        """Skip backward by 1 line."""
+        """Skip backward to the first note of the previous line."""
         with self._control_lock:
             current_line = self._current_line()
-            target = next(
-                (
-                    index
-                    for index in range(len(self._positions) - 1, -1, -1)
-                    if self._positions[index][0] < current_line
-                ),
-                0,
-            )
+            target_line = current_line - 1
+            if target_line < 0:
+                target = 0
+            else:
+                target = next(
+                    (
+                        index
+                        for index, (line, _note) in enumerate(self._positions)
+                        if line == target_line
+                    ),
+                    0,
+                )
         self._seek(target)
 
     def skip_forward_notes(self, notes: int = 1) -> None:
@@ -343,6 +523,16 @@ class Player:
                 return (line, note + 1)
             return self._positions[self._cursor]
 
+    def get_note_progress(self) -> tuple[int, int]:
+        """Get note-level progress as (played_or_pending, total) note counts."""
+        with self._control_lock:
+            if not self._positions:
+                return (0, 0)
+            if self._cursor >= len(self._positions):
+                return (self._note_prefix[-1], self._note_prefix[-1])
+            line, note = self._positions[self._cursor]
+            return (self._note_prefix[line] + note, self._note_prefix[-1])
+
     def _current_line(self) -> int:
         """Return the cursor line, including a stable value at score end."""
         if not self._positions:
@@ -359,6 +549,7 @@ class Player:
                 return
             self._cursor = target
             self._cursor_generation += 1
+            self._playback_completed = False
         self._release_sustained_keys()
         self._wake_event.set()
 
@@ -366,6 +557,37 @@ class Player:
         """Notify the UI after a note has been dispatched."""
         if self._progress_callback:
             self._progress_callback(line, len(self.score.lines), note, total_notes)
+
+    def _repeat_current_line(self, line_index: int) -> bool:
+        """Rewind to the start of the current line when line repeat is active.
+
+        Returns:
+            True when the line end was handled by repeating the line
+        """
+        with self._control_lock:
+            if not self._line_loop_enabled:
+                return False
+            first = next(
+                (
+                    index
+                    for index, (line_no, _note) in enumerate(self._positions)
+                    if line_no == line_index
+                ),
+                None,
+            )
+            if first is None:
+                return False
+
+        self._seek(first)
+        with self._control_lock:
+            generation = self._cursor_generation
+        self._wait_repeated_before_next(
+            self._interval_rating,
+            int(self._line_interval_rating),
+            generation,
+            self._next_pending_keys(generation),
+        )
+        return True
 
     def _wait_repeated(self, duration: float, count: int, generation: int) -> bool:
         """Wait for repeated virtual rests, stopping at the first interruption."""
@@ -375,23 +597,25 @@ class Player:
         return True
 
     def _wait(self, duration: float, generation: int) -> bool:
-        """Wait while allowing pause, stop, and seek to take effect immediately."""
-        with self._control_lock:
-            speed = self._speed_multiplier
-        remaining = max(0.0, duration / speed)
+        """Wait while allowing pause, stop, seek, and speed changes to take effect."""
+        # `remaining` is kept in unscaled seconds and re-scaled on every loop so
+        # a speed change while waiting shortens or lengthens the same gap.
+        remaining = max(0.0, duration)
 
         while remaining > 0:
             self._pause_event.wait()
             if self._stop_event.is_set():
                 return False
 
+            with self._control_lock:
+                speed = self._speed_multiplier
             started = time.monotonic()
-            interrupted = self._wake_event.wait(remaining)
+            interrupted = self._wake_event.wait(remaining / speed)
             elapsed = time.monotonic() - started
             self._wake_event.clear()
 
             if self._pause_event.is_set():
-                remaining = max(0.0, remaining - elapsed)
+                remaining = max(0.0, remaining - elapsed * speed)
 
             with self._control_lock:
                 if self._cursor_generation != generation:
@@ -467,6 +691,48 @@ class Player:
                 break
 
             with self._control_lock:
+                wrap_target: Optional[int] = None
+                range_a = self._range_a
+                range_b = self._range_b
+                if (
+                    range_a is not None
+                    and range_b is not None
+                    and range_a < range_b
+                    and self._cursor >= range_b
+                ):
+                    # A-B range: restart from A when playback reaches B
+                    wrap_target = range_a
+                elif self._cursor >= len(self._positions):
+                    if self._loop_enabled and self._positions:
+                        # Loop mode: rewind to the first note and keep playing
+                        wrap_target = 0
+                    else:
+                        break
+                if wrap_target is not None:
+                    self._cursor = wrap_target
+                    self._cursor_generation += 1
+                    self._playback_completed = False
+                    wrap_generation = self._cursor_generation
+                else:
+                    wrap_generation = None
+
+            if wrap_generation is not None:
+                # Leave a line-sized gap at the wrap point, releasing any keys
+                # the first note must retrigger.
+                self._release_sustained_keys()
+                if not self._wait_repeated_before_next(
+                    self._interval_rating,
+                    int(self._line_interval_rating),
+                    wrap_generation,
+                    self._next_pending_keys(wrap_generation),
+                ):
+                    continue
+
+                with self._control_lock:
+                    if self._cursor_generation != wrap_generation:
+                        continue
+
+            with self._control_lock:
                 if self._cursor >= len(self._positions):
                     break
                 cursor = self._cursor
@@ -498,6 +764,8 @@ class Player:
             self._notify_progress(line_index, note_index, len(line))
 
             if at_line_end:
+                if self._repeat_current_line(line_index):
+                    continue
                 if line_index < len(self.score.lines) - 1:
                     self._wait_repeated_before_next(
                         self._interval_rating,
@@ -528,6 +796,7 @@ class Player:
             if self._state_machine.current_state == PSM_State.PLAYING:
                 try:
                     self._state_machine.transition_to(PSM_State.STOPPED)
+                    self._playback_completed = True
                 except StateTransitionError:
                     pass
             self._cursor = 0
@@ -576,11 +845,13 @@ class Player:
         return self._infer_arpeggio_interval(note_count)
 
     def _play_keys(self, keys: List[str], _generation: int) -> bool:
-        """Dispatch a single key or chord, honoring sustain mode."""
+        """Dispatch a single key or chord, honoring output lock and sustain."""
         if not keys:
             return True
 
         with self._sustain_lock:
+            if self._output_locked:
+                return True
             sustain_enabled = self._sustain_enabled
         if not sustain_enabled:
             if len(keys) == 1:

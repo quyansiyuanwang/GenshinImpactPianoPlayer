@@ -33,22 +33,16 @@ class PluginContext:
         """
         from src.ui.cli.input.hotkey_registry import get_hotkey_registry
 
-        print(f"      [PluginContext] Registering hotkey: {key}")
-
-        # Register with global hotkey registry
+        # Register with global hotkey registry, replacing stale bindings after
+        # a reload or reparse created a new player.
         registry = get_hotkey_registry()
-
-        # Check if already registered, unregister first
         if registry.get_callback(key) is not None:
-            print(f"      [PluginContext] Hotkey {key} already registered, updating...")
             registry.unregister(key)
 
         registry.register(key, callback, f"Plugin hotkey: {key}", "plugin")
 
         # Also store locally for reference
         self._hotkeys[key] = callback
-
-        print(f"      [PluginContext] Hotkey {key} registered successfully")
 
     def get_hotkeys(self) -> dict[str, Callable[[], None]]:
         """Get all registered hotkeys.

@@ -45,6 +45,38 @@ def test_parser_reads_manual_arpeggio_mode(tmp_path: Path) -> None:
     assert not score.config.arpeggio_auto
 
 
+def test_parser_reads_loop_configuration(tmp_path: Path) -> None:
+    score_path = tmp_path / "loop.qymusic"
+    score_path.write_text("LOOP = true\n---\nQ\n", encoding="utf-8")
+
+    score = ScoreParser(str(score_path)).parse()
+
+    assert score.config.loop
+
+
+def test_parser_reports_ignored_characters(tmp_path: Path) -> None:
+    score_path = tmp_path / "warn.qymusic"
+    score_path.write_text("---\nQ O 1\n[Q@]\n(Q#W)\n", encoding="utf-8")
+
+    score = ScoreParser(str(score_path)).parse()
+
+    assert score.warnings == [
+        "line 2: ignored 'O1'",
+        "line 3: ignored '@'",
+        "line 4: ignored '#'",
+    ]
+    # Valid notes on the same lines still parse
+    assert [note.keys for note in score.lines[0]] == [["Q"], [" "], [" "]]
+    assert score.lines[1][0].keys == ["Q"]
+    assert score.lines[2][0].keys == ["Q", "W"]
+
+
+def test_parser_stays_silent_for_clean_scores() -> None:
+    score = ScoreParser(str(SAMPLE_SCORE)).parse()
+
+    assert score.warnings == []
+
+
 def test_segment_strict_truncates_each_slash_separated_segment(
     tmp_path: Path,
 ) -> None:
@@ -87,3 +119,33 @@ def test_segment_strict_pads_short_segments(tmp_path: Path) -> None:
     assert len(score.lines[0]) == 8
     assert [note.keys for note in score.lines[0][2:4]] == [[" "], [" "]]
     assert [note.keys for note in score.lines[0][5:8]] == [[" "], [" "], [" "]]
+
+
+def test_unclosed_chord_keeps_all_keys(tmp_path: Path) -> None:
+    score_path = tmp_path / "unclosed_chord.qymusic"
+    score_path.write_text("(QW\n", encoding="utf-8")
+
+    score = ScoreParser(str(score_path)).parse()
+
+    assert score.lines[0][0].type == NoteType.CHORD
+    assert score.lines[0][0].keys == ["Q", "W"]
+
+
+def test_unclosed_arpeggio_keeps_all_keys(tmp_path: Path) -> None:
+    score_path = tmp_path / "unclosed_arpeggio.qymusic"
+    score_path.write_text("[QWE\n", encoding="utf-8")
+
+    score = ScoreParser(str(score_path)).parse()
+
+    assert score.lines[0][0].type == NoteType.ARPEGGIO
+    assert score.lines[0][0].keys == ["Q", "W", "E"]
+
+
+def test_parses_files_with_utf8_bom(tmp_path: Path) -> None:
+    score_path = tmp_path / "bom.qymusic"
+    score_path.write_text("\ufeffINTERVAL_RATING = 0.3\n---\nQW\n", encoding="utf-8")
+
+    score = ScoreParser(str(score_path)).parse()
+
+    assert score.config.interval_rating == 0.3
+    assert [note.keys for note in score.lines[0]] == [["Q"], ["W"]]
