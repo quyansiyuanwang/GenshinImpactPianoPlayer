@@ -5,6 +5,7 @@ import os
 import curses
 import keyboard
 from pathlib import Path
+from threading import Lock
 from typing import Any, Dict, List, Optional
 from src.core.parser.score_parser import ScoreParser, NoteType, ParsedScore, Note
 from src.core.player.player import Player
@@ -35,6 +36,8 @@ class CLI:
         ] = []  # Track failed hotkey registrations
         self._message = ""  # Transient status message shown on the status line
         self._message_until = 0.0  # time.time() after which the message hides
+        self._render_lock = Lock()  # Serializes curses writes across threads
+        self._refresh_requested = False  # Pending throttled refresh from a hotkey
 
         # Use custom hotkeys or defaults
         self.hotkeys = hotkeys if hotkeys is not None else DEFAULT_HOTKEYS.copy()
@@ -44,6 +47,20 @@ class CLI:
         self._message = message
         self._message_until = time.time() + duration
         self._display_score()
+
+    def _request_refresh(self) -> None:
+        """Throttled refresh for hotkey threads.
+
+        Renders immediately when the previous frame is old enough; otherwise
+        flags a pending refresh that the main loop flushes within one tick, so
+        held-down adjustment keys cannot flood the terminal with repaints.
+        """
+        now = time.time()
+        if now - self.last_display_time >= DISPLAY_REFRESH_RATE:
+            self.last_display_time = now
+            self._display_score()
+            return
+        self._refresh_requested = True
 
     def _format_score_line(self, line: List[Note]) -> str:
         """Format a score line as text, preserving visual separators."""
@@ -80,20 +97,30 @@ class CLI:
         return result.rstrip()
 
     def _display_score(self) -> None:
-        """Display the full score with current position highlighted using curses."""
+        """Display the full score with current position highlighted using curses.
+
+        The playback thread (progress callbacks), the keyboard hook thread
+        (hotkey actions), and the main loop can all request a frame, so the
+        curses work is serialized behind a lock.
+        """
         if not self.display_active or not self.stdscr:
             return
 
+        with self._render_lock:
+            self._render_frame(self.stdscr)
+
+    def _render_frame(self, stdscr: Any) -> None:
+        """Render one full frame (caller must hold the render lock)."""
         try:
             # Get terminal size (recalculate every time for real-time adaptation)
-            height, width = self.stdscr.getmaxyx()
+            height, width = stdscr.getmaxyx()
 
             # Erase (not clear) to avoid full-repaint flicker on fast refreshes
-            self.stdscr.erase()
+            stdscr.erase()
 
             if not self.score:
-                self.stdscr.addstr(0, 0, "No score loaded.")
-                self.stdscr.refresh()
+                stdscr.addstr(0, 0, "No score loaded.")
+                stdscr.refresh()
                 return
 
             # Get current position
@@ -233,25 +260,23 @@ class CLI:
             row = 0
 
             # Header
-            self.stdscr.addstr(
-                row, 0, "GIPianoPlayer - Command Line Interface"[: width - 1]
-            )
+            stdscr.addstr(row, 0, "GIPianoPlayer - Command Line Interface"[: width - 1])
             row += 1
-            self.stdscr.addstr(row, 0, "=" * separator_width)
+            stdscr.addstr(row, 0, "=" * separator_width)
             row += 1
             display_file_name = (
                 os.path.basename(self.file_path)
                 .encode("ascii", "replace")
                 .decode("ascii")
             )
-            self.stdscr.addstr(row, 0, f"File: {display_file_name}"[: width - 1])
+            stdscr.addstr(row, 0, f"File: {display_file_name}"[: width - 1])
             row += 1
-            self.stdscr.addstr(row, 0, f"Lines: {len(self.score.lines)}"[: width - 1])
+            stdscr.addstr(row, 0, f"Lines: {len(self.score.lines)}"[: width - 1])
             row += 2
 
             # Show indicator if there are lines before
             if start_line > 0:
-                self.stdscr.addstr(
+                stdscr.addstr(
                     row, 0, f"    ... ({start_line} lines above) ..."[: width - 1]
                 )
                 row += 2
@@ -267,7 +292,7 @@ class CLI:
                 if line_idx < current_line:
                     # Already played - cyan/浅蓝色
                     line_text = self._format_score_line(line)
-                    self.stdscr.addstr(
+                    stdscr.addstr(
                         row,
                         0,
                         (line_num + line_text)[: width - 1],
@@ -276,7 +301,7 @@ class CLI:
                 elif line_idx == current_line:
                     # Current line - with highlighting
                     col = 0
-                    self.stdscr.addstr(row, col, line_num)
+                    stdscr.addstr(row, col, line_num)
                     col += len(line_num)
 
                     for note_idx, note in enumerate(line):
@@ -285,29 +310,29 @@ class CLI:
                             break
 
                         if note_idx < current_note:
-                            self.stdscr.addstr(
+                            stdscr.addstr(
                                 row, col, note_text, curses.color_pair(2)
                             )  # Red
                         elif note_idx == current_note:
-                            self.stdscr.addstr(
+                            stdscr.addstr(
                                 row,
                                 col,
                                 note_text,
                                 curses.color_pair(3) | curses.A_BOLD,
                             )  # Yellow bold
                         else:
-                            self.stdscr.addstr(row, col, note_text)
+                            stdscr.addstr(row, col, note_text)
                         col += len(note_text)
                 else:
                     # Not yet played
                     line_text = self._format_score_line(line)
-                    self.stdscr.addstr(row, 0, (line_num + line_text)[: width - 1])
+                    stdscr.addstr(row, 0, (line_num + line_text)[: width - 1])
                 row += 1
 
             # Show indicator if there are lines after
             if end_line < len(self.score.lines):
                 row += 1
-                self.stdscr.addstr(
+                stdscr.addstr(
                     row,
                     0,
                     f"    ... ({len(self.score.lines) - end_line} lines below) ..."[
@@ -317,7 +342,7 @@ class CLI:
                 row += 1
 
             row += 1
-            self.stdscr.addstr(row, 0, "=" * separator_width)
+            stdscr.addstr(row, 0, "=" * separator_width)
             row += 1
 
             # Status line
@@ -350,7 +375,7 @@ class CLI:
             if self._message and time.time() < self._message_until:
                 progress_text = f"{progress_text}  |  {self._message}"
 
-            self.stdscr.addstr(
+            stdscr.addstr(
                 row,
                 0,
                 progress_text[: width - 1],
@@ -358,14 +383,14 @@ class CLI:
             row += 2
 
             # Configuration panel
-            self.stdscr.addstr(row, 0, "Configuration:")
+            stdscr.addstr(row, 0, "Configuration:")
             row += 1
-            self.stdscr.addstr(row, 0, "-" * separator_width)
+            stdscr.addstr(row, 0, "-" * separator_width)
             row += 1
 
             # Render config lines
             for config_line in config_lines:
-                self.stdscr.addstr(row, 0, config_line[: width - 1])
+                stdscr.addstr(row, 0, config_line[: width - 1])
                 row += 1
             row += 1
 
@@ -380,7 +405,7 @@ class CLI:
                         f"Warning: {len(self._failed_hotkeys)} hotkeys failed: "
                         f"{failed_keys}{more}"
                     )
-                    self.stdscr.addstr(
+                    stdscr.addstr(
                         row,
                         0,
                         warning_msg[: width - 1],
@@ -390,7 +415,7 @@ class CLI:
 
                 skip_small_unit = "note" if SKIP_SMALL == 1 else "notes"
                 skip_large_unit = "line" if SKIP_LARGE == 1 else "lines"
-                self.stdscr.addstr(
+                stdscr.addstr(
                     row,
                     0,
                     f"Controls: [{self.hotkeys['play_pause']}] Play/Pause | [{self.hotkeys['quit']}] Quit | [F9] Save"[
@@ -398,7 +423,7 @@ class CLI:
                     ],
                 )
                 row += 1
-                self.stdscr.addstr(
+                stdscr.addstr(
                     row,
                     0,
                     f"          [{self.hotkeys['skip_backward']}/{self.hotkeys['skip_forward']}] Skip {SKIP_SMALL} {skip_small_unit} | [{self.hotkeys['skip_backward_large']}/{self.hotkeys['skip_forward_large']}] Skip {SKIP_LARGE} {skip_large_unit}"[
@@ -406,7 +431,7 @@ class CLI:
                     ],
                 )
                 row += 1
-                self.stdscr.addstr(
+                stdscr.addstr(
                     row,
                     0,
                     f"          [{self.hotkeys['reload']}] Reload | [{self.hotkeys['reparse']}] Reparse | [{self.hotkeys['toggle_loop']}] Loop | [{self.hotkeys['jump_to_start']}/{self.hotkeys['jump_to_end']}] Start/End"[
@@ -415,7 +440,7 @@ class CLI:
                 )
 
             # Refresh screen
-            self.stdscr.refresh()
+            stdscr.refresh()
 
         except (curses.error, UnicodeError):
             # A narrow terminal or unsupported glyph can interrupt a late draw.
@@ -423,7 +448,7 @@ class CLI:
             pass
         finally:
             try:
-                self.stdscr.refresh()
+                stdscr.refresh()
             except curses.error:
                 pass
 
@@ -519,6 +544,11 @@ class CLI:
                 if current_time - last_refresh >= 0.5:
                     self._display_score()
                     last_refresh = current_time
+                elif self._refresh_requested:
+                    # A throttled hotkey refresh is waiting for its time slot
+                    self._refresh_requested = False
+                    self.last_display_time = current_time
+                    self._display_score()
 
                 time.sleep(0.05)
         except KeyboardInterrupt:
@@ -594,7 +624,7 @@ class CLI:
             self._flash("Speed limit reached")
         else:
             # Always force display update
-            self._display_score()
+            self._request_refresh()
 
     def adjust_arpeggio(self, delta: float) -> None:
         """Adjust manual arpeggio interval and leave automatic mode."""
@@ -605,7 +635,7 @@ class CLI:
         new_interval = current + delta
         self.player.set_arpeggio_interval(new_interval)
         # Always force display update
-        self._display_score()
+        self._request_refresh()
 
     def toggle_arpeggio_auto(self) -> None:
         """Toggle inferred arpeggio timing."""
@@ -624,7 +654,7 @@ class CLI:
         new_interval = max(0.01, current + delta)  # Minimum 0.01s
         self.player.set_interval_rating(new_interval)
         # Always force display update
-        self._display_score()
+        self._request_refresh()
 
     def adjust_line_interval(self, delta: float) -> None:
         """Adjust line interval rating (N empty notes)."""
@@ -635,7 +665,7 @@ class CLI:
         new_rating = max(0.0, current + delta)
         self.player.set_line_interval_rating(new_rating)
         # Always force display update
-        self._display_score()
+        self._request_refresh()
 
     def adjust_space_interval(self, delta: float) -> None:
         """Adjust space interval rating (multiplier for rest notes)."""
@@ -646,7 +676,7 @@ class CLI:
         new_rating = max(0.0, current + delta)
         self.player.set_space_interval_rating(new_rating)
         # Always force display update
-        self._display_score()
+        self._request_refresh()
 
     def adjust_empty_line_interval(self, delta: float) -> None:
         """Adjust empty line interval rating (N empty notes for empty lines)."""
@@ -678,7 +708,7 @@ class CLI:
             return
         self.player.skip_backward_notes(1)
         # Always force display update
-        self._display_score()
+        self._request_refresh()
 
     def skip_forward(self) -> None:
         """Skip forward by 1 note."""
@@ -686,7 +716,7 @@ class CLI:
             return
         self.player.skip_forward_notes(1)
         # Always force display update
-        self._display_score()
+        self._request_refresh()
 
     def skip_backward_large(self) -> None:
         """Skip backward by 1 line."""
@@ -694,7 +724,7 @@ class CLI:
             return
         self.player.skip_backward_line()
         # Always force display update
-        self._display_score()
+        self._request_refresh()
 
     def skip_forward_large(self) -> None:
         """Skip forward by 1 line."""
@@ -702,7 +732,7 @@ class CLI:
             return
         self.player.skip_forward_line()
         # Always force display update
-        self._display_score()
+        self._request_refresh()
 
     def quit(self) -> None:
         """Quit the application."""
