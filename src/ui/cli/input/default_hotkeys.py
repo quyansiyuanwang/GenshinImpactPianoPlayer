@@ -2,6 +2,13 @@
 
 from typing import TYPE_CHECKING, Callable
 
+from src.application.config.constants import (
+    ARPEGGIO_STEP,
+    INTERVAL_STEP,
+    SPACE_INTERVAL_STEP,
+    SPEED_STEP,
+    SPEED_STEP_LARGE,
+)
 from src.ui.cli.input.hotkey_registry import HotkeyRegistry
 
 if TYPE_CHECKING:
@@ -13,35 +20,43 @@ def register_default_hotkeys(cli: "CLI", registry: HotkeyRegistry) -> None:
     bindings: dict[str, tuple[Callable[[], None], str, str]] = {
         "play_pause": (cli.toggle_play_pause, "Play or pause playback", "playback"),
         "quit": (cli.quit, "Quit application", "playback"),
-        "speed_up": (lambda: cli.adjust_speed(0.01), "Increase speed", "speed"),
-        "speed_down": (lambda: cli.adjust_speed(-0.01), "Decrease speed", "speed"),
+        "speed_up": (
+            lambda: cli.adjust_speed(SPEED_STEP),
+            "Increase speed",
+            "speed",
+        ),
+        "speed_down": (
+            lambda: cli.adjust_speed(-SPEED_STEP),
+            "Decrease speed",
+            "speed",
+        ),
         "speed_up_large": (
-            lambda: cli.adjust_speed(0.1),
+            lambda: cli.adjust_speed(SPEED_STEP_LARGE),
             "Increase speed by 0.1",
             "speed",
         ),
         "speed_down_large": (
-            lambda: cli.adjust_speed(-0.1),
+            lambda: cli.adjust_speed(-SPEED_STEP_LARGE),
             "Decrease speed by 0.1",
             "speed",
         ),
         "interval_shorter": (
-            lambda: cli.adjust_interval(-0.01),
+            lambda: cli.adjust_interval(-INTERVAL_STEP),
             "Decrease note interval",
             "timing",
         ),
         "interval_longer": (
-            lambda: cli.adjust_interval(0.01),
+            lambda: cli.adjust_interval(INTERVAL_STEP),
             "Increase note interval",
             "timing",
         ),
         "arpeggio_shorter": (
-            lambda: cli.adjust_arpeggio(-0.01),
+            lambda: cli.adjust_arpeggio(-ARPEGGIO_STEP),
             "Decrease manual arpeggio interval",
             "timing",
         ),
         "arpeggio_longer": (
-            lambda: cli.adjust_arpeggio(0.01),
+            lambda: cli.adjust_arpeggio(ARPEGGIO_STEP),
             "Increase manual arpeggio interval",
             "timing",
         ),
@@ -58,6 +73,26 @@ def register_default_hotkeys(cli: "CLI", registry: HotkeyRegistry) -> None:
         "line_interval_more": (
             lambda: cli.adjust_line_interval(1),
             "Increase line interval",
+            "timing",
+        ),
+        "space_interval_less": (
+            lambda: cli.adjust_space_interval(-SPACE_INTERVAL_STEP),
+            "Decrease space interval",
+            "timing",
+        ),
+        "space_interval_more": (
+            lambda: cli.adjust_space_interval(SPACE_INTERVAL_STEP),
+            "Increase space interval",
+            "timing",
+        ),
+        "empty_line_interval_less": (
+            lambda: cli.adjust_empty_line_interval(-1),
+            "Decrease empty line interval",
+            "timing",
+        ),
+        "empty_line_interval_more": (
+            lambda: cli.adjust_empty_line_interval(1),
+            "Increase empty line interval",
             "timing",
         ),
         "segment_length_less": (

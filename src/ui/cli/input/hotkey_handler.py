@@ -63,13 +63,29 @@ class HotkeyHandler:
         if not any(self._modifier_state.values()):
             callback = self._scan_code_hotkeys.get(event.scan_code)
             if callback:
-                callback()
+                self._dispatch(callback)
                 return
 
         key_name = self._qualified_name(name)
         callback = self._hotkeys.get(key_name)
         if callback:
+            self._dispatch(callback)
+        elif self._modifier_state["shift"] and not (
+            self._modifier_state["ctrl"] or self._modifier_state["alt"]
+        ):
+            # A shifted symbol key (e.g. Shift+= producing "+") keeps the same
+            # physical scan code, so fall back to its base-key binding.
+            callback = self._scan_code_hotkeys.get(event.scan_code)
+            if callback:
+                self._dispatch(callback)
+
+    @staticmethod
+    def _dispatch(callback: Callable[[], None]) -> None:
+        """Run a callback without letting an error kill the global hook."""
+        try:
             callback()
+        except Exception:
+            pass
 
     @staticmethod
     def _modifier_name(name: str) -> str | None:
