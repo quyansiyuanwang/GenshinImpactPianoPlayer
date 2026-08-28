@@ -139,6 +139,11 @@ def test_default_hotkeys_register_documented_bindings() -> None:
             "end",
             "insert",
             "delete",
+            "ctrl+home",
+            "ctrl+end",
+            "ctrl+backspace",
+            "ctrl+k",
+            "ctrl+l",
         ):
             assert registry.get_callback(key) is not None, key
     finally:

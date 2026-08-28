@@ -206,6 +206,11 @@ class CLI:
                 config_lines.append(
                     f"  Range: {range_status}       [{self.hotkeys['set_range_a']}/{self.hotkeys['set_range_b']}] Set | [{self.hotkeys['clear_range']}] Clear"
                 )
+                bookmark = self.player.get_bookmark()
+                bookmark_status = f"line {bookmark[0] + 1}" if bookmark else "none"
+                config_lines.append(
+                    f"  Bookmark: {bookmark_status}    [{self.hotkeys['set_bookmark']}] Set | [{self.hotkeys['jump_to_bookmark']}] Jump"
+                )
 
             # On short terminals drop the less-used rows so the controls stay
             # visible instead of being pushed off-screen.
@@ -944,6 +949,7 @@ class CLI:
             # Stop current playback
             was_playing = self.player.get_state() == PSM_State.PLAYING
             sustain_enabled = self.player.get_sustain_enabled()
+            bookmark = self.player.get_bookmark()
             self.player.stop()
 
             # Re-read file content (utf-8-sig tolerates a BOM)
@@ -960,6 +966,7 @@ class CLI:
             self.player.set_progress_callback(self._on_progress)
             if sustain_enabled:
                 self.player.toggle_sustain()
+            self.player.restore_bookmark(bookmark)
 
             # Re-initialize plugins with new player
             # Force re-initialization by updating context and calling initialize directly
@@ -1025,6 +1032,7 @@ class CLI:
             segment_strict = self.player.get_segment_strict()
             sustain_enabled = self.player.get_sustain_enabled()
             loop_enabled = self.player.get_loop_enabled()
+            bookmark = self.player.get_bookmark()
 
             # Stop current playback
             self.player.stop()
@@ -1054,6 +1062,7 @@ class CLI:
             self.player.set_segment_length(segment_length)
             self.player.set_segment_strict(segment_strict)
             self.player.set_loop_enabled(loop_enabled)
+            self.player.restore_bookmark(bookmark)
             if sustain_enabled:
                 self.player.toggle_sustain()
 
@@ -1137,6 +1146,33 @@ class CLI:
 
         self.player.clear_range()
         self._flash("Range cleared")
+
+    def set_bookmark(self) -> None:
+        """Bookmark the current position."""
+        if not self.player:
+            return
+
+        self.player.set_bookmark()
+        bookmark = self.player.get_bookmark()
+        if bookmark is None:
+            self._flash("Nothing to bookmark - score is at its end")
+        else:
+            self._flash(f"Bookmark set at line {bookmark[0] + 1}")
+
+    def jump_to_bookmark(self) -> None:
+        """Jump back to the bookmarked position."""
+        if not self.player:
+            return
+
+        if self.player.jump_to_bookmark():
+            self._request_refresh()
+            self._flash(
+                f"Jumped to bookmark at line {self.player.get_position()[0] + 1}"
+            )
+        elif self.player.get_bookmark() is not None:
+            self._flash("Bookmark position is outside the current score")
+        else:
+            self._flash("No bookmark set")
 
     def jump_to_start(self) -> None:
         """Jump to the first note of the score."""

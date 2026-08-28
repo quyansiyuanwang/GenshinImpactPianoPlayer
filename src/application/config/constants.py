@@ -46,6 +46,9 @@ DEFAULT_HOTKEYS = {
     "set_range_a": "ctrl+home",
     "set_range_b": "ctrl+end",
     "clear_range": "ctrl+backspace",
+    # Bookmark
+    "set_bookmark": "ctrl+k",
+    "jump_to_bookmark": "ctrl+l",
     # Reload and reparse
     "reload": "f5",
     "reparse": "f6",

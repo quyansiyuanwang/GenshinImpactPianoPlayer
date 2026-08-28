@@ -29,6 +29,16 @@ def register_default_hotkeys(cli: "CLI", registry: HotkeyRegistry) -> None:
         "set_range_a": (cli.set_range_a, "Set A-B range start", "playback"),
         "set_range_b": (cli.set_range_b, "Set A-B range end", "playback"),
         "clear_range": (cli.clear_range, "Clear the A-B range", "playback"),
+        "set_bookmark": (
+            cli.set_bookmark,
+            "Bookmark the current position",
+            "navigation",
+        ),
+        "jump_to_bookmark": (
+            cli.jump_to_bookmark,
+            "Jump back to the bookmark",
+            "navigation",
+        ),
         "jump_to_start": (
             cli.jump_to_start,
             "Jump to the start of the score",

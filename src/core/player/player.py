@@ -115,6 +115,9 @@ class Player:
         self._range_a: Optional[int] = None
         self._range_b: Optional[int] = None
 
+        # Bookmark as (line_index, note_index) so it survives reparse
+        self._bookmark: Optional[tuple[int, int]] = None
+
         # Playback thread
         self._playback_thread: Optional[Thread] = None
 
@@ -327,6 +330,41 @@ class Player:
                 and self._range_b is not None
                 and self._range_a < self._range_b
             )
+
+    def set_bookmark(self) -> None:
+        """Bookmark the next note to play as (line, note)."""
+        with self._control_lock:
+            if self._cursor >= len(self._positions):
+                self._bookmark = None
+                return
+            self._bookmark = self._positions[self._cursor]
+
+    def jump_to_bookmark(self) -> bool:
+        """Seek back to the bookmarked position.
+
+        Returns:
+            True when the bookmark existed and playback moved to it
+        """
+        with self._control_lock:
+            bookmark = self._bookmark
+        if bookmark is None:
+            return False
+
+        for index, position in enumerate(self._positions):
+            if position == bookmark:
+                self._seek(index)
+                return True
+        return False
+
+    def get_bookmark(self) -> Optional[tuple[int, int]]:
+        """Get the bookmarked (line, note) position, or None."""
+        with self._control_lock:
+            return self._bookmark
+
+    def restore_bookmark(self, bookmark: Optional[tuple[int, int]]) -> None:
+        """Restore a bookmark carried over from a previous player."""
+        with self._control_lock:
+            self._bookmark = bookmark
 
     def get_segment_strict(self) -> bool:
         """Get current segment strict mode state."""

@@ -251,6 +251,40 @@ def test_range_markers_dropped_when_out_of_order() -> None:
     assert player.get_range() == (None, None)
 
 
+def test_bookmark_returns_to_marked_position() -> None:
+    player = Player(make_score([["Q", "W"], ["E", "R"]]), FakeKeyboard())
+
+    player.skip_forward_notes(3)  # (1, 1)
+    player.set_bookmark()
+    assert player.get_bookmark() == (1, 1)
+
+    player.jump_to_start()
+    assert player.jump_to_bookmark()
+    assert player.get_position() == (1, 1)
+
+
+def test_bookmark_without_mark_or_stale_mark_reports_failure() -> None:
+    player = Player(make_score([["Q", "W"]]), FakeKeyboard())
+
+    assert not player.jump_to_bookmark()  # nothing marked
+
+    player.skip_forward_notes(1)
+    player.set_bookmark()  # (0, 1)
+    other = Player(make_score([["Q"]]), FakeKeyboard())
+    other.restore_bookmark(player.get_bookmark())
+    assert other.get_bookmark() == (0, 1)
+    assert not other.jump_to_bookmark()  # position does not exist here
+    assert other.get_position() == (0, 0)
+
+
+def test_bookmark_at_score_end_is_rejected() -> None:
+    player = Player(make_score([["Q"]]), FakeKeyboard())
+
+    player.jump_to_end()
+    player.set_bookmark()
+    assert player.get_bookmark() is None
+
+
 def test_speed_change_applies_to_active_wait() -> None:
     keyboard = FakeKeyboard()
     player = Player(make_score([["Q"]], interval=0.01), keyboard)
