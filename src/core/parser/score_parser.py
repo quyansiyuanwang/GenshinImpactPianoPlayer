@@ -22,6 +22,9 @@ from src.application.config.constants import (
 
 __all__ = ["ScoreParser", "Note", "NoteType", "ParsedScore"]
 
+# Keep the warning list bounded for pathological files
+MAX_PARSE_WARNINGS = 50
+
 
 class ScoreParser:
     """Parser for score text files."""
@@ -39,6 +42,8 @@ class ScoreParser:
         self._segment_length = 0
         self._segment_strict = False
         self._empty_line_interval_rating = 0.0
+        self._score_start = 0
+        self.warnings: List[str] = []
 
     def parse(self) -> ParsedScore:
         """Parse the score file and return ParsedScore object.
@@ -50,10 +55,11 @@ class ScoreParser:
         with open(self.file_path, encoding="utf-8-sig") as f:
             self.content = f.read()
 
+        self.warnings = []
         config = self._parse_config()
         lines = self._parse_score()
 
-        return ParsedScore(config=config, lines=lines)
+        return ParsedScore(config=config, lines=lines, warnings=self.warnings)
 
     def _parse_config(self) -> PlayConfig:
         """Parse configuration parameters from file header.
@@ -101,6 +107,7 @@ class ScoreParser:
 
         # Store score content starting position
         self.score_content = "\n".join(lines[score_start:])
+        self._score_start = score_start
 
         # Handle version
         version = config_dict.get("version")
@@ -154,7 +161,7 @@ class ScoreParser:
         """
         lines: List[List[Note]] = []
 
-        for line in self.score_content.split("\n"):
+        for index, line in enumerate(self.score_content.split("\n")):
             stripped = line.strip()
 
             # Skip comments
@@ -167,18 +174,24 @@ class ScoreParser:
                     lines.append([Note(type=NoteType.EMPTY_LINE, keys=[])])
                 continue
 
-            # Parse normal line
-            notes = self._parse_line(stripped)
+            # Parse normal line (report file line numbers, 1-based)
+            notes = self._parse_line(stripped, self._score_start + index + 1)
             if notes:
                 lines.append(notes)
 
         return lines
 
-    def _parse_line(self, line: str) -> List[Note]:
+    def _warn(self, line_number: int, chars: str) -> None:
+        """Record characters the parser could not interpret."""
+        if len(self.warnings) < MAX_PARSE_WARNINGS:
+            self.warnings.append(f"line {line_number}: ignored {chars!r}")
+
+    def _parse_line(self, line: str, line_number: int) -> List[Note]:
         """Parse a single line into a list of notes.
 
         Args:
             line: Line content to parse
+            line_number: 1-based file line number, used for warnings
 
         Returns:
             List of notes in the line
@@ -187,6 +200,8 @@ class ScoreParser:
         segments: List[List[Note]] = []
         current_segment: List[Note] = []
         i = 0
+
+        ignored: List[str] = []
 
         while i < len(line):
             char = line[i]
@@ -205,9 +220,12 @@ class ScoreParser:
                 # Chord
                 end = self._find_matching_bracket(line, i, "(", ")")
                 chord_content = line[i + 1 : end]
-                chord_keys: List[Union[str, Note]] = [
-                    k.upper() for k in chord_content if k.upper() in VALID_KEYS
-                ]
+                chord_keys: List[Union[str, Note]] = []
+                for k in chord_content:
+                    if k.upper() in VALID_KEYS:
+                        chord_keys.append(k.upper())
+                    elif not k.isspace():
+                        ignored.append(k)
                 if chord_keys:
                     current_segment.append(Note(type=NoteType.CHORD, keys=chord_keys))
                 i = end + 1
@@ -215,7 +233,7 @@ class ScoreParser:
                 # Arpeggio
                 end = self._find_matching_bracket(line, i, "[", "]")
                 arpeggio_content = line[i + 1 : end]
-                arpeggio_notes = self._parse_arpeggio(arpeggio_content)
+                arpeggio_notes = self._parse_arpeggio(arpeggio_content, ignored)
                 if arpeggio_notes:
                     current_segment.append(
                         Note(type=NoteType.ARPEGGIO, keys=arpeggio_notes)
@@ -227,8 +245,12 @@ class ScoreParser:
                 current_segment.append(Note(type=NoteType.SINGLE, keys=single_key))
                 i += 1
             else:
-                # Skip invalid characters
+                # Skip invalid characters but tell the user about them
+                ignored.append(char)
                 i += 1
+
+        if ignored:
+            self._warn(line_number, "".join(ignored))
 
         # Add the last segment
         if current_segment:
@@ -265,11 +287,14 @@ class ScoreParser:
 
         return notes
 
-    def _parse_arpeggio(self, content: str) -> List[Union[str, Note]]:
+    def _parse_arpeggio(
+        self, content: str, ignored: List[str]
+    ) -> List[Union[str, Note]]:
         """Parse arpeggio content which may contain nested chords.
 
         Args:
             content: Arpeggio content
+            ignored: Collector for characters that cannot be interpreted
 
         Returns:
             List of notes/keys in the arpeggio
@@ -284,9 +309,12 @@ class ScoreParser:
                 # Nested chord within arpeggio
                 end = self._find_matching_bracket(content, i, "(", ")")
                 chord_content = content[i + 1 : end]
-                chord_keys: List[Union[str, Note]] = [
-                    k.upper() for k in chord_content if k.upper() in VALID_KEYS
-                ]
+                chord_keys: List[Union[str, Note]] = []
+                for k in chord_content:
+                    if k.upper() in VALID_KEYS:
+                        chord_keys.append(k.upper())
+                    elif not k.isspace():
+                        ignored.append(k)
                 if chord_keys:
                     notes.append(Note(type=NoteType.CHORD, keys=chord_keys))
                 i = end + 1
@@ -295,7 +323,8 @@ class ScoreParser:
                 notes.append(char.upper())
                 i += 1
             else:
-                # Skip invalid characters
+                # Skip invalid characters but tell the user about them
+                ignored.append(char)
                 i += 1
 
         return notes

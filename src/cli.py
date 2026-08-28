@@ -214,6 +214,9 @@ class CLI:
                     footer_lines += 1  # warning line
 
             header_lines = 5  # title, separator, file, lines, blank
+            score_warnings = self.score.warnings
+            if score_warnings:
+                header_lines += 1  # warning line
 
             # Calculate available lines for score display
             available_lines = max(3, height - header_lines - footer_lines)
@@ -272,7 +275,25 @@ class CLI:
             stdscr.addstr(row, 0, f"File: {display_file_name}"[: width - 1])
             row += 1
             stdscr.addstr(row, 0, f"Lines: {len(self.score.lines)}"[: width - 1])
-            row += 2
+            row += 1
+
+            # Surface characters the parser could not interpret (ASCII-folded
+            # like the file name, since they may be arbitrary text)
+            if score_warnings:
+                preview = "; ".join(score_warnings[:2])
+                more = (
+                    f" (+{len(score_warnings) - 2} more)"
+                    if len(score_warnings) > 2
+                    else ""
+                )
+                warning_text = (
+                    f"Warning: {len(score_warnings)} unknown characters ignored: "
+                    f"{preview}{more}"
+                )
+                warning_text = warning_text.encode("ascii", "replace").decode("ascii")
+                stdscr.addstr(row, 0, warning_text[: width - 1], curses.color_pair(2))
+                row += 1
+            row += 1
 
             # Show indicator if there are lines before
             if start_line > 0:
@@ -341,11 +362,7 @@ class CLI:
                 )
                 row += 1
 
-            row += 1
-            stdscr.addstr(row, 0, "=" * separator_width)
-            row += 1
-
-            # Status line
+            # Status line state and note-level progress (O(1) prefix sums)
             finished = bool(self.player and self.player.is_finished())
             if finished:
                 state = "FINISHED"
@@ -354,20 +371,31 @@ class CLI:
                     self.player.get_state().value.upper() if self.player else "STOPPED"
                 )
 
-            # Calculate note-level progress (O(1) via the player's prefix sums)
+            played_notes = 0
+            total_notes = 0
             if self.player and total_lines > 0:
-                total_notes = self.player.get_note_progress()[1]
+                played_notes, total_notes = self.player.get_note_progress()
                 if finished:
-                    progress_text = (
-                        f"Status: {state} | Line {total_lines}/{total_lines} | "
-                        f"Note {total_notes}/{total_notes} | Progress: 100.0%"
-                    )
-                else:
-                    played_notes = self.player.get_note_progress()[0]
-                    progress = (
-                        (played_notes / total_notes * 100) if total_notes > 0 else 0
-                    )
-                    progress_text = f"Status: {state} | Line {current_line + 1}/{total_lines} | Note {played_notes}/{total_notes} | Progress: {progress:.1f}%"
+                    played_notes = total_notes
+
+            # The separator above the status doubles as a progress bar
+            row += 1
+            if total_notes > 0:
+                fraction = played_notes / total_notes
+            else:
+                fraction = 1.0 if finished else 0.0
+            filled = min(separator_width, max(0, int(separator_width * fraction)))
+            stdscr.addstr(row, 0, "=" * filled + "-" * (separator_width - filled))
+            row += 1
+
+            if finished:
+                progress_text = (
+                    f"Status: {state} | Line {total_lines}/{total_lines} | "
+                    f"Note {total_notes}/{total_notes} | Progress: 100.0%"
+                )
+            elif total_notes > 0:
+                progress = played_notes / total_notes * 100
+                progress_text = f"Status: {state} | Line {current_line + 1}/{total_lines} | Note {played_notes}/{total_notes} | Progress: {progress:.1f}%"
             else:
                 progress_text = f"Status: {state} | Line {current_line + 1}/{total_lines} | Progress: 0.0%"
 

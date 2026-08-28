@@ -24,7 +24,7 @@ LOOP = false
 (QWE) / Q [WE] [(QW)E]
 ```
 
-Supported piano keys are `QWERTYU`, `ASDFGHJ`, and `ZXCVBNM`. A single letter is a note, `(QWE)` is a chord, `[QWE]` is an arpeggio, and `/` is only a visual separator. A literal space is a rest.
+Supported piano keys are `QWERTYU`, `ASDFGHJ`, and `ZXCVBNM`. A single letter is a note, `(QWE)` is a chord, `[QWE]` is an arpeggio, and `/` is only a visual separator. A literal space is a rest. Characters that are not playable keys are skipped, and the header lists what was ignored with its file line number so typos are easy to spot.
 
 ## Hotkeys
 

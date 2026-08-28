@@ -54,6 +54,29 @@ def test_parser_reads_loop_configuration(tmp_path: Path) -> None:
     assert score.config.loop
 
 
+def test_parser_reports_ignored_characters(tmp_path: Path) -> None:
+    score_path = tmp_path / "warn.qymusic"
+    score_path.write_text("---\nQ O 1\n[Q@]\n(Q#W)\n", encoding="utf-8")
+
+    score = ScoreParser(str(score_path)).parse()
+
+    assert score.warnings == [
+        "line 2: ignored 'O1'",
+        "line 3: ignored '@'",
+        "line 4: ignored '#'",
+    ]
+    # Valid notes on the same lines still parse
+    assert [note.keys for note in score.lines[0]] == [["Q"], [" "], [" "]]
+    assert score.lines[1][0].keys == ["Q"]
+    assert score.lines[2][0].keys == ["Q", "W"]
+
+
+def test_parser_stays_silent_for_clean_scores() -> None:
+    score = ScoreParser(str(SAMPLE_SCORE)).parse()
+
+    assert score.warnings == []
+
+
 def test_segment_strict_truncates_each_slash_separated_segment(
     tmp_path: Path,
 ) -> None:
