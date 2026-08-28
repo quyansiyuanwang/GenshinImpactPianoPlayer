@@ -2,7 +2,7 @@
 
 import time
 from threading import Event, RLock, Thread
-from typing import Callable, List, Optional, Protocol
+from typing import Callable, List, Mapping, Optional, Protocol
 
 from src.application.config.constants import (
     MAX_ARPEGGIO_INTERVAL,
@@ -12,6 +12,7 @@ from src.application.config.constants import (
     MIN_INTERVAL,
     MIN_SPEED,
 )
+from src.application.config.constants import VALID_KEYS
 from src.core.domain.note import Note, NoteType
 from src.core.domain.score import ParsedScore
 from src.application.state.state_machine import (
@@ -44,7 +45,10 @@ class Player:
     """Core playback engine that plays parsed scores."""
 
     def __init__(
-        self, score: ParsedScore, keyboard_controller: KeyboardControllerProtocol
+        self,
+        score: ParsedScore,
+        keyboard_controller: KeyboardControllerProtocol,
+        key_mapping: Mapping[str, str] | None = None,
     ):
         self.score = score
         self.keyboard = keyboard_controller
@@ -120,6 +124,7 @@ class Player:
 
         # Panic switch: suppress all simulated key output while locked
         self._output_locked = False
+        self._key_mapping = self._validate_key_mapping(key_mapping or {})
 
         # Playback thread
         self._playback_thread: Optional[Thread] = None
@@ -390,6 +395,41 @@ class Player:
         with self._sustain_lock:
             return self._output_locked
 
+    @staticmethod
+    def _validate_key_mapping(mapping: Mapping[str, str]) -> dict[str, str]:
+        """Normalize a score-to-output mapping and discard invalid entries."""
+        return {
+            source.upper(): target.upper()
+            for source, target in mapping.items()
+            if isinstance(source, str)
+            and isinstance(target, str)
+            and len(source) == 1
+            and len(target) == 1
+            and source.upper() in VALID_KEYS
+            and target.upper() in VALID_KEYS
+        }
+
+    def set_key_mapping(self, mapping: Mapping[str, str]) -> None:
+        """Set the score-key to output-key mapping for future notes."""
+        with self._control_lock:
+            self._key_mapping = self._validate_key_mapping(mapping)
+
+    def get_key_mapping(self) -> dict[str, str]:
+        """Return a copy of the active score-key mapping."""
+        with self._control_lock:
+            return self._key_mapping.copy()
+
+    def _map_keys(self, keys: List[str]) -> List[str]:
+        """Map output keys once and remove duplicate physical keys in chords."""
+        with self._control_lock:
+            mapping = self._key_mapping.copy()
+        mapped: List[str] = []
+        for key in keys:
+            output = mapping.get(key.upper(), key)
+            if output not in mapped:
+                mapped.append(output)
+        return mapped
+
     def get_segment_strict(self) -> bool:
         """Get current segment strict mode state."""
         with self._control_lock:
@@ -638,8 +678,11 @@ class Player:
             note = self.score.lines[line_index][note_index]
 
         if note.type == NoteType.ARPEGGIO:
-            return self._keys_from_item(note.keys[0]) if note.keys else []
-        return [key for key in note.keys if isinstance(key, str) and key != " "]
+            keys = self._keys_from_item(note.keys[0]) if note.keys else []
+            return self._map_keys(keys)
+        return self._map_keys(
+            [key for key in note.keys if isinstance(key, str) and key != " "]
+        )
 
     @staticmethod
     def _keys_from_item(item: str | Note) -> List[str]:
@@ -825,7 +868,7 @@ class Player:
                 if index < len(note.keys) - 1 and not self._wait_before_next(
                     interval,
                     generation,
-                    self._keys_from_item(note.keys[index + 1]),
+                    self._map_keys(self._keys_from_item(note.keys[index + 1])),
                 ):
                     return False
         return True
@@ -846,6 +889,7 @@ class Player:
 
     def _play_keys(self, keys: List[str], _generation: int) -> bool:
         """Dispatch a single key or chord, honoring output lock and sustain."""
+        keys = self._map_keys(keys)
         if not keys:
             return True
 

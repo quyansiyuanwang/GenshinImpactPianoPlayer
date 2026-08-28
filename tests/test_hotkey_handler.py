@@ -145,6 +145,7 @@ def test_default_hotkeys_register_documented_bindings() -> None:
             "ctrl+k",
             "ctrl+l",
             "f12",
+            "f10",
         ):
             assert registry.get_callback(key) is not None, key
     finally:

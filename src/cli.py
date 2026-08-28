@@ -4,6 +4,7 @@ import time
 import os
 import curses
 import keyboard
+import copy
 from pathlib import Path
 from threading import Lock
 from typing import Any, Dict, List, Optional
@@ -11,6 +12,7 @@ from src.core.parser.score_parser import ScoreParser, NoteType, ParsedScore, Not
 from src.core.player.player import Player
 from src.application.state.state_machine import PlayerState as PSM_State
 from src.core.keyboard.controller import KeyboardController
+from src.application.config.profiles import ProfileStore
 from src.application.config.constants import (
     DEFAULT_HOTKEYS,
     SKIP_SMALL,
@@ -38,9 +40,15 @@ class CLI:
         self._message_until = 0.0  # time.time() after which the message hides
         self._render_lock = Lock()  # Serializes curses writes across threads
         self._refresh_requested = False  # Pending throttled refresh from a hotkey
+        self.profile_store = ProfileStore()
+        self.hotkeys = self.profile_store.active_hotkeys()
+        self.key_mapping = self.profile_store.active_mapping()
+        self._keyboard_locked = False
+        self._settings_requested = False
 
-        # Use custom hotkeys or defaults
-        self.hotkeys = hotkeys if hotkeys is not None else DEFAULT_HOTKEYS.copy()
+        # Explicit constructor bindings remain useful to integrations/tests.
+        if hotkeys is not None:
+            self.hotkeys = {**DEFAULT_HOTKEYS, **hotkeys}
 
     def _flash(self, message: str, duration: float = 2.5) -> None:
         """Show a transient status message on the status line."""
@@ -211,9 +219,9 @@ class CLI:
                 config_lines.append(
                     f"  Bookmark: {bookmark_status}    [{self.hotkeys['set_bookmark']}] Set | [{self.hotkeys['jump_to_bookmark']}] Jump"
                 )
-                key_status = "LOCKED" if self.player.get_output_locked() else "sending"
+                key_status = "LOCKED" if self._keyboard_locked else "active"
                 config_lines.append(
-                    f"  Key Output: {key_status}  [{self.hotkeys['toggle_output_lock']}] Toggle"
+                    f"  Keyboard Input: {key_status}  [{self.hotkeys['toggle_output_lock']}] Toggle"
                 )
 
             # On short terminals drop the less-used rows so the controls stay
@@ -469,7 +477,7 @@ class CLI:
                 stdscr.addstr(
                     row,
                     0,
-                    f"Controls: [{self.hotkeys['play_pause']}] Play/Pause | [{self.hotkeys['quit']}] Quit | [F9] Save"[
+                    f"Controls: [{self.hotkeys['play_pause']}] Play/Pause | [{self.hotkeys['quit']}] Quit | [{self.hotkeys['save']}] Save | [{self.hotkeys['open_settings']}] Settings"[
                         : width - 1
                     ],
                 )
@@ -558,7 +566,7 @@ class CLI:
         # Initialize player
         keyboard_controller = KeyboardController()
         if self.score is not None:
-            self.player = Player(self.score, keyboard_controller)
+            self.player = Player(self.score, keyboard_controller, self.key_mapping)
             self.player.set_progress_callback(self._on_progress)
         else:
             # This shouldn't happen as we check in run(), but handle gracefully
@@ -594,6 +602,9 @@ class CLI:
                 current_time = time.time()
                 if current_time - last_refresh >= 0.5:
                     self._display_score()
+                if self._settings_requested:
+                    self._settings_requested = False
+                    self._run_settings_ui(stdscr)
                     last_refresh = current_time
                 elif self._refresh_requested:
                     # A throttled hotkey refresh is waiting for its time slot
@@ -628,7 +639,24 @@ class CLI:
         from src.ui.cli.input.hotkey_registry import get_hotkey_registry
 
         registry = get_hotkey_registry()
-        register_default_hotkeys(self, registry)
+        # Rebuild the registry while retaining bindings supplied by plugins.
+        plugin_bindings = [
+            (key, callback, registry.get_description(key))
+            for key, callback in registry.get_all_hotkeys().items()
+            if key not in DEFAULT_HOTKEYS.values()
+        ]
+        registry.clear()
+        try:
+            register_default_hotkeys(self, registry)
+        except (KeyError, TypeError, ValueError):
+            # A hand-edited profile may contain duplicate or missing bindings.
+            # Fall back to the known-good defaults for this session.
+            self.hotkeys = DEFAULT_HOTKEYS.copy()
+            registry.clear()
+            register_default_hotkeys(self, registry)
+        for key, callback, description in plugin_bindings:
+            if registry.get_callback(key) is None:
+                registry.register(key, callback, description, "plugin")
         handler = HotkeyHandler()
         failures: list[tuple[str, str]] = []
         for key, callback in registry.get_all_hotkeys().items():
@@ -644,6 +672,231 @@ class CLI:
             except (OSError, RuntimeError) as error:
                 failures.append(("global hook", str(error)))
         self._failed_hotkeys = failures
+        handler.set_locked(self._keyboard_locked, self.hotkeys.get("toggle_output_lock", "f12"))
+
+    def _rebuild_hotkeys(self) -> None:
+        """Replace the global handler after a profile change."""
+        if hasattr(self, "_hotkey_handler"):
+            try:
+                self._hotkey_handler.stop()
+            except Exception:
+                pass
+        self._setup_hotkeys()
+
+    def request_settings(self) -> None:
+        """Request the curses thread to open the settings UI."""
+        self._settings_requested = True
+        self._request_refresh()
+
+    def toggle_keyboard_lock(self) -> None:
+        """Lock or unlock application control input while playback continues."""
+        self._keyboard_locked = not self._keyboard_locked
+        handler = getattr(self, "_hotkey_handler", None)
+        if handler:
+            handler.set_locked(
+                self._keyboard_locked,
+                self.hotkeys.get("toggle_output_lock", "f12"),
+            )
+        self._flash(
+            "Keyboard input LOCKED" if self._keyboard_locked else "Keyboard input unlocked"
+        )
+
+    @staticmethod
+    def _settings_addstr(stdscr: Any, row: int, text: str, col: int = 0) -> None:
+        """Draw settings text clipped to the current terminal dimensions."""
+        height, width = stdscr.getmaxyx()
+        if row < 0 or row >= height or col >= width:
+            return
+        try:
+            stdscr.addstr(row, col, text[: max(0, width - col - 1)])
+        except curses.error:
+            # A resize can happen between getmaxyx and addstr.
+            pass
+
+    def _settings_prompt(self, stdscr: Any, prompt: str) -> str:
+        """Read a short line while redrawing safely after terminal resizes."""
+        value: list[str] = []
+        stdscr.timeout(-1)
+        try:
+            while True:
+                stdscr.erase()
+                self._settings_addstr(stdscr, 0, prompt)
+                self._settings_addstr(stdscr, 1, "".join(value))
+                stdscr.refresh()
+                key = stdscr.getch()
+                if key == getattr(curses, "KEY_RESIZE", -1):
+                    continue
+                if key in (10, 13):
+                    return "".join(value).strip()
+                if key == 27:
+                    return ""
+                if key in (curses.KEY_BACKSPACE, 8, 127):
+                    if value:
+                        value.pop()
+                elif 32 <= key <= 126:
+                    value.append(chr(key))
+        finally:
+            stdscr.timeout(-1)
+
+    def _run_settings_ui(self, stdscr: Any) -> None:
+        """Run the small keyboard/mapping profile editor on the curses thread."""
+        original_profiles = copy.deepcopy(self.profile_store.data)
+        was_playing = bool(self.player and self.player.get_state() == PSM_State.PLAYING)
+        if was_playing and self.player:
+            self.player.pause()
+        handler = getattr(self, "_hotkey_handler", None)
+        if handler:
+            handler.stop()
+        stdscr.nodelay(False)
+        stdscr.keypad(True)
+        try:
+            while True:
+                stdscr.erase()
+                self._settings_addstr(stdscr, 0, "Settings: [H] Hotkeys  [M] Mapping  [Q] Save/Exit")
+                self._settings_addstr(stdscr, 2, "Choose a section")
+                stdscr.refresh()
+                choice = stdscr.getch()
+                if choice in (ord("q"), ord("Q")):
+                    try:
+                        self.profile_store.save()
+                    except OSError:
+                        self._flash("Profile save failed")
+                    break
+                if choice == 27:
+                    self.profile_store.data = original_profiles
+                    break
+                if choice in (ord("h"), ord("H")):
+                    self._settings_hotkeys_ui(stdscr)
+                elif choice in (ord("m"), ord("M")):
+                    self._settings_mapping_ui(stdscr)
+        finally:
+            stdscr.nodelay(True)
+            stdscr.keypad(False)
+            self.hotkeys = self.profile_store.active_hotkeys()
+            self.key_mapping = self.profile_store.active_mapping()
+            if self.player:
+                self.player.set_key_mapping(self.key_mapping)
+            self._rebuild_hotkeys()
+            if was_playing and self.player:
+                self.player.resume()
+            self._display_score()
+
+    def _settings_hotkeys_ui(self, stdscr: Any) -> None:
+        """Edit the active hotkey profile using line-oriented curses controls."""
+        profiles = self.profile_store.hotkey_profiles()
+        while True:
+            stdscr.erase()
+            active = str(self.profile_store.data["active_hotkey_profile"])
+            self._settings_addstr(stdscr, 0, f"Hotkey profile: {active}")
+            self._settings_addstr(stdscr, 1, "[S]elect [N]ew [R]ename [D]elete [E]dit action [Q]uit")
+            names = list(profiles)
+            for index, name in enumerate(names):
+                self._settings_addstr(stdscr, 3 + index, f"{index + 1}. {name}")
+            action_row = 4 + len(names)
+            self._settings_addstr(stdscr, action_row - 1, "Actions (type the action name to edit):")
+            for index, (action, binding) in enumerate(self.hotkeys.items()):
+                row = action_row + index
+                if row >= stdscr.getmaxyx()[0] - 1:
+                    break
+                self._settings_addstr(stdscr, row, f"{action}: {binding}")
+            stdscr.refresh()
+            choice = stdscr.getch()
+            if choice in (ord("q"), ord("Q"), 27):
+                return
+            if choice in (ord("s"), ord("S")):
+                name = self._settings_prompt(stdscr, "Profile name:")
+                if name in profiles:
+                    self.profile_store.select_hotkeys(name)
+                    self.hotkeys = self.profile_store.active_hotkeys()
+            elif choice in (ord("n"), ord("N")):
+                name = self._settings_prompt(stdscr, "New profile:")
+                try:
+                    self.profile_store.add_hotkey_profile(name)
+                except ValueError:
+                    pass
+            elif choice in (ord("r"), ord("R")):
+                new_name = self._settings_prompt(stdscr, "Rename active to:")
+                try:
+                    self.profile_store.rename_hotkey_profile(active, new_name)
+                except ValueError:
+                    pass
+            elif choice in (ord("d"), ord("D")):
+                try:
+                    self.profile_store.delete_hotkey_profile(active)
+                except ValueError:
+                    pass
+            elif choice in (ord("e"), ord("E")):
+                action = self._settings_prompt(stdscr, "Action name:")
+                if action in self.hotkeys:
+                    binding = self._capture_hotkey(stdscr)
+                    binding = binding.lower() if binding else ""
+                    if binding == "+":
+                        binding = "="
+                    current = profiles[active]
+                    used = {value: key for key, value in current.items() if key != action}
+                    from src.ui.cli.input.hotkey_registry import get_hotkey_registry
+
+                    plugin_keys = {
+                        key for key, _description in get_hotkey_registry().get_by_category("plugin")
+                    }
+                    if binding and binding not in used and binding not in plugin_keys:
+                        current[action] = binding
+                        self.hotkeys = current.copy()
+
+    def _capture_hotkey(self, stdscr: Any) -> str:
+        """Capture a real global key combination while the settings UI owns input."""
+        height, _width = stdscr.getmaxyx()
+        self._settings_addstr(stdscr, min(height - 2, 2), "Press the new key combination (Esc cancels)...")
+        stdscr.refresh()
+        try:
+            captured = keyboard.read_hotkey(suppress=False)
+            return str(captured)
+        except (AttributeError, OSError, RuntimeError):
+            return self._settings_prompt(stdscr, "New key (e.g. ctrl+f8):")
+
+    def _settings_mapping_ui(self, stdscr: Any) -> None:
+        """Edit one-character score mappings in the active mapping profile."""
+        profiles = self.profile_store.mapping_profiles()
+        while True:
+            stdscr.erase()
+            active = str(self.profile_store.data["active_mapping_profile"])
+            mapping = profiles[active]
+            self._settings_addstr(stdscr, 0, f"Mapping profile: {active}  {mapping}")
+            self._settings_addstr(stdscr, 1, "[A]dd mapping [D]elete source [S]elect [N]ew [R]ename [X]delete profile [Q]uit")
+            stdscr.refresh()
+            choice = stdscr.getch()
+            if choice in (ord("q"), ord("Q"), 27):
+                return
+            if choice in (ord("a"), ord("A")):
+                source = self._settings_prompt(stdscr, "Source key:").upper()
+                target = self._settings_prompt(stdscr, "Output key:").upper()
+                clean = self.profile_store.validate_mapping({source: target})
+                if clean:
+                    mapping.update(clean)
+            elif choice in (ord("d"), ord("D")):
+                source = self._settings_prompt(stdscr, "Source key to delete:").upper()
+                mapping.pop(source, None)
+            elif choice in (ord("s"), ord("S")):
+                name = self._settings_prompt(stdscr, "Profile name:")
+                if name in profiles:
+                    self.profile_store.select_mapping(name)
+            elif choice in (ord("n"), ord("N")):
+                name = self._settings_prompt(stdscr, "New profile:")
+                try:
+                    self.profile_store.add_mapping_profile(name)
+                except ValueError:
+                    pass
+            elif choice in (ord("r"), ord("R")):
+                new_name = self._settings_prompt(stdscr, "Rename active to:")
+                try:
+                    self.profile_store.rename_mapping_profile(active, new_name)
+                except ValueError:
+                    pass
+            elif choice in (ord("x"), ord("X")):
+                try:
+                    self.profile_store.delete_mapping_profile(active)
+                except ValueError:
+                    pass
 
     def toggle_play_pause(self) -> None:
         """Toggle between play and pause."""
@@ -966,7 +1219,7 @@ class CLI:
 
             # Create new player with new score (uses config from parsed score)
             keyboard_controller = KeyboardController()
-            self.player = Player(self.score, keyboard_controller)
+            self.player = Player(self.score, keyboard_controller, self.key_mapping)
             self.player.set_progress_callback(self._on_progress)
             if sustain_enabled:
                 self.player.toggle_sustain()
@@ -1050,7 +1303,7 @@ class CLI:
 
             # Create new player with reparsed score
             keyboard_controller = KeyboardController()
-            self.player = Player(self.score, keyboard_controller)
+            self.player = Player(self.score, keyboard_controller, self.key_mapping)
             self.player.set_progress_callback(self._on_progress)
 
             plugin_errors = self._reinitialize_plugins()

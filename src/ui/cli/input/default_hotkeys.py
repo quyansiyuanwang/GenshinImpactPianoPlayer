@@ -20,6 +20,8 @@ def register_default_hotkeys(cli: "CLI", registry: HotkeyRegistry) -> None:
     bindings: dict[str, tuple[Callable[[], None], str, str]] = {
         "play_pause": (cli.toggle_play_pause, "Play or pause playback", "playback"),
         "quit": (cli.quit, "Quit application", "playback"),
+        "open_settings": (cli.request_settings, "Open configuration", "general"),
+        "save": (cli.save_config, "Save score configuration", "file"),
         "toggle_loop": (cli.toggle_loop, "Toggle looping playback", "playback"),
         "toggle_line_loop": (
             cli.toggle_line_loop,
@@ -155,8 +157,8 @@ def register_default_hotkeys(cli: "CLI", registry: HotkeyRegistry) -> None:
             "segment",
         ),
         "toggle_output_lock": (
-            cli.toggle_output_lock,
-            "Lock or unlock simulated key output",
+            cli.toggle_keyboard_lock,
+            "Lock or unlock user controls",
             "playback",
         ),
     }
