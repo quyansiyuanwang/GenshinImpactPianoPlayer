@@ -127,7 +127,11 @@ def initialize_plugins(player: Any = None, cli: Any = None) -> None:
         cli: CLI instance
     """
     manager = get_plugin_manager()
-    context = PluginContext(player=player, cli=cli)
+    context = PluginContext(
+        player=player,
+        cli=cli,
+        controller=getattr(cli, "controller", None),
+    )
     manager.set_context(context)
     manager.initialize_all()
 

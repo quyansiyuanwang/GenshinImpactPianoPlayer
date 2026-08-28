@@ -12,10 +12,10 @@ from src.application.config.constants import (
 from src.ui.cli.input.hotkey_registry import HotkeyRegistry
 
 if TYPE_CHECKING:
-    from src.cli import CLI
+    from src.application.host_protocol import ApplicationHost
 
 
-def register_default_hotkeys(cli: "CLI", registry: HotkeyRegistry) -> None:
+def register_default_hotkeys(cli: "ApplicationHost", registry: HotkeyRegistry) -> None:
     """Register the built-in CLI actions into a hotkey registry."""
     bindings: dict[str, tuple[Callable[[], None], str, str]] = {
         "play_pause": (cli.toggle_play_pause, "Play or pause playback", "playback"),

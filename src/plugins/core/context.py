@@ -2,6 +2,9 @@
 
 from typing import Any, Callable, Optional
 
+from src.application.command_bus import CommandResult
+from src.application.events import InputEvent
+
 
 class PluginContext:
     """Context provided to plugins with access to core components."""
@@ -11,6 +14,7 @@ class PluginContext:
         player: Any = None,
         cli: Any = None,
         config: Optional[dict[str, Any]] = None,
+        controller: Any = None,
     ) -> None:
         """Initialize plugin context.
 
@@ -22,7 +26,27 @@ class PluginContext:
         self.player = player
         self.cli = cli
         self.config = config or {}
+        self.controller = controller or getattr(cli, "controller", None)
         self._hotkeys: dict[str, Callable[[], None]] = {}
+        self._commands: set[str] = set()
+
+    def register_command(
+        self,
+        name: str,
+        handler: Callable[[InputEvent], CommandResult],
+        description: str = "",
+    ) -> None:
+        """Register a named command with the application's command bus."""
+        if self.controller is None:
+            raise RuntimeError("Plugin context has no application controller")
+        self.controller.register_command(name, handler, replace=True)
+        self._commands.add(name)
+
+    def bind_key(self, binding: str, command: str) -> None:
+        """Bind a key combination to a previously registered command."""
+        if self.controller is None:
+            raise RuntimeError("Plugin context has no application controller")
+        self.controller.bind_key(binding, command)
 
     def register_hotkey(self, key: str, callback: Callable[[], None]) -> None:
         """Register a custom hotkey.
@@ -31,6 +55,23 @@ class PluginContext:
             key: Hotkey string (e.g., "ctrl+p", "f10")
             callback: Function to call when hotkey is pressed
         """
+        # Route new applications through the command controller.  The registry
+        # registration remains for compatibility with integrations that inspect
+        # plugin hotkeys during a hotkey rebuild.
+        if self.controller is not None:
+            command = f"plugin.{len(self._commands) + 1}.{key.lower()}"
+
+            def invoke(_event: InputEvent) -> CommandResult:
+                callback()
+                return CommandResult.ok()
+
+            try:
+                self.register_command(command, invoke, f"Plugin hotkey: {key}")
+                self.bind_key(key, command)
+            except (TypeError, ValueError):
+                # Built-in/profile bindings take precedence over plugin keys.
+                pass
+
         from src.ui.cli.input.hotkey_registry import get_hotkey_registry
 
         # Register with global hotkey registry, replacing stale bindings after

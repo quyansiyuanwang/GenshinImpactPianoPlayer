@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Mapping, cast
 
 from src.application.config.constants import DEFAULT_HOTKEYS, VALID_KEYS
+from src.ui.cli.input.key_binding import KeyBinding
 
 
 class ProfileStore:
@@ -31,13 +32,23 @@ class ProfileStore:
 
     def load(self) -> None:
         defaults = self._defaults()
+        needs_rebuild = False
         try:
             raw = json.loads(self.path.read_text(encoding="utf-8"))
             if not isinstance(raw, dict):
                 raise ValueError("profile root must be an object")
             self.data = self._sanitize(raw, defaults)
+            needs_rebuild = self.data != raw
         except (OSError, ValueError, TypeError, json.JSONDecodeError):
             self.data = defaults
+            needs_rebuild = True
+        if needs_rebuild:
+            try:
+                self.save()
+            except OSError:
+                # A read-only working directory should still permit the
+                # application to run with in-memory defaults.
+                pass
 
     @staticmethod
     def _sanitize(raw: dict[str, object], defaults: dict[str, object]) -> dict[str, object]:
@@ -47,11 +58,28 @@ class ProfileStore:
             clean_hotkeys: dict[str, dict[str, str]] = {}
             for name, values in hotkeys.items():
                 if isinstance(name, str) and name and isinstance(values, dict):
-                    clean_hotkeys[name] = {
-                        str(action): str(binding).lower()
-                        for action, binding in values.items()
-                        if isinstance(action, str) and isinstance(binding, str) and binding
-                    }
+                    candidate: dict[str, str] = {}
+                    for action, binding in values.items():
+                        if (
+                            not isinstance(action, str)
+                            or action not in DEFAULT_HOTKEYS
+                            or not isinstance(binding, str)
+                        ):
+                            continue
+                        try:
+                            normalized = str(KeyBinding.parse(binding))
+                        except ValueError:
+                            continue
+                        candidate[action] = normalized
+                    # Duplicate bindings make dispatch ambiguous; discard the
+                    # conflicting entries and let defaults fill them below.
+                    seen: set[str] = set()
+                    unique: dict[str, str] = {}
+                    for action, binding in candidate.items():
+                        if binding not in seen:
+                            unique[action] = binding
+                            seen.add(binding)
+                    clean_hotkeys[name] = unique
             if clean_hotkeys:
                 default_hotkeys = clean_hotkeys.setdefault("default", DEFAULT_HOTKEYS.copy())
                 for action, binding in DEFAULT_HOTKEYS.items():

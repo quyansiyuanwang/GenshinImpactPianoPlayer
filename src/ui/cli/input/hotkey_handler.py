@@ -4,6 +4,8 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 import keyboard
+from src.application.events import InputEvent
+from src.ui.cli.input.adapters import KeyboardInputAdapter
 
 if TYPE_CHECKING:
     from keyboard import KeyboardEvent
@@ -29,6 +31,12 @@ class HotkeyHandler:
         self._hooked = False
         self._locked = False
         self._unlock_binding = "f12"
+        self._event_dispatcher: Callable[[InputEvent], object] | None = None
+        self._input_adapter = KeyboardInputAdapter()
+
+    def set_event_dispatcher(self, dispatcher: Callable[[InputEvent], object] | None) -> None:
+        """Route normalized events to an application controller when configured."""
+        self._event_dispatcher = dispatcher
 
     def register(self, key: str, callback: Callable[[], None]) -> None:
         """Register a binding, selecting a scan code for physical symbol keys."""
@@ -60,6 +68,7 @@ class HotkeyHandler:
 
     def _on_key_event(self, event: "KeyboardEvent") -> None:
         """Track modifier state and dispatch key-down callbacks."""
+        normalized = self._input_adapter.read_event(event)
         name = event.name.lower()
         modifier = self._modifier_name(name)
         if event.event_type == "up":
@@ -70,6 +79,10 @@ class HotkeyHandler:
             return
         if modifier:
             self._modifier_state[modifier] = True
+            return
+
+        if self._event_dispatcher and normalized.key is not None:
+            self._event_dispatcher(normalized)
             return
 
         if not any(self._modifier_state.values()):
@@ -131,9 +144,13 @@ class HotkeyHandler:
         """Return the registered representation of a key combination."""
         if name == "+":
             name = "="
-        for modifier in ("ctrl", "shift", "alt"):
-            if self._modifier_state[modifier]:
-                return f"{modifier}+{name}"
+        modifiers = [
+            modifier
+            for modifier in ("ctrl", "shift", "alt")
+            if self._modifier_state[modifier]
+        ]
+        if modifiers:
+            return "+".join([*modifiers, name])
         return name
 
     def start(self) -> None:
