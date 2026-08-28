@@ -135,6 +135,9 @@ def test_default_hotkeys_register_documented_bindings() -> None:
             "down",
             "page up",
             "page down",
+            "home",
+            "end",
+            "insert",
         ):
             assert registry.get_callback(key) is not None, key
     finally:

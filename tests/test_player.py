@@ -115,6 +115,61 @@ def test_playback_reports_finished_and_clears_on_seek() -> None:
     player.stop()
 
 
+def test_loop_restarts_from_the_beginning_after_the_last_note() -> None:
+    keyboard = FakeKeyboard()
+    player = Player(make_score([["Q"], ["W"]], interval=0.01), keyboard)
+    player.toggle_loop()
+    assert player.get_loop_enabled()
+
+    player.play()
+    assert keyboard.wait_for(("tap", ("Q",)))
+    assert keyboard.wait_for(("tap", ("W",)))
+
+    deadline = time.monotonic() + 2.0
+    while (
+        keyboard.operations.count(("tap", ("Q",))) < 2 and time.monotonic() < deadline
+    ):
+        time.sleep(0.01)
+
+    assert keyboard.operations.count(("tap", ("Q",))) >= 2
+    assert player.get_state() == PlayerState.PLAYING
+    assert not player.is_finished()
+    player.stop()
+
+
+def test_loop_disabled_stops_at_the_end() -> None:
+    keyboard = FakeKeyboard()
+    player = Player(make_score([["Q"]], interval=0.01), keyboard)
+    player.set_loop_enabled(True)
+    player.toggle_loop()  # back off
+    assert not player.get_loop_enabled()
+
+    player.play()
+    assert keyboard.wait_for(("tap", ("Q",)))
+    deadline = time.monotonic() + 1.0
+    while player.get_state() != PlayerState.STOPPED and time.monotonic() < deadline:
+        time.sleep(0.01)
+
+    assert player.get_state() == PlayerState.STOPPED
+    assert keyboard.operations.count(("tap", ("Q",))) == 1
+
+
+def test_jump_to_start_and_end() -> None:
+    player = Player(make_score([["Q", "W"], ["E"]]), FakeKeyboard())
+
+    player.skip_forward_notes(2)
+    assert player.get_position() == (1, 0)
+
+    player.jump_to_start()
+    assert player.get_position() == (0, 0)
+
+    player.jump_to_end()
+    assert player.get_progress() == (2, 2)
+
+    player.jump_to_start()
+    assert player.get_position() == (0, 0)
+
+
 def test_speed_change_applies_to_active_wait() -> None:
     keyboard = FakeKeyboard()
     player = Player(make_score([["Q"]], interval=0.01), keyboard)

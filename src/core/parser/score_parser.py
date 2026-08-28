@@ -17,6 +17,7 @@ from src.application.config.constants import (
     DEFAULT_EMPTY_LINE_INTERVAL_RATING,
     DEFAULT_SEGMENT_LENGTH,
     DEFAULT_SEGMENT_STRICT,
+    DEFAULT_LOOP,
 )
 
 __all__ = ["ScoreParser", "Note", "NoteType", "ParsedScore"]
@@ -82,7 +83,7 @@ class ScoreParser:
                 value = value.strip()
 
                 normalized_key = key.lower()
-                if normalized_key in {"arpeggio_auto", "segment_strict"}:
+                if normalized_key in {"arpeggio_auto", "segment_strict", "loop"}:
                     if value.lower() in {"true", "1", "yes", "on"}:
                         config_dict[normalized_key] = 1.0
                     elif value.lower() in {"false", "0", "no", "off"}:
@@ -142,6 +143,7 @@ class ScoreParser:
             arpeggio_auto=bool(
                 config_dict.get("arpeggio_auto", float(DEFAULT_ARPEGGIO_AUTO))
             ),
+            loop=bool(config_dict.get("loop", float(DEFAULT_LOOP))),
         )
 
     def _parse_score(self) -> List[List[Note]]:

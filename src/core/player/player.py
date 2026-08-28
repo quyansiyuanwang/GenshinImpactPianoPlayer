@@ -93,6 +93,7 @@ class Player:
         self._empty_line_interval_rating = score.config.empty_line_interval_rating
         self._segment_length = score.config.segment_length
         self._segment_strict = score.config.segment_strict
+        self._loop_enabled = score.config.loop
 
         # Sustain mode
         self._sustain_enabled = False
@@ -253,6 +254,21 @@ class Player:
         with self._control_lock:
             self._segment_strict = not self._segment_strict
 
+    def set_loop_enabled(self, enabled: bool) -> None:
+        """Choose whether playback restarts after the last note."""
+        with self._control_lock:
+            self._loop_enabled = bool(enabled)
+
+    def toggle_loop(self) -> None:
+        """Toggle looping playback on/off."""
+        with self._control_lock:
+            self._loop_enabled = not self._loop_enabled
+
+    def get_loop_enabled(self) -> bool:
+        """Get current loop mode state."""
+        with self._control_lock:
+            return self._loop_enabled
+
     def get_segment_strict(self) -> bool:
         """Get current segment strict mode state."""
         with self._control_lock:
@@ -318,6 +334,14 @@ class Player:
             if current_line == line_number:
                 self._seek(index)
                 return
+
+    def jump_to_start(self) -> None:
+        """Seek to the first note of the score."""
+        self._seek(0)
+
+    def jump_to_end(self) -> None:
+        """Seek past the last note of the score."""
+        self._seek(len(self._positions))
 
     def skip_forward_line(self) -> None:
         """Skip forward by 1 line."""
@@ -503,6 +527,34 @@ class Player:
             self._pause_event.wait()
             if self._stop_event.is_set():
                 break
+
+            with self._control_lock:
+                if self._cursor >= len(self._positions):
+                    if not (self._loop_enabled and self._positions):
+                        break
+                    # Loop mode: rewind to the first note and keep playing
+                    self._cursor = 0
+                    self._cursor_generation += 1
+                    self._playback_completed = False
+                    wrap_generation = self._cursor_generation
+                else:
+                    wrap_generation = None
+
+            if wrap_generation is not None:
+                # Leave a line-sized gap at the wrap point, releasing any keys
+                # the first note must retrigger.
+                self._release_sustained_keys()
+                if not self._wait_repeated_before_next(
+                    self._interval_rating,
+                    int(self._line_interval_rating),
+                    wrap_generation,
+                    self._next_pending_keys(wrap_generation),
+                ):
+                    continue
+
+                with self._control_lock:
+                    if self._cursor_generation != wrap_generation:
+                        continue
 
             with self._control_lock:
                 if self._cursor >= len(self._positions):

@@ -156,6 +156,11 @@ class CLI:
                 config_lines.append(
                     f"  Sustain Mode: {sustain_status}        [{self.hotkeys['toggle_sustain']}] Toggle"
                 )
+                loop_enabled = self.player.get_loop_enabled()
+                loop_status = "ON" if loop_enabled else "OFF"
+                config_lines.append(
+                    f"  Loop: {loop_status}              [{self.hotkeys['toggle_loop']}] Toggle"
+                )
 
             # Calculate footer size
             footer_lines = 0
@@ -397,7 +402,7 @@ class CLI:
                 self.stdscr.addstr(
                     row,
                     0,
-                    f"          [{self.hotkeys['reload']}] Reload | [{self.hotkeys['reparse']}] Reparse"[
+                    f"          [{self.hotkeys['reload']}] Reload | [{self.hotkeys['reparse']}] Reparse | [{self.hotkeys['toggle_loop']}] Loop | [{self.hotkeys['jump_to_start']}/{self.hotkeys['jump_to_end']}] Start/End"[
                         : width - 1
                     ],
                 )
@@ -721,6 +726,7 @@ class CLI:
             empty_line_interval_rating = self.player._empty_line_interval_rating
             segment_length = self.player._segment_length
             segment_strict = self.player.get_segment_strict()
+            loop = self.player.get_loop_enabled()
 
             # Parse the original content
             lines = self.original_content.split("\n")
@@ -736,6 +742,7 @@ class CLI:
                 "empty_line_interval_rating": False,
                 "segment_length": False,
                 "segment_strict": False,
+                "loop": False,
             }
 
             for line in lines:
@@ -777,6 +784,8 @@ class CLI:
                             insert_lines.append(f"SEGMENT_LENGTH = {segment_length}")
                         if not config_updated["segment_strict"]:
                             insert_lines.append(f"SEGMENT_STRICT = {segment_strict}")
+                        if not config_updated["loop"]:
+                            insert_lines.append(f"LOOP = {loop}")
 
                         if insert_lines:
                             # Insert before the separator or first score line
@@ -824,6 +833,9 @@ class CLI:
                     elif key == "segment_strict":
                         new_lines.append(f"SEGMENT_STRICT = {segment_strict}")
                         config_updated["segment_strict"] = True
+                    elif key == "loop":
+                        new_lines.append(f"LOOP = {loop}")
+                        config_updated["loop"] = True
                     else:
                         new_lines.append(line)
                 else:
@@ -930,6 +942,7 @@ class CLI:
             segment_length = self.player._segment_length
             segment_strict = self.player.get_segment_strict()
             sustain_enabled = self.player.get_sustain_enabled()
+            loop_enabled = self.player.get_loop_enabled()
 
             # Stop current playback
             self.player.stop()
@@ -958,6 +971,7 @@ class CLI:
             self.player.set_empty_line_interval_rating(empty_line_interval_rating)
             self.player.set_segment_length(segment_length)
             self.player.set_segment_strict(segment_strict)
+            self.player.set_loop_enabled(loop_enabled)
             if sustain_enabled:
                 self.player.toggle_sustain()
 
@@ -992,6 +1006,30 @@ class CLI:
         # Segment padding/truncation happens at parse time, so reparse to
         # apply the new strict mode to the score currently loaded in memory.
         self.reparse("Strict segment mode updated")
+
+    def toggle_loop(self) -> None:
+        """Toggle looping playback on/off."""
+        if not self.player:
+            return
+
+        self.player.toggle_loop()
+        self._flash(f"Loop {'ON' if self.player.get_loop_enabled() else 'OFF'}")
+
+    def jump_to_start(self) -> None:
+        """Jump to the first note of the score."""
+        if not self.player:
+            return
+
+        self.player.jump_to_start()
+        self._display_score()
+
+    def jump_to_end(self) -> None:
+        """Jump past the last note of the score."""
+        if not self.player:
+            return
+
+        self.player.jump_to_end()
+        self._display_score()
 
     def _on_progress(
         self, current_line: int, total_lines: int, current_note: int, total_notes: int

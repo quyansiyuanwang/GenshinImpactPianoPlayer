@@ -37,6 +37,10 @@ DEFAULT_HOTKEYS = {
     "skip_forward": "right",
     "skip_backward_large": "ctrl+left",
     "skip_forward_large": "ctrl+right",
+    "jump_to_start": "home",
+    "jump_to_end": "end",
+    # Loop playback
+    "toggle_loop": "insert",
     # Reload and reparse
     "reload": "f5",
     "reparse": "f6",
@@ -75,6 +79,7 @@ DEFAULT_SEGMENT_LENGTH = 0  # 0 = disabled, >0 = force N notes per segment
 DEFAULT_SEGMENT_STRICT = (
     False  # True = truncate segments exceeding length, False = pad only
 )
+DEFAULT_LOOP = False  # True = restart from the beginning after the last note
 
 # Playback limits
 MIN_SPEED = 0.1

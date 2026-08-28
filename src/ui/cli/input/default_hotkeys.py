@@ -20,6 +20,17 @@ def register_default_hotkeys(cli: "CLI", registry: HotkeyRegistry) -> None:
     bindings: dict[str, tuple[Callable[[], None], str, str]] = {
         "play_pause": (cli.toggle_play_pause, "Play or pause playback", "playback"),
         "quit": (cli.quit, "Quit application", "playback"),
+        "toggle_loop": (cli.toggle_loop, "Toggle looping playback", "playback"),
+        "jump_to_start": (
+            cli.jump_to_start,
+            "Jump to the start of the score",
+            "navigation",
+        ),
+        "jump_to_end": (
+            cli.jump_to_end,
+            "Jump to the end of the score",
+            "navigation",
+        ),
         "speed_up": (
             lambda: cli.adjust_speed(SPEED_STEP),
             "Increase speed",

@@ -45,6 +45,15 @@ def test_parser_reads_manual_arpeggio_mode(tmp_path: Path) -> None:
     assert not score.config.arpeggio_auto
 
 
+def test_parser_reads_loop_configuration(tmp_path: Path) -> None:
+    score_path = tmp_path / "loop.qymusic"
+    score_path.write_text("LOOP = true\n---\nQ\n", encoding="utf-8")
+
+    score = ScoreParser(str(score_path)).parse()
+
+    assert score.config.loop
+
+
 def test_segment_strict_truncates_each_slash_separated_segment(
     tmp_path: Path,
 ) -> None:
