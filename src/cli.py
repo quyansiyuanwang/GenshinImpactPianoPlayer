@@ -161,6 +161,18 @@ class CLI:
                 config_lines.append(
                     f"  Loop: {loop_status}              [{self.hotkeys['toggle_loop']}] Toggle"
                 )
+                line_repeat = "ON" if self.player.get_line_loop_enabled() else "OFF"
+                config_lines.append(
+                    f"  Line Repeat: {line_repeat}        [{self.hotkeys['toggle_line_loop']}] Toggle"
+                )
+
+            # On short terminals drop the less-used rows so the controls stay
+            # visible instead of being pushed off-screen.
+            if len(config_lines) > 5 and height < 32:
+                essential = ("Speed:", "Arpeggio:", "Note Interval:", "Loop:")
+                config_lines = [
+                    line for line in config_lines if any(k in line for k in essential)
+                ]
 
             # Calculate footer size
             footer_lines = 0
@@ -317,21 +329,16 @@ class CLI:
                     self.player.get_state().value.upper() if self.player else "STOPPED"
                 )
 
-            # Calculate note-level progress
+            # Calculate note-level progress (O(1) via the player's prefix sums)
             if self.player and total_lines > 0:
-                # Count total notes in all lines
-                total_notes = sum(len(line) for line in self.score.lines)
+                total_notes = self.player.get_note_progress()[1]
                 if finished:
                     progress_text = (
                         f"Status: {state} | Line {total_lines}/{total_lines} | "
                         f"Note {total_notes}/{total_notes} | Progress: 100.0%"
                     )
                 else:
-                    # Count notes up to current position
-                    played_notes = sum(
-                        len(self.score.lines[i]) for i in range(current_line)
-                    )
-                    played_notes += current_note
+                    played_notes = self.player.get_note_progress()[0]
                     progress = (
                         (played_notes / total_notes * 100) if total_notes > 0 else 0
                     )
@@ -1014,6 +1021,15 @@ class CLI:
 
         self.player.toggle_loop()
         self._flash(f"Loop {'ON' if self.player.get_loop_enabled() else 'OFF'}")
+
+    def toggle_line_loop(self) -> None:
+        """Toggle repeating the current line (practice aid)."""
+        if not self.player:
+            return
+
+        self.player.toggle_line_loop()
+        state = "ON" if self.player.get_line_loop_enabled() else "OFF"
+        self._flash(f"Line repeat {state}")
 
     def jump_to_start(self) -> None:
         """Jump to the first note of the score."""

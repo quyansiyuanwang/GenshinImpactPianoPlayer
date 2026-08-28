@@ -74,6 +74,12 @@ class Player:
         ]
         self._cursor = 0
         self._cursor_generation = 0
+
+        # Prefix sums of line lengths give O(1) note-progress lookups for the
+        # UI instead of rescanning the whole score on every frame.
+        self._note_prefix = [0]
+        for line in score.lines:
+            self._note_prefix.append(self._note_prefix[-1] + len(line))
         self._control_lock = RLock()
         self._sustain_lock = RLock()
 
@@ -101,6 +107,9 @@ class Player:
 
         # True when the last playback ran to the end of the score naturally
         self._playback_completed = False
+
+        # Practice aid: repeat the current line until toggled off
+        self._line_loop_enabled = False
 
         # Playback thread
         self._playback_thread: Optional[Thread] = None
@@ -269,6 +278,16 @@ class Player:
         with self._control_lock:
             return self._loop_enabled
 
+    def toggle_line_loop(self) -> None:
+        """Toggle repeating the current line on/off (practice aid, not persisted)."""
+        with self._control_lock:
+            self._line_loop_enabled = not self._line_loop_enabled
+
+    def get_line_loop_enabled(self) -> bool:
+        """Get current line repeat state."""
+        with self._control_lock:
+            return self._line_loop_enabled
+
     def get_segment_strict(self) -> bool:
         """Get current segment strict mode state."""
         with self._control_lock:
@@ -402,6 +421,16 @@ class Player:
                 return (line, note + 1)
             return self._positions[self._cursor]
 
+    def get_note_progress(self) -> tuple[int, int]:
+        """Get note-level progress as (played_or_pending, total) note counts."""
+        with self._control_lock:
+            if not self._positions:
+                return (0, 0)
+            if self._cursor >= len(self._positions):
+                return (self._note_prefix[-1], self._note_prefix[-1])
+            line, note = self._positions[self._cursor]
+            return (self._note_prefix[line] + note, self._note_prefix[-1])
+
     def _current_line(self) -> int:
         """Return the cursor line, including a stable value at score end."""
         if not self._positions:
@@ -426,6 +455,37 @@ class Player:
         """Notify the UI after a note has been dispatched."""
         if self._progress_callback:
             self._progress_callback(line, len(self.score.lines), note, total_notes)
+
+    def _repeat_current_line(self, line_index: int) -> bool:
+        """Rewind to the start of the current line when line repeat is active.
+
+        Returns:
+            True when the line end was handled by repeating the line
+        """
+        with self._control_lock:
+            if not self._line_loop_enabled:
+                return False
+            first = next(
+                (
+                    index
+                    for index, (line_no, _note) in enumerate(self._positions)
+                    if line_no == line_index
+                ),
+                None,
+            )
+            if first is None:
+                return False
+
+        self._seek(first)
+        with self._control_lock:
+            generation = self._cursor_generation
+        self._wait_repeated_before_next(
+            self._interval_rating,
+            int(self._line_interval_rating),
+            generation,
+            self._next_pending_keys(generation),
+        )
+        return True
 
     def _wait_repeated(self, duration: float, count: int, generation: int) -> bool:
         """Wait for repeated virtual rests, stopping at the first interruption."""
@@ -588,6 +648,8 @@ class Player:
             self._notify_progress(line_index, note_index, len(line))
 
             if at_line_end:
+                if self._repeat_current_line(line_index):
+                    continue
                 if line_index < len(self.score.lines) - 1:
                     self._wait_repeated_before_next(
                         self._interval_rating,

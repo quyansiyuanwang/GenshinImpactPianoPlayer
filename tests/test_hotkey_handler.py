@@ -138,6 +138,7 @@ def test_default_hotkeys_register_documented_bindings() -> None:
             "home",
             "end",
             "insert",
+            "delete",
         ):
             assert registry.get_callback(key) is not None, key
     finally:

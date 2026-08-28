@@ -41,6 +41,7 @@ DEFAULT_HOTKEYS = {
     "jump_to_end": "end",
     # Loop playback
     "toggle_loop": "insert",
+    "toggle_line_loop": "delete",
     # Reload and reparse
     "reload": "f5",
     "reparse": "f6",

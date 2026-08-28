@@ -21,6 +21,11 @@ def register_default_hotkeys(cli: "CLI", registry: HotkeyRegistry) -> None:
         "play_pause": (cli.toggle_play_pause, "Play or pause playback", "playback"),
         "quit": (cli.quit, "Quit application", "playback"),
         "toggle_loop": (cli.toggle_loop, "Toggle looping playback", "playback"),
+        "toggle_line_loop": (
+            cli.toggle_line_loop,
+            "Toggle repeating the current line",
+            "playback",
+        ),
         "jump_to_start": (
             cli.jump_to_start,
             "Jump to the start of the score",
