@@ -22,6 +22,9 @@ class LimitedScreen:
     def clear(self) -> None:
         self.lines.clear()
 
+    def erase(self) -> None:
+        self.clear()
+
     def addstr(self, row: int, _column: int, text: str, *_attributes: int) -> None:
         if row >= 24:
             raise curses.error()
@@ -31,15 +34,20 @@ class LimitedScreen:
         self.refreshed = True
 
 
-def test_display_refreshes_on_small_terminal_with_unicode_file_name(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def _make_cli_with_screen() -> tuple[CLI, LimitedScreen]:
     cli = CLI("D:/scores/繁星、新生，与你.qymusic")
     cli.score = make_score([["Q", "W"], ["E", "R"]])
     cli.player = Player(cli.score, FakeKeyboard())
     cli.display_active = True
     screen = LimitedScreen()
     cli.stdscr = screen
+    return cli, screen
+
+
+def test_display_refreshes_on_small_terminal_with_unicode_file_name(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cli, screen = _make_cli_with_screen()
     monkeypatch.setattr(curses, "color_pair", lambda _number: 0)
     monkeypatch.setattr(curses, "A_BOLD", 0)
 
@@ -48,3 +56,30 @@ def test_display_refreshes_on_small_terminal_with_unicode_file_name(
     assert screen.refreshed
     assert "GIPianoPlayer - Command Line Interface" in screen.lines
     assert any("????" in line for line in screen.lines)
+
+
+def test_display_reports_finished_after_natural_completion(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cli, screen = _make_cli_with_screen()
+    assert cli.player is not None
+    monkeypatch.setattr(curses, "color_pair", lambda _number: 0)
+    monkeypatch.setattr(curses, "A_BOLD", 0)
+
+    cli.player._playback_completed = True  # set by the player after a full run
+    cli._display_score()
+
+    assert any("FINISHED" in line for line in screen.lines)
+    assert any("Progress: 100.0%" in line for line in screen.lines)
+
+
+def test_display_shows_transient_status_message(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cli, screen = _make_cli_with_screen()
+    monkeypatch.setattr(curses, "color_pair", lambda _number: 0)
+    monkeypatch.setattr(curses, "A_BOLD", 0)
+
+    cli._flash("Configuration saved")
+
+    assert any("Configuration saved" in line for line in screen.lines)
