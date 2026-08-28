@@ -1,6 +1,7 @@
 """Playback navigation and state tests."""
 
 import time
+from threading import Thread
 
 from src.application.state.state_machine import PlayerState
 from src.core.domain.note import Note, NoteType
@@ -78,6 +79,58 @@ def test_seek_releases_sustained_keys() -> None:
     assert keyboard.wait_for(("press", ("Q",)))
     player.skip_forward_notes()
     assert keyboard.wait_for(("release", ("Q",)))
+    player.stop()
+
+
+def test_skip_backward_line_returns_to_start_of_previous_line() -> None:
+    player = Player(make_score([["Q", "W"], ["E", "R"]]), FakeKeyboard())
+
+    player.skip_forward_notes(3)  # cursor sits on the last note of line 2
+    assert player.get_position() == (1, 1)
+
+    player.skip_backward_line()
+    assert player.get_position() == (0, 0)
+
+    # Already on the first line: stay clamped at the start
+    player.skip_backward_line()
+    assert player.get_position() == (0, 0)
+
+
+def test_playback_reports_finished_and_clears_on_seek() -> None:
+    keyboard = FakeKeyboard()
+    player = Player(make_score([["Q"]], interval=0.01), keyboard)
+
+    player.play()
+    assert keyboard.wait_for(("tap", ("Q",)))
+    deadline = time.monotonic() + 1.0
+    while not player.is_finished() and time.monotonic() < deadline:
+        time.sleep(0.01)
+
+    assert player.is_finished()
+    assert player.get_state() == PlayerState.STOPPED
+
+    # Seeking away from the end clears the finished marker
+    player.skip_forward_notes()
+    assert not player.is_finished()
+    player.stop()
+
+
+def test_speed_change_applies_to_active_wait() -> None:
+    keyboard = FakeKeyboard()
+    player = Player(make_score([["Q"]], interval=0.01), keyboard)
+
+    results: list[bool] = []
+    waiter = Thread(target=lambda: results.append(player._wait(5.0, 0)))
+    waiter.start()
+    time.sleep(0.2)
+
+    started = time.monotonic()
+    player.set_speed(5.0)  # 4.8 unscaled seconds now take ~0.96s
+    waiter.join(timeout=3.0)
+
+    assert not waiter.is_alive()
+    assert results == [True]
+    assert time.monotonic() - started < 4.0
     player.stop()
 
 

@@ -4,6 +4,14 @@ import time
 from threading import Event, RLock, Thread
 from typing import Callable, List, Optional, Protocol
 
+from src.application.config.constants import (
+    MAX_ARPEGGIO_INTERVAL,
+    MAX_INTERVAL,
+    MAX_SPEED,
+    MIN_ARPEGGIO_INTERVAL,
+    MIN_INTERVAL,
+    MIN_SPEED,
+)
 from src.core.domain.note import Note, NoteType
 from src.core.domain.score import ParsedScore
 from src.application.state.state_machine import (
@@ -90,6 +98,9 @@ class Player:
         self._sustain_enabled = False
         self._sustained_keys: List[str] = []  # Keys currently being held
 
+        # True when the last playback ran to the end of the score naturally
+        self._playback_completed = False
+
         # Playback thread
         self._playback_thread: Optional[Thread] = None
 
@@ -119,6 +130,7 @@ class Player:
                     self._state_machine.transition_to(PSM_State.BUFFERING)
 
                 self._state_machine.transition_to(PSM_State.PLAYING)
+                self._playback_completed = False
                 self._stop_event.clear()
                 self._pause_event.set()
                 self._wake_event.set()
@@ -174,12 +186,17 @@ class Player:
 
     def set_speed(self, multiplier: float) -> None:
         """Set playback speed multiplier."""
-        self._speed_multiplier = max(0.1, min(10.0, multiplier))
+        self._speed_multiplier = max(MIN_SPEED, min(MAX_SPEED, multiplier))
+        # Wake an in-flight wait so the new speed applies immediately instead
+        # of waiting for the current gap to finish.
+        self._wake_event.set()
 
     def set_arpeggio_interval(self, interval: float) -> None:
         """Set a manual arpeggio interval in seconds."""
         with self._control_lock:
-            self._arpeggio_interval = max(0.01, min(1.0, interval))
+            self._arpeggio_interval = max(
+                MIN_ARPEGGIO_INTERVAL, min(MAX_ARPEGGIO_INTERVAL, interval)
+            )
             self._arpeggio_auto = False
 
     def set_arpeggio_auto(self, enabled: bool) -> None:
@@ -194,7 +211,7 @@ class Player:
 
     def set_interval_rating(self, rating: float) -> None:
         """Set base interval rating."""
-        self._interval_rating = max(0.01, min(5.0, rating))
+        self._interval_rating = max(MIN_INTERVAL, min(MAX_INTERVAL, rating))
 
     def set_line_interval_rating(self, rating: float) -> None:
         """Set line interval rating (N empty notes between lines)."""
@@ -225,6 +242,11 @@ class Player:
         """Get current sustain mode state."""
         with self._sustain_lock:
             return self._sustain_enabled
+
+    def set_segment_strict(self, strict: bool) -> None:
+        """Set segment strict mode explicitly."""
+        with self._control_lock:
+            self._segment_strict = bool(strict)
 
     def toggle_segment_strict(self) -> None:
         """Toggle segment strict mode on/off."""
@@ -269,6 +291,15 @@ class Player:
         """
         return self.get_state() == PSM_State.STOPPED
 
+    def is_finished(self) -> bool:
+        """Check if the last playback ran to the end of the score naturally.
+
+        Returns:
+            True if playback completed the whole score
+        """
+        with self._control_lock:
+            return self._playback_completed
+
     def _release_sustained_keys(self) -> None:
         """Release all currently sustained keys."""
         with self._sustain_lock:
@@ -303,17 +334,21 @@ class Player:
         self._seek(target)
 
     def skip_backward_line(self) -> None:
-        """Skip backward by 1 line."""
+        """Skip backward to the first note of the previous line."""
         with self._control_lock:
             current_line = self._current_line()
-            target = next(
-                (
-                    index
-                    for index in range(len(self._positions) - 1, -1, -1)
-                    if self._positions[index][0] < current_line
-                ),
-                0,
-            )
+            target_line = current_line - 1
+            if target_line < 0:
+                target = 0
+            else:
+                target = next(
+                    (
+                        index
+                        for index, (line, _note) in enumerate(self._positions)
+                        if line == target_line
+                    ),
+                    0,
+                )
         self._seek(target)
 
     def skip_forward_notes(self, notes: int = 1) -> None:
@@ -359,6 +394,7 @@ class Player:
                 return
             self._cursor = target
             self._cursor_generation += 1
+            self._playback_completed = False
         self._release_sustained_keys()
         self._wake_event.set()
 
@@ -375,23 +411,25 @@ class Player:
         return True
 
     def _wait(self, duration: float, generation: int) -> bool:
-        """Wait while allowing pause, stop, and seek to take effect immediately."""
-        with self._control_lock:
-            speed = self._speed_multiplier
-        remaining = max(0.0, duration / speed)
+        """Wait while allowing pause, stop, seek, and speed changes to take effect."""
+        # `remaining` is kept in unscaled seconds and re-scaled on every loop so
+        # a speed change while waiting shortens or lengthens the same gap.
+        remaining = max(0.0, duration)
 
         while remaining > 0:
             self._pause_event.wait()
             if self._stop_event.is_set():
                 return False
 
+            with self._control_lock:
+                speed = self._speed_multiplier
             started = time.monotonic()
-            interrupted = self._wake_event.wait(remaining)
+            interrupted = self._wake_event.wait(remaining / speed)
             elapsed = time.monotonic() - started
             self._wake_event.clear()
 
             if self._pause_event.is_set():
-                remaining = max(0.0, remaining - elapsed)
+                remaining = max(0.0, remaining - elapsed * speed)
 
             with self._control_lock:
                 if self._cursor_generation != generation:
@@ -528,6 +566,7 @@ class Player:
             if self._state_machine.current_state == PSM_State.PLAYING:
                 try:
                     self._state_machine.transition_to(PSM_State.STOPPED)
+                    self._playback_completed = True
                 except StateTransitionError:
                     pass
             self._cursor = 0
