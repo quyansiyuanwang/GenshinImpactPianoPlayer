@@ -211,6 +211,10 @@ class CLI:
                 config_lines.append(
                     f"  Bookmark: {bookmark_status}    [{self.hotkeys['set_bookmark']}] Set | [{self.hotkeys['jump_to_bookmark']}] Jump"
                 )
+                key_status = "LOCKED" if self.player.get_output_locked() else "sending"
+                config_lines.append(
+                    f"  Key Output: {key_status}  [{self.hotkeys['toggle_output_lock']}] Toggle"
+                )
 
             # On short terminals drop the less-used rows so the controls stay
             # visible instead of being pushed off-screen.
@@ -1173,6 +1177,17 @@ class CLI:
             self._flash("Bookmark position is outside the current score")
         else:
             self._flash("No bookmark set")
+
+    def toggle_output_lock(self) -> None:
+        """Lock or unlock the simulated key output (panic switch)."""
+        if not self.player:
+            return
+
+        self.player.toggle_output_lock()
+        if self.player.get_output_locked():
+            self._flash("Key output LOCKED - position keeps advancing")
+        else:
+            self._flash("Key output unlocked")
 
     def jump_to_start(self) -> None:
         """Jump to the first note of the score."""

@@ -49,6 +49,8 @@ DEFAULT_HOTKEYS = {
     # Bookmark
     "set_bookmark": "ctrl+k",
     "jump_to_bookmark": "ctrl+l",
+    # Key output lock (panic switch)
+    "toggle_output_lock": "f12",
     # Reload and reparse
     "reload": "f5",
     "reparse": "f6",

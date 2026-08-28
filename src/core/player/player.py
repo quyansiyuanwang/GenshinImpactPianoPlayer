@@ -118,6 +118,9 @@ class Player:
         # Bookmark as (line_index, note_index) so it survives reparse
         self._bookmark: Optional[tuple[int, int]] = None
 
+        # Panic switch: suppress all simulated key output while locked
+        self._output_locked = False
+
         # Playback thread
         self._playback_thread: Optional[Thread] = None
 
@@ -365,6 +368,27 @@ class Player:
         """Restore a bookmark carried over from a previous player."""
         with self._control_lock:
             self._bookmark = bookmark
+
+    def set_output_lock(self, locked: bool) -> None:
+        """Suppress or restore simulated key output.
+
+        While locked the playback position keeps advancing, so unlocking
+        resumes exactly where the score would be; locking also releases any
+        keys currently held by sustain mode.
+        """
+        with self._sustain_lock:
+            self._output_locked = locked
+        if locked:
+            self._release_sustained_keys()
+
+    def toggle_output_lock(self) -> None:
+        """Toggle the key-output lock."""
+        self.set_output_lock(not self.get_output_locked())
+
+    def get_output_locked(self) -> bool:
+        """Check whether simulated key output is currently locked."""
+        with self._sustain_lock:
+            return self._output_locked
 
     def get_segment_strict(self) -> bool:
         """Get current segment strict mode state."""
@@ -821,11 +845,13 @@ class Player:
         return self._infer_arpeggio_interval(note_count)
 
     def _play_keys(self, keys: List[str], _generation: int) -> bool:
-        """Dispatch a single key or chord, honoring sustain mode."""
+        """Dispatch a single key or chord, honoring output lock and sustain."""
         if not keys:
             return True
 
         with self._sustain_lock:
+            if self._output_locked:
+                return True
             sustain_enabled = self._sustain_enabled
         if not sustain_enabled:
             if len(keys) == 1:

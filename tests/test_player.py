@@ -285,6 +285,42 @@ def test_bookmark_at_score_end_is_rejected() -> None:
     assert player.get_bookmark() is None
 
 
+def test_output_lock_suppresses_keys_but_advances() -> None:
+    keyboard = FakeKeyboard()
+    player = Player(make_score([["Q"]], interval=0.01), keyboard)
+    player.toggle_output_lock()
+    assert player.get_output_locked()
+
+    player.play()
+    deadline = time.monotonic() + 1.0
+    while player.get_state() != PlayerState.STOPPED and time.monotonic() < deadline:
+        time.sleep(0.01)
+
+    # The score played through silently: no keys reached the keyboard
+    assert player.get_state() == PlayerState.STOPPED
+    assert keyboard.operations == []
+
+    # Unlocking restores output from the reset position
+    player.toggle_output_lock()
+    assert not player.get_output_locked()
+    player.play()
+    assert keyboard.wait_for(("tap", ("Q",)))
+    player.stop()
+
+
+def test_output_lock_releases_sustained_keys() -> None:
+    keyboard = FakeKeyboard()
+    player = Player(make_score([["Q"]], interval=0.01), keyboard)
+    player.toggle_sustain()
+
+    player.play()
+    assert keyboard.wait_for(("press", ("Q",)))
+
+    player.toggle_output_lock()
+    assert keyboard.wait_for(("release", ("Q",)))
+    player.stop()
+
+
 def test_speed_change_applies_to_active_wait() -> None:
     keyboard = FakeKeyboard()
     player = Player(make_score([["Q"]], interval=0.01), keyboard)

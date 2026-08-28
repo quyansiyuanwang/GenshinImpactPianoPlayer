@@ -154,6 +154,11 @@ def register_default_hotkeys(cli: "CLI", registry: HotkeyRegistry) -> None:
             "Toggle strict segment mode",
             "segment",
         ),
+        "toggle_output_lock": (
+            cli.toggle_output_lock,
+            "Lock or unlock simulated key output",
+            "playback",
+        ),
     }
 
     for action, (callback, description, category) in bindings.items():
