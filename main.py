@@ -26,7 +26,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="GIPianoPlayer - Automated piano playing script"
     )
-    parser.add_argument("file", help="Path to the score text file")
+    parser.add_argument("paths", nargs="+", help="Score files or directories")
 
     args = parser.parse_args()
 
@@ -55,7 +55,7 @@ def main() -> None:
 
     from src.cli import CLI
 
-    cli = CLI(args.file)
+    cli = CLI(args.paths)
     cli.run()
 
 

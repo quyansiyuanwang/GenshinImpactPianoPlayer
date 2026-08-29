@@ -8,7 +8,7 @@ single module that owns every application concern.
 from __future__ import annotations
 
 from threading import Lock
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Sequence
 
 from src.application.config.constants import DEFAULT_HOTKEYS
 from src.application.config.profiles import ProfileStore
@@ -22,7 +22,11 @@ from src.ui.cli.main_screen import MainScreenMixin
 from src.ui.cli.settings_screen import SettingsScreenMixin
 from src.ui.cli.screen_manager import ScreenManager
 from src.application.file_actions import FileActionsMixin
+from src.application.file_loader import FileLoader
+from src.application.playlist import Playlist
+from src.application.track_controller import TrackController
 from src.application.navigation_controls import NavigationControlsMixin
+from src.application.playlist_controls import PlaylistControlsMixin
 from src.application.playback_controls import PlaybackControlsMixin
 
 
@@ -32,12 +36,15 @@ class CLI(
     SettingsScreenMixin,
     PlaybackControlsMixin,
     NavigationControlsMixin,
+    PlaylistControlsMixin,
     FileActionsMixin,
 ):
     """Compose the application services and expose the stable CLI facade."""
 
-    def __init__(self, file_path: str, hotkeys: Optional[Dict[str, str]] = None):
-        self.file_path = file_path
+    def __init__(self, file_path: str | Sequence[str], hotkeys: Optional[Dict[str, str]] = None):
+        paths = [file_path] if isinstance(file_path, str) else list(file_path)
+        self.file_paths = paths
+        self.file_path = paths[0] if paths else ""
         self.player: Optional[Player] = None
         self.running = False
         self.score: Optional[ParsedScore] = None
@@ -59,6 +66,11 @@ class CLI(
         self.controller = ApplicationController()
         self._curses_input: CursesInputAdapter | None = None
         self.screen_manager = ScreenManager()
+        self.playlist = Playlist()
+        self.file_loader = FileLoader()
+        self.track_controller = TrackController(self)
+        self.playlist_errors: list[str] = []
+        self.playlist_focus = False
         if hotkeys is not None:
             self.hotkeys = {**DEFAULT_HOTKEYS, **hotkeys}
 

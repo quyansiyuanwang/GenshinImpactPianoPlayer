@@ -5,14 +5,10 @@ from __future__ import annotations
 import curses
 import keyboard
 import time
-from pathlib import Path
 from typing import Any
 from src.application.command_bus import CommandResult
-from src.application.events import InputEvent, InputKind
+from src.application.events import InputEvent, InputKind, KeyCode
 from src.application.config.constants import DEFAULT_HOTKEYS
-from src.core.keyboard.controller import KeyboardController
-from src.core.parser.score_parser import ScoreParser
-from src.core.player.player import Player
 from src.ui.cli.input.adapters import CursesInputAdapter
 from src.application.host_protocol import ApplicationHost
 
@@ -23,18 +19,25 @@ class LifecycleMixin(ApplicationHost):
         """Run the CLI interface."""
         # Parse score
         try:
-            if not Path(self.file_path).exists():
-                print(f"Error: score file not found: {self.file_path}")
+            entries, errors = self.file_loader.load_paths(self.file_paths)
+            self.playlist_errors = errors
+            if not entries:
+                print("Error: no supported score files found")
+                for error in errors:
+                    print(f"Warning: {error}")
                 return
-    
-            # Read original file content (utf-8-sig tolerates a BOM)
-            with open(self.file_path, "r", encoding="utf-8-sig") as f:
-                self.original_content = f.read()
-    
-            parser = ScoreParser(self.file_path)
-            self.score = parser.parse()
+            self.playlist.add_paths([entry.path for entry in entries])
+            first = self.playlist.current
+            if first is None:
+                return
+            loaded, message = self.track_controller.load(first.path)
+            if not loaded:
+                print(message)
+                return
+            for error in errors:
+                print(f"Warning: {error}")
         except Exception as e:
-            print(f"Error loading score: {e}")
+            print(f"Error loading scores: {e}")
             return
     
         # Run with curses
@@ -71,11 +74,7 @@ class LifecycleMixin(ApplicationHost):
         stdscr.keypad(False)
     
         # Initialize player
-        keyboard_controller = KeyboardController()
-        if self.score is not None:
-            self.player = Player(self.score, keyboard_controller, self.key_mapping)
-            self.player.set_progress_callback(self._on_progress)
-        else:
+        if self.score is None:
             # This shouldn't happen as we check in run(), but handle gracefully
             return
     
@@ -112,7 +111,15 @@ class LifecycleMixin(ApplicationHost):
                     if terminal_event.kind == InputKind.RESIZE:
                         self._display_score()
                     elif terminal_event.key is not None:
-                        result = self.controller.dispatch_event(terminal_event)
+                        if terminal_event.kind == InputKind.KEY and terminal_event.key == KeyCode.CHARACTER:
+                            if terminal_event.text.lower() == "a":
+                                self._playlist_prompt(stdscr, "Add file or directory")
+                                continue
+                            if terminal_event.text == "/":
+                                self._playlist_prompt(stdscr, "Search playlist", search=True)
+                                continue
+                        handled = getattr(self, "handle_playlist_event")(terminal_event)
+                        result = None if handled else self.controller.dispatch_event(terminal_event)
                         if result is not None and result.message:
                             self._flash(result.message)
                 if current_time - last_refresh >= 0.5:
@@ -249,5 +256,27 @@ class LifecycleMixin(ApplicationHost):
         self._flash(
             "Keyboard input LOCKED" if self._keyboard_locked else "Keyboard input unlocked"
         )
+
+    def _playlist_prompt(self, stdscr: Any, title: str, *, search: bool = False) -> None:
+        """Run a short curses input prompt for playlist operations."""
+        try:
+            stdscr.nodelay(False)
+            stdscr.keypad(True)
+            height, width = stdscr.getmaxyx()
+            prompt = f"{title}: "
+            stdscr.addstr(max(0, height - 1), 0, prompt[: max(1, width - 1)])
+            stdscr.refresh()
+            raw = stdscr.getstr(max(0, height - 1), min(len(prompt), max(0, width - 1)), max(1, width - len(prompt) - 1))
+            value = raw.decode("utf-8", "replace").strip()
+            if search:
+                self.playlist.search(value)
+                self._flash(f"Search: {len(self.playlist.visible_entries)} result(s)")
+            elif value:
+                getattr(self, "playlist_add_paths")([value])
+        except Exception as error:
+            self._flash(f"Playlist input failed: {error}")
+        finally:
+            stdscr.nodelay(True)
+            stdscr.keypad(False)
     
     

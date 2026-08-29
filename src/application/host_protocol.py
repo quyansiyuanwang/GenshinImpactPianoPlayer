@@ -6,6 +6,9 @@ from threading import Lock
 from typing import Any
 
 from src.application.config.profiles import ProfileStore
+from src.application.file_loader import FileLoader
+from src.application.playlist import Playlist
+from src.application.track_controller import TrackController
 from src.application.controller import ApplicationController
 from src.core.domain.score import ParsedScore
 from src.core.player.player import Player
@@ -40,6 +43,12 @@ class ApplicationHost:
     _curses_input: CursesInputAdapter | None
     screen_manager: ScreenManager
     settings_controller: SettingsController
+    file_paths: list[str]
+    playlist: Playlist
+    file_loader: FileLoader
+    track_controller: TrackController
+    playlist_errors: list[str]
+    playlist_focus: bool
 
     def _display_score(self) -> None: ...
     def _render_frame(self, stdscr: Any) -> None: ...

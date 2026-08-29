@@ -289,6 +289,29 @@ class MainRenderer:
                         : width - 1
                     ],
                 )
+
+            # Keep the score renderer intact while providing a compact player
+            # style playlist on wide terminals.
+            if width >= 90 and getattr(host, "playlist", None):
+                panel_width = min(34, max(24, width // 3))
+                panel_left = width - panel_width
+                panel_top = 0
+                try:
+                    stdscr.addstr(panel_top, panel_left, " Playlist "[: panel_width - 1], curses.A_BOLD)
+                    stdscr.addstr(panel_top + 1, panel_left, "-" * max(1, panel_width - 1))
+                    entries = host.playlist.visible_entries
+                    selected = host.playlist.visible_index
+                    for index, entry in enumerate(entries[: max(0, height - 5)]):
+                        marker = ">" if index == selected and getattr(host, "playlist_focus", False) else " "
+                        current = "*" if host.playlist.current is entry else " "
+                        label = f"{marker}{current} {index + 1:02d} {entry.title}"
+                        stdscr.addstr(panel_top + 2 + index, panel_left, label[: panel_width - 1])
+                    if not entries:
+                        stdscr.addstr(panel_top + 2, panel_left, "(empty) A add  / search"[: panel_width - 1])
+                    footer = "Tab focus  Enter load  N/P next/prev  D remove"
+                    stdscr.addstr(height - 2, panel_left, footer[: panel_width - 1])
+                except curses.error:
+                    pass
                 row += 1
     
             # Status line state and note-level progress (O(1) prefix sums)
@@ -411,8 +434,6 @@ class MainRenderer:
     
     
     
-
-
 
 
 
