@@ -7,6 +7,7 @@ import os
 import time
 from typing import Any
 
+from src.application.config.constants import DISPLAY_LINES_AFTER, DISPLAY_LINES_BEFORE
 from src.ui.cli.components import Rect, TerminalSurface
 from src.ui.cli.main_layout import MainLayout
 from src.ui.cli.playback_context import (
@@ -84,18 +85,28 @@ class MainRenderer:
             return
 
         total = len(host.score.lines)
-        start = max(0, min(current_line - available // 2, max(0, total - available)))
-        end = min(total, start + available)
-        for row, line_index in enumerate(range(start, end)):
+        start, end, hidden_before, hidden_after = self._score_window(
+            total, current_line, available
+        )
+        row = top
+        if hidden_before:
+            surface.addstr(
+                row,
+                rect.left,
+                clip_cells(f"  ... {start} lines above ...", rect.width - 1),
+            )
+            row += 1
+        for line_index in range(start, end):
             line = host.score.lines[line_index]
             line_number = f"[{line_index + 1:3d}] "
-            target_row = top + row
+            target_row = row
             if line_index != current_line:
                 text = line_number + host._format_score_line(line)
                 attribute = curses.color_pair(1) if line_index < current_line else 0
                 surface.addstr(
                     target_row, rect.left, clip_cells(text, rect.width - 1), attribute
                 )
+                row += 1
                 continue
             self._render_current_line(
                 host,
@@ -107,6 +118,39 @@ class MainRenderer:
                 line,
                 current_note,
             )
+            row += 1
+        if hidden_after and row < top + available:
+            surface.addstr(
+                row,
+                rect.left,
+                clip_cells(f"  ... {total - end} lines below ...", rect.width - 1),
+            )
+
+    def _score_window(
+        self, total: int, current: int, available: int
+    ) -> tuple[int, int, bool, bool]:
+        maximum = DISPLAY_LINES_BEFORE + 1 + DISPLAY_LINES_AFTER
+        capacity = min(maximum, available, total)
+        start, end = self._score_bounds(total, current, capacity)
+        hidden_before = start > 0
+        hidden_after = end < total
+        indicator_rows = int(hidden_before) + int(hidden_after)
+        capacity = min(maximum, max(1, available - indicator_rows), total)
+        start, end = self._score_bounds(total, current, capacity)
+        return start, end, start > 0, end < total
+
+    def _score_bounds(self, total: int, current: int, capacity: int) -> tuple[int, int]:
+        if total <= 0 or capacity <= 0:
+            return 0, 0
+        current = min(max(0, current), total - 1)
+        before = min(DISPLAY_LINES_BEFORE, current, capacity - 1)
+        after = min(DISPLAY_LINES_AFTER, total - current - 1, capacity - before - 1)
+        remaining = capacity - before - after - 1
+        extra_after = min(remaining, total - current - after - 1)
+        after += extra_after
+        remaining -= extra_after
+        before += min(remaining, current - before)
+        return current - before, current + after + 1
 
     def _render_current_line(
         self,

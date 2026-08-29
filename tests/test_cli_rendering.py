@@ -101,6 +101,29 @@ def test_display_keeps_configuration_and_key_hints(
     assert any("Navigate:" in line for line in screen.lines)
 
 
+def test_score_uses_following_scroll_viewport(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cli, screen = _make_cli_with_screen()
+    cli.score = make_score([["Q"] for _index in range(30)])
+    cli.player = Player(cli.score, FakeKeyboard())
+    monkeypatch.setattr(curses, "color_pair", lambda _number: 0)
+    monkeypatch.setattr(curses, "A_BOLD", 0)
+
+    cli._display_score()
+    assert any("lines below" in line for line in screen.lines)
+    assert not any("[ 15]" in line for line in screen.lines)
+
+    screen.lines.clear()
+    cli.player.jump_to_line(15)
+    cli._display_score()
+    score_lines = [line for line in screen.lines if line.startswith("[")]
+    assert any("[ 16]" in line for line in score_lines)
+    assert not any("[  1]" in line for line in score_lines)
+    assert len(score_lines) <= 10
+    assert any("lines above" in line for line in screen.lines)
+
+
 def test_display_lists_parse_warnings(monkeypatch: pytest.MonkeyPatch) -> None:
     cli, screen = _make_cli_with_screen()
     assert cli.score is not None
