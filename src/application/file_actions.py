@@ -8,6 +8,7 @@ from src.core.parser.score_parser import ScoreParser
 from src.core.player.player import Player
 from src.application.host_protocol import ApplicationHost
 
+
 class FileActionsMixin(ApplicationHost):
     """Application command methods."""
 
@@ -15,22 +16,20 @@ class FileActionsMixin(ApplicationHost):
         """Quit the application."""
         # Cleanup plugins
         from src.plugins.core.loader import cleanup_plugins
-    
+
         cleanup_plugins()
-    
+
         # Stop player
         if self.player:
             self.player.stop()
-    
+
         self.running = False
-    
-    
-    
+
     def save_config(self) -> None:
         """Save current configuration to file."""
         if not self.player or not self.original_content:
             return
-    
+
         try:
             # Get current configuration values (rounded so float dust from
             # repeated hotkey adjustments never reaches the score file)
@@ -46,7 +45,7 @@ class FileActionsMixin(ApplicationHost):
             segment_length = self.player._segment_length
             segment_strict = self.player.get_segment_strict()
             loop = self.player.get_loop_enabled()
-    
+
             # Parse the original content
             lines = self.original_content.split("\n")
             new_lines = []
@@ -63,10 +62,10 @@ class FileActionsMixin(ApplicationHost):
                 "segment_strict": False,
                 "loop": False,
             }
-    
+
             for line in lines:
                 stripped = line.strip()
-    
+
                 # Check if we're past the config section
                 if stripped.startswith("---") or (
                     stripped and not stripped.startswith("#") and "=" not in stripped
@@ -105,20 +104,20 @@ class FileActionsMixin(ApplicationHost):
                             insert_lines.append(f"SEGMENT_STRICT = {segment_strict}")
                         if not config_updated["loop"]:
                             insert_lines.append(f"LOOP = {loop}")
-    
+
                         if insert_lines:
                             # Insert before the separator or first score line
                             for insert_line in insert_lines:
                                 new_lines.append(insert_line)
-    
+
                         # Mark all as updated
                         for key in config_updated:
                             config_updated[key] = True
-    
+
                 if config_section and "=" in line:
                     key, _ = line.split("=", 1)
                     key = key.strip().lower()
-    
+
                     if key == "speed_multiplier":
                         new_lines.append(f"SPEED_MULTIPLIER = {speed_multiplier}")
                         config_updated["speed_multiplier"] = True
@@ -159,42 +158,39 @@ class FileActionsMixin(ApplicationHost):
                         new_lines.append(line)
                 else:
                     new_lines.append(line)
-    
+
             # Write back to file
             with open(self.file_path, "w", encoding="utf-8") as f:
                 f.write("\n".join(new_lines))
-    
+
             # Update original content
             self.original_content = "\n".join(new_lines)
-    
-    
+
             self._flash("Configuration saved")
-    
+
         except Exception:
             self._flash("Save failed - see terminal for details")
-    
-    
-    
+
     def reload(self) -> None:
         """Reload the score file from disk (re-read and re-parse)."""
         if not self.player:
             return
-    
+
         try:
             # Stop current playback
             was_playing = self.player.get_state() == PSM_State.PLAYING
             sustain_enabled = self.player.get_sustain_enabled()
             bookmark = self.player.get_bookmark()
             self.player.stop()
-    
+
             # Re-read file content (utf-8-sig tolerates a BOM)
             with open(self.file_path, "r", encoding="utf-8-sig") as f:
                 self.original_content = f.read()
-    
+
             # Re-parse the score (will read config from file)
             parser = ScoreParser(self.file_path)
             self.score = parser.parse()
-    
+
             # Create new player with new score (uses config from parsed score)
             keyboard_controller = KeyboardController()
             self.player = Player(self.score, keyboard_controller, self.key_mapping)
@@ -202,32 +198,30 @@ class FileActionsMixin(ApplicationHost):
             if sustain_enabled:
                 self.player.toggle_sustain()
             self.player.restore_bookmark(bookmark)
-    
+
             # Re-initialize plugins with new player
             # Force re-initialization by updating context and calling initialize directly
-    
+
             plugin_errors = self._reinitialize_plugins()
-    
+
             # Resume playback if it was playing
             if was_playing:
                 self.player.play()
-    
+
             self._flash(self._reload_message("Score reloaded", plugin_errors))
-    
+
         except Exception:
             self._flash("Reload failed")
-    
-    
-    
+
     def _reinitialize_plugins(self) -> int:
         """Point all loaded plugins at the current player and CLI.
-    
+
         Returns:
             Number of plugins that failed to re-initialize
         """
         from src.plugins.core.manager import get_plugin_manager
         from src.plugins.core.context import PluginContext
-    
+
         plugin_manager = get_plugin_manager()
         new_context = PluginContext(
             player=self.player,
@@ -235,7 +229,7 @@ class FileActionsMixin(ApplicationHost):
             controller=self.controller,
         )
         plugin_manager.set_context(new_context)
-    
+
         failures = 0
         for plugin in plugin_manager.get_all_plugins():
             try:
@@ -243,28 +237,24 @@ class FileActionsMixin(ApplicationHost):
             except Exception:
                 failures += 1
         return failures
-    
-    
-    
+
     @staticmethod
     def _reload_message(base: str, plugin_errors: int) -> str:
         """Compose a status message, mentioning plugin failures if any."""
         if plugin_errors:
             return f"{base} ({plugin_errors} plugin error{'s' if plugin_errors != 1 else ''})"
         return base
-    
-    
-    
+
     def reparse(self, message: str = "Score reparsed") -> None:
         """Reparse the score with current configuration (apply new segment_length, etc.)."""
         if not self.player:
             return
-    
+
         try:
             # Get current playback state and position
             was_playing = self.player.get_state() == PSM_State.PLAYING
             current_line, _ = self.player.get_progress()
-    
+
             # Get current configuration
             speed_multiplier = self.player._speed_multiplier
             arpeggio_interval = self.player._arpeggio_interval
@@ -278,24 +268,24 @@ class FileActionsMixin(ApplicationHost):
             sustain_enabled = self.player.get_sustain_enabled()
             loop_enabled = self.player.get_loop_enabled()
             bookmark = self.player.get_bookmark()
-    
+
             # Stop current playback
             self.player.stop()
-    
+
             # Save current config to file first
             self.save_config()
-    
+
             # Re-parse the score (will use updated config from file)
             parser = ScoreParser(self.file_path)
             self.score = parser.parse()
-    
+
             # Create new player with reparsed score
             keyboard_controller = KeyboardController()
             self.player = Player(self.score, keyboard_controller, self.key_mapping)
             self.player.set_progress_callback(self._on_progress)
-    
+
             plugin_errors = self._reinitialize_plugins()
-    
+
             # Restore configuration (in case file save failed)
             self.player.set_speed(speed_multiplier)
             self.player.set_arpeggio_interval(arpeggio_interval)
@@ -310,18 +300,16 @@ class FileActionsMixin(ApplicationHost):
             self.player.restore_bookmark(bookmark)
             if sustain_enabled:
                 self.player.toggle_sustain()
-    
+
             # Restore position (clamp to new score length)
             if self.score and current_line < len(self.score.lines):
                 self.player.jump_to_line(current_line)
-    
+
             # Resume playback if it was playing
             if was_playing:
                 self.player.play()
-    
+
             self._flash(self._reload_message(message, plugin_errors))
-    
+
         except Exception:
             self._flash("Reparse failed")
-    
-    

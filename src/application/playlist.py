@@ -85,7 +85,9 @@ class Playlist:
         if actual < self.selected_index:
             self.selected_index -= 1
         elif actual == self.selected_index:
-            self.selected_index = min(self.selected_index, max(0, len(self.entries) - 1))
+            self.selected_index = min(
+                self.selected_index, max(0, len(self.entries) - 1)
+            )
         self._apply_query()
         return removed
 

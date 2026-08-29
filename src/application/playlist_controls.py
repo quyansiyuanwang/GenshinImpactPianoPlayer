@@ -40,7 +40,11 @@ class PlaylistControlsMixin:
         entries, errors = self.file_loader.load_paths(paths)
         added = self.playlist.add_paths([entry.path for entry in entries])
         self.playlist_errors = errors
-        self._flash(f"Added {added} file(s)" if added else (errors[0] if errors else "No new files"))
+        self._flash(
+            f"Added {added} file(s)"
+            if added
+            else (errors[0] if errors else "No new files")
+        )
         return int(added)
 
     def playlist_remove_selected(self, _event: InputEvent | None = None) -> None:
@@ -64,7 +68,12 @@ class PlaylistControlsMixin:
             self.playlist.move_visible(max(0, self.playlist.visible_index - 1))
             return True
         if event.key == KeyCode.DOWN:
-            self.playlist.move_visible(min(len(self.playlist.visible_entries) - 1, self.playlist.visible_index + 1))
+            self.playlist.move_visible(
+                min(
+                    len(self.playlist.visible_entries) - 1,
+                    self.playlist.visible_index + 1,
+                )
+            )
             return True
         if event.key == KeyCode.HOME:
             self.playlist.move_visible(0)

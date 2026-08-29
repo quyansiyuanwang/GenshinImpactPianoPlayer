@@ -16,10 +16,14 @@ from src.ui.cli.input.key_binding import KeyBinding
 class SettingsSession:
     """Own a temporary, validated copy of hotkey and mapping profiles."""
 
-    def __init__(self, store: ProfileStore, reserved_bindings: set[str] | None = None) -> None:
+    def __init__(
+        self, store: ProfileStore, reserved_bindings: set[str] | None = None
+    ) -> None:
         self.store = store
         self.data: dict[str, object] = copy.deepcopy(store.data)
-        self.reserved_bindings = {value.lower() for value in (reserved_bindings or set())}
+        self.reserved_bindings = {
+            value.lower() for value in (reserved_bindings or set())
+        }
         self.dirty = False
         self.error = ""
 
@@ -140,7 +144,9 @@ class SettingsSession:
             raise ValueError("source and target must be valid piano keys")
         for existing_source, existing_target in self.active_mapping.items():
             if existing_source != source and existing_target == target:
-                raise ValueError(f"Output key {target} already used by {existing_source}")
+                raise ValueError(
+                    f"Output key {target} already used by {existing_source}"
+                )
         self.active_mapping[source] = target
         self._changed()
 

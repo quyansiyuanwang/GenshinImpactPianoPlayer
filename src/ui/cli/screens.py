@@ -10,7 +10,13 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from src.application.events import InputEvent, InputKind, KeyCode
-from src.ui.cli.components import Component, ListComponent, Rect, SurfaceLike, TextComponent
+from src.ui.cli.components import (
+    Component,
+    ListComponent,
+    Rect,
+    SurfaceLike,
+    TextComponent,
+)
 
 
 class MainScreen(Component):
@@ -26,7 +32,11 @@ class MainScreen(Component):
 class SettingsScreen(Component):
     """Navigate settings sections without knowing how they are persisted."""
 
-    def __init__(self, sections: list[str] | None = None, on_open: Callable[[str], None] | None = None) -> None:
+    def __init__(
+        self,
+        sections: list[str] | None = None,
+        on_open: Callable[[str], None] | None = None,
+    ) -> None:
         self.sections = ListComponent(sections or ["hotkeys", "mapping"])
         self.on_open = on_open
 

@@ -34,7 +34,9 @@ class HotkeyHandler:
         self._event_dispatcher: Callable[[InputEvent], object] | None = None
         self._input_adapter = KeyboardInputAdapter()
 
-    def set_event_dispatcher(self, dispatcher: Callable[[InputEvent], object] | None) -> None:
+    def set_event_dispatcher(
+        self, dispatcher: Callable[[InputEvent], object] | None
+    ) -> None:
         """Route normalized events to an application controller when configured."""
         self._event_dispatcher = dispatcher
 

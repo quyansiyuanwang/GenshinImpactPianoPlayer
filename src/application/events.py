@@ -43,7 +43,9 @@ class InputEvent:
     height: int | None = None
 
     @classmethod
-    def character(cls, value: str, modifiers: frozenset[str] = frozenset()) -> "InputEvent":
+    def character(
+        cls, value: str, modifiers: frozenset[str] = frozenset()
+    ) -> "InputEvent":
         return cls(InputKind.KEY, KeyCode.CHARACTER, value, modifiers)
 
     @classmethod

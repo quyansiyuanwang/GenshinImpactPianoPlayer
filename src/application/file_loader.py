@@ -44,7 +44,9 @@ class FileLoader:
                     return entries, [error]
         return entries, []
 
-    def load_paths(self, values: Sequence[str | Path]) -> tuple[list[PlaylistEntry], list[str]]:
+    def load_paths(
+        self, values: Sequence[str | Path]
+    ) -> tuple[list[PlaylistEntry], list[str]]:
         entries: list[PlaylistEntry] = []
         errors: list[str] = []
         for value in values:

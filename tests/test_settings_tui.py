@@ -4,10 +4,11 @@ from pathlib import Path
 
 from src.application.config.profiles import ProfileStore
 from src.application.events import InputEvent, KeyCode
-from src.ui.cli.components import TerminalSurface
+from src.ui.cli.components import Rect, TerminalSurface
 from src.ui.cli.settings.screens import ScreenResult, SettingsRootScreen
 from src.ui.cli.settings.session import SettingsSession
 from src.ui.cli.settings.widgets import TableComponent
+from src.ui.cli.terminal_text import cell_width
 
 
 class Surface:
@@ -44,6 +45,16 @@ def test_table_cursor_supports_navigation_and_paging() -> None:
     assert table.selected_row() == 0
     table.handle(InputEvent(InputEvent.character("x").kind, KeyCode.PAGE_DOWN))
     assert table.selected_row() == 8
+
+
+def test_table_keeps_wide_character_columns_aligned() -> None:
+    table = TableComponent(["曲目", "Binding"], [["中文名称", "F8"], ["Song", "F10"]])
+    surface = Surface(width=50)
+    table_rect = Rect(0, 0, surface.height, surface.width)
+    table.render(surface, table_rect)
+    rendered = [text for _row, _column, text in surface.lines]
+    assert table_rect.width == 50
+    assert cell_width(rendered[1]) == cell_width(rendered[2])
 
 
 def test_hotkey_enter_edits_selected_action(tmp_path: Path) -> None:
@@ -105,9 +116,17 @@ def test_compact_layout_stacks_panels_and_reserves_hint_area(tmp_path: Path) -> 
     screen.render(TerminalSurface(surface), screen.layout.bounds)
     assert screen.layout.stacked
     assert screen.layout.content.left == 0
-    assert screen.layout.content.top >= screen.layout.sidebar.top + screen.layout.sidebar.height
-    assert screen.layout.content.top + screen.layout.content.height <= screen.layout.hint.top
-    assert screen.layout.hint.top + screen.layout.hint.height <= screen.layout.footer.top
+    assert (
+        screen.layout.content.top
+        >= screen.layout.sidebar.top + screen.layout.sidebar.height
+    )
+    assert (
+        screen.layout.content.top + screen.layout.content.height
+        <= screen.layout.hint.top
+    )
+    assert (
+        screen.layout.hint.top + screen.layout.hint.height <= screen.layout.footer.top
+    )
     assert all(row < surface.height for row, _col, _text in surface.lines)
 
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from src.ui.cli.components import Rect
+from src.ui.cli.terminal_text import clip_cells
 
 
 @dataclass(frozen=True)
@@ -19,7 +20,9 @@ class SettingsLayout:
     footer: Rect
 
     @classmethod
-    def from_size(cls, height: int, width: int, profile_count: int = 0) -> "SettingsLayout":
+    def from_size(
+        cls, height: int, width: int, profile_count: int = 0
+    ) -> "SettingsLayout":
         bounds = Rect(0, 0, max(0, height), max(0, width))
         footer_height = 2 if height >= 5 else 1
         hint_height = 2 if height >= 7 else 1
@@ -71,4 +74,4 @@ class SettingsLayout:
 
 def clip(text: object, width: int) -> str:
     """Clip a cell to its available width."""
-    return str(text)[: max(0, width - 1)]
+    return clip_cells(text, max(0, width - 1))

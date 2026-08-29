@@ -6,6 +6,7 @@ from typing import Any, Protocol, cast
 import curses
 
 from src.application.events import InputEvent, InputKind, KeyCode
+from src.ui.cli.terminal_text import clip_cells
 
 
 @dataclass(frozen=True)
@@ -48,7 +49,7 @@ class TerminalSurface:
         height, width = self.getmaxyx()
         if row < 0 or row >= height or col < 0 or col >= width:
             return
-        clipped = str(text)[: max(0, width - col - 1)]
+        clipped = clip_cells(text, max(0, width - col - 1))
         try:
             self.window.addstr(row, col, clipped, *attributes)
         except Exception:
@@ -78,7 +79,9 @@ class TextComponent(Component):
     def render(self, surface: SurfaceLike, rect: Rect) -> None:
         for offset, line in enumerate(self.lines[: rect.height]):
             try:
-                surface.addstr(rect.top + offset, rect.left, line[: max(0, rect.width - 1)])
+                surface.addstr(
+                    rect.top + offset, rect.left, clip_cells(line, rect.width - 1)
+                )
             except Exception:
                 pass
 
@@ -95,7 +98,11 @@ class ListComponent(Component):
         for index, item in enumerate(visible):
             marker = "> " if index == self.selected else "  "
             try:
-                surface.addstr(rect.top + index, rect.left, (marker + item)[: max(0, rect.width - 1)])
+                surface.addstr(
+                    rect.top + index,
+                    rect.left,
+                    clip_cells(marker + item, rect.width - 1),
+                )
             except Exception:
                 pass
 
@@ -119,7 +126,7 @@ class TextInputComponent(Component):
 
     def render(self, surface: SurfaceLike, rect: Rect) -> None:
         try:
-            surface.addstr(rect.top, rect.left, self.value[: max(0, rect.width - 1)])
+            surface.addstr(rect.top, rect.left, clip_cells(self.value, rect.width - 1))
         except Exception:
             pass
 
@@ -160,7 +167,9 @@ class ScrollablePanel(Component):
         self.offset = 0
 
     def render(self, surface: SurfaceLike, rect: Rect) -> None:
-        for index, child in enumerate(self.children[self.offset : self.offset + rect.height]):
+        for index, child in enumerate(
+            self.children[self.offset : self.offset + rect.height]
+        ):
             child.render(surface, Rect(rect.top + index, rect.left, 1, rect.width))
 
 
@@ -171,7 +180,11 @@ class ResizeAwareScreen(Component):
         self.rect = Rect(0, 0, 0, 0)
 
     def handle(self, event: InputEvent) -> bool:
-        if event.kind == InputKind.RESIZE and event.width is not None and event.height is not None:
+        if (
+            event.kind == InputKind.RESIZE
+            and event.width is not None
+            and event.height is not None
+        ):
             self.rect = Rect(0, 0, event.height, event.width)
             return True
         return super().handle(event)

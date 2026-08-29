@@ -51,7 +51,9 @@ class ProfileStore:
                 pass
 
     @staticmethod
-    def _sanitize(raw: dict[str, object], defaults: dict[str, object]) -> dict[str, object]:
+    def _sanitize(
+        raw: dict[str, object], defaults: dict[str, object]
+    ) -> dict[str, object]:
         result = defaults
         hotkeys = raw.get("hotkey_profiles")
         if isinstance(hotkeys, dict):
@@ -81,7 +83,9 @@ class ProfileStore:
                             seen.add(binding)
                     clean_hotkeys[name] = unique
             if clean_hotkeys:
-                default_hotkeys = clean_hotkeys.setdefault("default", DEFAULT_HOTKEYS.copy())
+                default_hotkeys = clean_hotkeys.setdefault(
+                    "default", DEFAULT_HOTKEYS.copy()
+                )
                 for action, binding in DEFAULT_HOTKEYS.items():
                     default_hotkeys.setdefault(action, binding)
                 for profile in clean_hotkeys.values():
@@ -101,11 +105,19 @@ class ProfileStore:
 
         active_hotkeys = raw.get("active_hotkey_profile")
         hotkey_profiles = result["hotkey_profiles"]
-        if isinstance(active_hotkeys, str) and isinstance(hotkey_profiles, dict) and active_hotkeys in hotkey_profiles:
+        if (
+            isinstance(active_hotkeys, str)
+            and isinstance(hotkey_profiles, dict)
+            and active_hotkeys in hotkey_profiles
+        ):
             result["active_hotkey_profile"] = active_hotkeys
         active_mapping = raw.get("active_mapping_profile")
         mapping_profiles = result["mapping_profiles"]
-        if isinstance(active_mapping, str) and isinstance(mapping_profiles, dict) and active_mapping in mapping_profiles:
+        if (
+            isinstance(active_mapping, str)
+            and isinstance(mapping_profiles, dict)
+            and active_mapping in mapping_profiles
+        ):
             result["active_mapping_profile"] = active_mapping
         return result
 
@@ -116,13 +128,20 @@ class ProfileStore:
             if not isinstance(source, str) or not isinstance(target, str):
                 continue
             source, target = source.upper(), target.upper()
-            if len(source) == 1 and len(target) == 1 and source in VALID_KEYS and target in VALID_KEYS:
+            if (
+                len(source) == 1
+                and len(target) == 1
+                and source in VALID_KEYS
+                and target in VALID_KEYS
+            ):
                 clean[source] = target
         return clean
 
     def save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        fd, temp_name = tempfile.mkstemp(prefix=self.path.name, suffix=".tmp", dir=self.path.parent)
+        fd, temp_name = tempfile.mkstemp(
+            prefix=self.path.name, suffix=".tmp", dir=self.path.parent
+        )
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as stream:
                 json.dump(self.data, stream, indent=2, ensure_ascii=True)
@@ -156,15 +175,21 @@ class ProfileStore:
             raise KeyError(name)
         self.data["active_mapping_profile"] = name
 
-    def add_hotkey_profile(self, name: str, values: Mapping[str, str] | None = None) -> None:
+    def add_hotkey_profile(
+        self, name: str, values: Mapping[str, str] | None = None
+    ) -> None:
         self._add(self.hotkey_profiles(), name, dict(values or self.active_hotkeys()))
 
-    def add_mapping_profile(self, name: str, values: Mapping[str, str] | None = None) -> None:
+    def add_mapping_profile(
+        self, name: str, values: Mapping[str, str] | None = None
+    ) -> None:
         candidate = cast(Mapping[object, object], values or self.active_mapping())
         self._add(self.mapping_profiles(), name, self.validate_mapping(candidate))
 
     @staticmethod
-    def _add(profiles: dict[str, dict[str, str]], name: str, values: dict[str, str]) -> None:
+    def _add(
+        profiles: dict[str, dict[str, str]], name: str, values: dict[str, str]
+    ) -> None:
         name = name.strip()
         if not name or name in profiles:
             raise ValueError("profile name is empty or already exists")

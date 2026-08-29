@@ -41,7 +41,9 @@ class CLI(
 ):
     """Compose the application services and expose the stable CLI facade."""
 
-    def __init__(self, file_path: str | Sequence[str], hotkeys: Optional[Dict[str, str]] = None):
+    def __init__(
+        self, file_path: str | Sequence[str], hotkeys: Optional[Dict[str, str]] = None
+    ):
         paths = [file_path] if isinstance(file_path, str) else list(file_path)
         self.file_paths = paths
         self.file_path = paths[0] if paths else ""
@@ -58,7 +60,9 @@ class CLI(
         self._render_lock = Lock()
         self._refresh_requested = False
         self.profile_store = ProfileStore()
-        self.settings_controller = SettingsController(self.profile_store, self._apply_settings_session)
+        self.settings_controller = SettingsController(
+            self.profile_store, self._apply_settings_session
+        )
         self.hotkeys = self.profile_store.active_hotkeys()
         self.key_mapping = self.profile_store.active_mapping()
         self._keyboard_locked = False

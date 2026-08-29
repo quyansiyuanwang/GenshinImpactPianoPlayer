@@ -57,7 +57,9 @@ class CommandBus:
         except Exception as error:
             return CommandResult.error(str(error))
 
-    def subscribe(self, event_type: type[EventType], callback: Callable[[EventType], None]) -> None:
+    def subscribe(
+        self, event_type: type[EventType], callback: Callable[[EventType], None]
+    ) -> None:
         self._subscribers.setdefault(event_type, []).append(callback)  # type: ignore[arg-type]
 
     def publish(self, event: object) -> None:

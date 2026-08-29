@@ -1,6 +1,7 @@
 """Tests for persistent profiles, input locking, and score mappings."""
 
 from types import SimpleNamespace
+from pathlib import Path
 from typing import cast
 
 import keyboard
@@ -11,7 +12,7 @@ from src.ui.cli.input.hotkey_handler import HotkeyHandler
 from tests.conftest import FakeKeyboard, make_score
 
 
-def test_profile_store_round_trips_independent_profiles(tmp_path) -> None:
+def test_profile_store_round_trips_independent_profiles(tmp_path: Path) -> None:
     store = ProfileStore(tmp_path / "profiles.json")
     store.add_hotkey_profile("compact", {"play_pause": "f6"})
     store.add_mapping_profile("practice", {"a": "j"})

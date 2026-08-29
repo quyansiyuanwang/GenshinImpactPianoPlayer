@@ -44,7 +44,9 @@ class SettingsRootScreen:
         self.focus = "profiles"
         self.layout = SettingsLayout.from_size(0, 0)
         self.editor: InlineEditor | None = None
-        self.status = StatusBar("Enter edit   Tab switch panel   N new   R rename   D delete   S save   Q quit")
+        self.status = StatusBar(
+            "Enter edit   Tab switch panel   N new   R rename   D delete   S save   Q quit"
+        )
         self.result = ScreenResult.NONE
         self._build_tables()
 
@@ -58,21 +60,31 @@ class SettingsRootScreen:
             for action, binding in self.session.active_hotkeys.items():
                 rows.append((action, binding, descriptions.get(action, action)))
             self.profile_list = ProfileList(list(self.session.hotkeys))
-            self.profile_list.cursor = list(self.session.hotkeys).index(self.session.active_hotkey_profile)
+            self.profile_list.cursor = list(self.session.hotkeys).index(
+                self.session.active_hotkey_profile
+            )
             self.table: TableComponent = BindingTable(rows)
         else:
             self.profile_list = ProfileList(list(self.session.mappings))
-            self.profile_list.cursor = list(self.session.mappings).index(self.session.active_mapping_profile)
+            self.profile_list.cursor = list(self.session.mappings).index(
+                self.session.active_mapping_profile
+            )
             self.table = MappingTable(self.session.mapping_items)
         self.table.cursor = min(previous_row, max(0, len(self.table.rows) - 1))
 
     def render(self, surface: SurfaceLike, rect: Rect) -> None:
         height, width = surface.getmaxyx()
-        self.layout = SettingsLayout.from_size(height, width, len(self.profile_list.rows))
+        self.layout = SettingsLayout.from_size(
+            height, width, len(self.profile_list.rows)
+        )
         surface.erase()
         if width < 30 or height < 8:
-            surface.addstr(0, 0, clip("Settings: terminal too small (minimum 30x8)", width))
-            surface.addstr(min(height - 1, 2), 0, clip("Resize the terminal to continue", width))
+            surface.addstr(
+                0, 0, clip("Settings: terminal too small (minimum 30x8)", width)
+            )
+            surface.addstr(
+                min(height - 1, 2), 0, clip("Resize the terminal to continue", width)
+            )
             surface.refresh()
             return
         title = f" Settings  /  {'Hotkey bindings' if self.mode == 'hotkeys' else 'Score mapping'} "
@@ -80,7 +92,11 @@ class SettingsRootScreen:
         surface.addstr(1, 0, clip("=" * max(0, width - 1), width))
         self.profile_list.focused = self.focus == "profiles"
         self.table.focused = self.focus == "table"
-        surface.addstr(self.layout.sidebar.top, self.layout.sidebar.left, clip("[H] Hotkeys  [M] Mapping", self.layout.sidebar.width))
+        surface.addstr(
+            self.layout.sidebar.top,
+            self.layout.sidebar.left,
+            clip("[H] Hotkeys  [M] Mapping", self.layout.sidebar.width),
+        )
         profile_rect = Rect(
             self.layout.sidebar.top + 1,
             self.layout.sidebar.left,
@@ -95,7 +111,9 @@ class SettingsRootScreen:
             selected = self._selected_summary()
             surface.addstr(self.layout.hint.top, 0, clip(selected, width))
             if self.layout.hint.height > 1:
-                surface.addstr(self.layout.hint.top + 1, 0, clip(self.status.message, width))
+                surface.addstr(
+                    self.layout.hint.top + 1, 0, clip(self.status.message, width)
+                )
         surface.addstr(self.layout.footer.top, 0, clip("-" * max(0, width - 1), width))
         controls = "Up/Down Move  PgUp/PgDn Page  Home/End Jump  Enter/E Edit  Tab Focus  N New  R Rename  D Delete  S Save  Esc Cancel  Q Quit"
         surface.addstr(self.layout.footer.top + 1, 0, clip(controls, width))
@@ -125,7 +143,9 @@ class SettingsRootScreen:
         if _character(event, "s"):
             return self._save()
         if _character(event, "?"):
-            self.status.set_message("Up/Down move  PgUp/PgDn page  Home/End jump  Enter/E edit  Tab focus  N/R/D profile  A mapping  S save  Esc cancel")
+            self.status.set_message(
+                "Up/Down move  PgUp/PgDn page  Home/End jump  Enter/E edit  Tab focus  N/R/D profile  A mapping  S save  Esc cancel"
+            )
             return True
         if _is_tab(event):
             self.focus = "table" if self.focus == "profiles" else "profiles"
@@ -247,12 +267,20 @@ class SettingsRootScreen:
 
     def _activate_profile_cursor(self) -> None:
         name = self.profile_list.selected_name
-        if name and name != (self.session.active_hotkey_profile if self.mode == "hotkeys" else self.session.active_mapping_profile):
+        if name and name != (
+            self.session.active_hotkey_profile
+            if self.mode == "hotkeys"
+            else self.session.active_mapping_profile
+        ):
             self._select_profile()
 
     def _rename_profile(self) -> None:
         self._activate_profile_cursor()
-        current = self.session.active_hotkey_profile if self.mode == "hotkeys" else self.session.active_mapping_profile
+        current = (
+            self.session.active_hotkey_profile
+            if self.mode == "hotkeys"
+            else self.session.active_mapping_profile
+        )
 
         def submit(value: str) -> str | None:
             try:
@@ -335,7 +363,11 @@ class MappingProfileScreen(SettingsRootScreen):
 
 
 def _character(event: InputEvent, value: str) -> bool:
-    return event.kind == InputKind.KEY and event.key == KeyCode.CHARACTER and event.text.lower() == value
+    return (
+        event.kind == InputKind.KEY
+        and event.key == KeyCode.CHARACTER
+        and event.text.lower() == value
+    )
 
 
 def _is_tab(event: InputEvent) -> bool:

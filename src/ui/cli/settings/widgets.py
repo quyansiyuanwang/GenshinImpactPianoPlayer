@@ -7,16 +7,23 @@ from collections.abc import Callable, Sequence
 from src.application.events import InputEvent, InputKind, KeyCode
 from src.ui.cli.components import Component, Rect, SurfaceLike
 from src.ui.cli.settings.layout import clip
+from src.ui.cli.terminal_text import cell_width, fit_cells
 
 
 def _text(event: InputEvent, value: str) -> bool:
-    return event.kind == InputKind.KEY and event.key == KeyCode.CHARACTER and event.text.lower() == value
+    return (
+        event.kind == InputKind.KEY
+        and event.key == KeyCode.CHARACTER
+        and event.text.lower() == value
+    )
 
 
 class TableComponent(Component):
     """Selectable table with stable cursor and scrolling."""
 
-    def __init__(self, columns: Sequence[str], rows: Sequence[Sequence[str]] = ()) -> None:
+    def __init__(
+        self, columns: Sequence[str], rows: Sequence[Sequence[str]] = ()
+    ) -> None:
         self.columns = list(columns)
         self.rows = [list(row) for row in rows]
         self.cursor = 0
@@ -67,7 +74,10 @@ class TableComponent(Component):
         if rect.height <= 0 or rect.width <= 0:
             return
         widths = self._column_widths(rect.width)
-        header = "  " + "  ".join(clip(name, widths[index]) for index, name in enumerate(self.columns))
+        header = "  " + "  ".join(
+            fit_cells(name, max(0, widths[index] - 1))
+            for index, name in enumerate(self.columns)
+        )
         surface.addstr(rect.top, rect.left, clip(header, rect.width))
         body_height = max(0, rect.height - 1)
         self._visible_rows = max(1, body_height)
@@ -75,10 +85,18 @@ class TableComponent(Component):
             self.offset = self.cursor
         if self.cursor >= self.offset + body_height:
             self.offset = self.cursor - body_height + 1
-        for visible, row in enumerate(self.rows[self.offset : self.offset + body_height]):
+        for visible, row in enumerate(
+            self.rows[self.offset : self.offset + body_height]
+        ):
             index = self.offset + visible
             marker = "> " if index == self.cursor and self.focused else "  "
-            cells = [clip(row[column] if column < len(row) else "", widths[column]) for column in range(len(widths))]
+            cells = [
+                fit_cells(
+                    row[column] if column < len(row) else "",
+                    max(0, widths[column] - 1),
+                )
+                for column in range(len(widths))
+            ]
             line = clip(marker + "  ".join(cells), rect.width)
             if index == self.cursor and self.focused:
                 surface.addstr(
@@ -93,7 +111,7 @@ class TableComponent(Component):
     def _column_widths(self, width: int) -> list[int]:
         if not self.columns:
             return []
-        weights = [max(8, len(column) + 2) for column in self.columns]
+        weights = [max(8, cell_width(column) + 2) for column in self.columns]
         remaining = max(1, width - 2 * len(weights) - 2)
         total = sum(weights)
         return [max(4, remaining * weight // total) for weight in weights]
@@ -121,13 +139,21 @@ class MappingTable(TableComponent):
     """Source/output mapping table."""
 
     def __init__(self, rows: Sequence[tuple[str, str]]) -> None:
-        super().__init__(["Source key", "Output key", "Status"], [[source, target, "active"] for source, target in rows])
+        super().__init__(
+            ["Source key", "Output key", "Status"],
+            [[source, target, "active"] for source, target in rows],
+        )
 
 
 class InlineEditor(Component):
     """Small text editor rendered near the selected row."""
 
-    def __init__(self, value: str = "", title: str = "Edit", on_submit: Callable[[str], str | None] | None = None) -> None:
+    def __init__(
+        self,
+        value: str = "",
+        title: str = "Edit",
+        on_submit: Callable[[str], str | None] | None = None,
+    ) -> None:
         self.value = value
         self.title = title
         self.on_submit = on_submit

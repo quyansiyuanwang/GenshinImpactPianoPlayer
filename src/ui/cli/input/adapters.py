@@ -56,7 +56,9 @@ class CursesInputAdapter:
         f1 = getattr(curses, "KEY_F1", 265)
         f12 = getattr(curses, "KEY_F12", f1 + 11)
         if f1 <= value <= f12:
-            return InputEvent(InputKind.KEY, KeyCode.FUNCTION, function_number=value - f1 + 1)
+            return InputEvent(
+                InputKind.KEY, KeyCode.FUNCTION, function_number=value - f1 + 1
+            )
         return InputEvent(InputKind.KEY)
 
     def read_available(self) -> InputEvent:
@@ -67,7 +69,17 @@ class CursesInputAdapter:
 class KeyboardInputAdapter:
     """Translate keyboard.KeyboardEvent objects into normalized events."""
 
-    _modifiers = {"ctrl": "ctrl", "left ctrl": "ctrl", "right ctrl": "ctrl", "shift": "shift", "left shift": "shift", "right shift": "shift", "alt": "alt", "left alt": "alt", "right alt": "alt"}
+    _modifiers = {
+        "ctrl": "ctrl",
+        "left ctrl": "ctrl",
+        "right ctrl": "ctrl",
+        "shift": "shift",
+        "left shift": "shift",
+        "right shift": "shift",
+        "alt": "alt",
+        "left alt": "alt",
+        "right alt": "alt",
+    }
 
     def __init__(self) -> None:
         self._modifier_state: set[str] = set()
@@ -83,10 +95,29 @@ class KeyboardInputAdapter:
             self._modifier_state.add(modifier)
             return InputEvent(InputKind.KEY)
         if name.startswith("f") and name[1:].isdigit():
-            return InputEvent(InputKind.KEY, KeyCode.FUNCTION, modifiers=frozenset(self._modifier_state), function_number=int(name[1:]))
-        special = {"enter": KeyCode.ENTER, "escape": KeyCode.ESCAPE, "backspace": KeyCode.BACKSPACE, "up": KeyCode.UP, "down": KeyCode.DOWN, "left": KeyCode.LEFT, "right": KeyCode.RIGHT, "page up": KeyCode.PAGE_UP, "page down": KeyCode.PAGE_DOWN, "home": KeyCode.HOME, "end": KeyCode.END}
+            return InputEvent(
+                InputKind.KEY,
+                KeyCode.FUNCTION,
+                modifiers=frozenset(self._modifier_state),
+                function_number=int(name[1:]),
+            )
+        special = {
+            "enter": KeyCode.ENTER,
+            "escape": KeyCode.ESCAPE,
+            "backspace": KeyCode.BACKSPACE,
+            "up": KeyCode.UP,
+            "down": KeyCode.DOWN,
+            "left": KeyCode.LEFT,
+            "right": KeyCode.RIGHT,
+            "page up": KeyCode.PAGE_UP,
+            "page down": KeyCode.PAGE_DOWN,
+            "home": KeyCode.HOME,
+            "end": KeyCode.END,
+        }
         if name in special:
-            return InputEvent(InputKind.KEY, special[name], modifiers=frozenset(self._modifier_state))
+            return InputEvent(
+                InputKind.KEY, special[name], modifiers=frozenset(self._modifier_state)
+            )
         if name == "+":
             name = "="
         return InputEvent.character(name, frozenset(self._modifier_state))

@@ -1,439 +1,206 @@
-"""Main score frame renderer.
-
-Kept separate from lifecycle and screen composition.
-"""
+"""Responsive playback-screen renderer."""
 
 from __future__ import annotations
 
 import curses
 import os
 import time
-import keyboard
-from typing import Any, List
+from typing import Any
 
-from src.application.config.constants import SKIP_SMALL, SKIP_LARGE
+from src.ui.cli.components import Rect, TerminalSurface
+from src.ui.cli.main_layout import MainLayout
+from src.ui.cli.playlist.widgets import PlaylistTable
+from src.ui.cli.terminal_text import cell_width, clip_cells
 
 
 class MainRenderer:
-    """Render the score and runtime status for an application host."""
+    """Render a complete frame from geometry calculated for this exact frame."""
 
     def render(self, host: Any, stdscr: Any) -> None:
-        """Render one full frame (caller must hold the render lock)."""
+        surface = TerminalSurface(stdscr)
         try:
-            # Get terminal size (recalculate every time for real-time adaptation)
-            height, width = stdscr.getmaxyx()
-    
-            # Erase (not clear) to avoid full-repaint flicker on fast refreshes
-            stdscr.erase()
-    
+            height, width = surface.getmaxyx()
+            surface.erase()
+            layout = MainLayout.from_size(
+                height, width, has_playlist=bool(getattr(host, "playlist", None))
+            )
             if not host.score:
-                stdscr.addstr(0, 0, "No score loaded.")
-                stdscr.refresh()
+                surface.addstr(0, 0, "No score loaded.")
                 return
-    
-            # Get current position
-            current_line, total_lines = (
-                host.player.get_progress()
-                if host.player
-                else (0, len(host.score.lines))
-            )
-            current_note = host.player.get_position()[1] if host.player else 0
-    
-            separator_width = min(width - 1, 100)
-    
-            # Build config lines to get actual count
-            config_lines: List[str] = []
-            if host.player:
-                speed = host.player._speed_multiplier
-                interval = host.player._interval_rating
-                arpeggio_interval = host.player._arpeggio_interval
-                arpeggio_auto = host.player.get_arpeggio_auto()
-                line_interval = host.player._line_interval_rating
-                space_interval = host.player._space_interval_rating
-                empty_line_interval = host.player._empty_line_interval_rating
-                segment_length = host.player._segment_length
-                segment_strict = host.player.get_segment_strict()
-                sustain_enabled = host.player.get_sustain_enabled()
-    
-                config_lines.append(
-                    f"  Speed: {speed:.2f}x          [+/- or Ctrl+ +/-] Adjust speed"
-                )
-                arpeggio_mode = (
-                    "automatic (note interval / arpeggio note count)"
-                    if arpeggio_auto
-                    else f"manual ({arpeggio_interval:.3f}s)"
-                )
-                config_lines.append(
-                    f"  Arpeggio: {arpeggio_mode}  [[/]] Manual | [{host.hotkeys['toggle_arpeggio_auto']}] Auto"
-                )
-                config_lines.append(
-                    f"  Note Interval: {interval:.3f}s       [</> or ,/.] Adjust interval"
-                )
-                config_lines.append(
-                    f"  Line Interval: {line_interval:.0f} notes  [Up/Down] Adjust line"
-                )
-                config_lines.append(
-                    f"  Space Interval: {space_interval:.1f}x     [Shift+Up/Down] Adjust space"
-                )
-                config_lines.append(
-                    f"  Empty Line: {empty_line_interval:.0f} notes     [Ctrl+Up/Down] Adjust empty line"
-                )
-                segment_status = (
-                    f"{segment_length} notes" if segment_length > 0 else "Disabled"
-                )
-                strict_indicator = (
-                    " (Strict)" if segment_strict and segment_length > 0 else ""
-                )
-                config_lines.append(
-                    f"  Segment Length: {segment_status}{strict_indicator}  [PgUp/PgDn] Adjust | [{host.hotkeys['toggle_segment_strict']}] Toggle Strict"
-                )
-                sustain_status = "ON" if sustain_enabled else "OFF"
-                config_lines.append(
-                    f"  Sustain Mode: {sustain_status}        [{host.hotkeys['toggle_sustain']}] Toggle"
-                )
-                loop_enabled = host.player.get_loop_enabled()
-                loop_status = "ON" if loop_enabled else "OFF"
-                config_lines.append(
-                    f"  Loop: {loop_status}              [{host.hotkeys['toggle_loop']}] Toggle"
-                )
-                line_repeat = "ON" if host.player.get_line_loop_enabled() else "OFF"
-                config_lines.append(
-                    f"  Line Repeat: {line_repeat}        [{host.hotkeys['toggle_line_loop']}] Toggle"
-                )
-                range_a, range_b = host.player.get_range()
-                if range_a is not None and range_b is not None and range_a < range_b:
-                    range_status = "looping"
-                elif range_a is not None:
-                    range_status = "A set"
-                elif range_b is not None:
-                    range_status = "B set"
-                else:
-                    range_status = "off"
-                config_lines.append(
-                    f"  Range: {range_status}       [{host.hotkeys['set_range_a']}/{host.hotkeys['set_range_b']}] Set | [{host.hotkeys['clear_range']}] Clear"
-                )
-                bookmark = host.player.get_bookmark()
-                bookmark_status = f"line {bookmark[0] + 1}" if bookmark else "none"
-                config_lines.append(
-                    f"  Bookmark: {bookmark_status}    [{host.hotkeys['set_bookmark']}] Set | [{host.hotkeys['jump_to_bookmark']}] Jump"
-                )
-                key_status = "LOCKED" if host._keyboard_locked else "active"
-                config_lines.append(
-                    f"  Keyboard Input: {key_status}  [{host.hotkeys['toggle_output_lock']}] Toggle"
-                )
-    
-            # On short terminals drop the less-used rows so the controls stay
-            # visible instead of being pushed off-screen.
-            if len(config_lines) > 5 and height < 32:
-                essential = ("Speed:", "Arpeggio:", "Note Interval:", "Loop:")
-                config_lines = [
-                    line for line in config_lines if any(k in line for k in essential)
-                ]
-    
-            # Calculate footer size
-            footer_lines = 0
-            footer_lines += 2  # blank + separator
-            footer_lines += 2  # status + blank
-            footer_lines += 2  # config title + separator
-            footer_lines += len(config_lines)  # actual config items
-            footer_lines += 1  # blank after config
-            if keyboard is not None:
-                footer_lines += 3  # control lines (now 3 lines instead of 2)
-                if host._failed_hotkeys:
-                    footer_lines += 1  # warning line
-    
-            header_lines = 5  # title, separator, file, lines, blank
-            score_warnings = host.score.warnings
-            if score_warnings:
-                header_lines += 1  # warning line
-    
-            # Calculate available lines for score display
-            available_lines = max(3, height - header_lines - footer_lines)
-    
-            # Calculate how many lines we can show before and after current line
-            total_score_lines = len(host.score.lines)
-    
-            # Determine if we need ellipsis indicators
-            has_lines_before = current_line > 0
-            has_lines_after = current_line < total_score_lines - 1
-    
-            # Reserve space for ellipsis
-            score_display_lines = available_lines
-            if has_lines_before:
-                score_display_lines -= 2
-            if has_lines_after:
-                score_display_lines -= 2
-    
-            # Try to keep current line centered, but adjust if near start/end
-            ideal_before = score_display_lines // 2
-            ideal_after = score_display_lines - ideal_before - 1
-    
-            # Adjust based on actual available lines
-            actual_before = min(ideal_before, current_line)
-            actual_after = min(ideal_after, total_score_lines - current_line - 1)
-    
-            # If we have extra space (near start or end), redistribute it
-            if actual_before < ideal_before:
-                # Near start, show more after
-                actual_after = min(
-                    score_display_lines - actual_before - 1,
-                    total_score_lines - current_line - 1,
-                )
-            elif actual_after < ideal_after:
-                # Near end, show more before
-                actual_before = min(
-                    score_display_lines - actual_after - 1, current_line
-                )
-    
-            start_line = current_line - actual_before
-            end_line = current_line + actual_after + 1
-    
-            # Now render everything
-            row = 0
-    
-            # Header
-            stdscr.addstr(row, 0, "GIPianoPlayer - Command Line Interface"[: width - 1])
-            row += 1
-            stdscr.addstr(row, 0, "=" * separator_width)
-            row += 1
-            display_file_name = (
-                os.path.basename(host.file_path)
-                .encode("ascii", "replace")
-                .decode("ascii")
-            )
-            stdscr.addstr(row, 0, f"File: {display_file_name}"[: width - 1])
-            row += 1
-            stdscr.addstr(row, 0, f"Lines: {len(host.score.lines)}"[: width - 1])
-            row += 1
-    
-            # Surface characters the parser could not interpret (ASCII-folded
-            # like the file name, since they may be arbitrary text)
-            if score_warnings:
-                preview = "; ".join(score_warnings[:2])
-                more = (
-                    f" (+{len(score_warnings) - 2} more)"
-                    if len(score_warnings) > 2
-                    else ""
-                )
-                warning_text = (
-                    f"Warning: {len(score_warnings)} unknown characters ignored: "
-                    f"{preview}{more}"
-                )
-                warning_text = warning_text.encode("ascii", "replace").decode("ascii")
-                stdscr.addstr(row, 0, warning_text[: width - 1], curses.color_pair(2))
-                row += 1
-            row += 1
-    
-            # Show indicator if there are lines before
-            if start_line > 0:
-                stdscr.addstr(
-                    row, 0, f"    ... ({start_line} lines above) ..."[: width - 1]
-                )
-                row += 2
-    
-            # Display visible lines
-            for line_idx in range(start_line, end_line):
-                if row >= height - 1:  # Prevent writing beyond screen
-                    break
-    
-                line = host.score.lines[line_idx]
-                line_num = f"[{line_idx + 1:3d}] "
-    
-                if line_idx < current_line:
-                    # Already played - cyan/浅蓝色
-                    line_text = host._format_score_line(line)
-                    stdscr.addstr(
-                        row,
-                        0,
-                        (line_num + line_text)[: width - 1],
-                        curses.color_pair(1),
-                    )
-                elif line_idx == current_line:
-                    # Current line - with highlighting
-                    col = 0
-                    stdscr.addstr(row, col, line_num)
-                    col += len(line_num)
-    
-                    for note_idx, note in enumerate(line):
-                        note_text = host._format_note(note) + " "
-                        if col + len(note_text) >= width:
-                            break
-    
-                        if note_idx < current_note:
-                            stdscr.addstr(
-                                row, col, note_text, curses.color_pair(2)
-                            )  # Red
-                        elif note_idx == current_note:
-                            stdscr.addstr(
-                                row,
-                                col,
-                                note_text,
-                                curses.color_pair(3) | curses.A_BOLD,
-                            )  # Yellow bold
-                        else:
-                            stdscr.addstr(row, col, note_text)
-                        col += len(note_text)
-                else:
-                    # Not yet played
-                    line_text = host._format_score_line(line)
-                    stdscr.addstr(row, 0, (line_num + line_text)[: width - 1])
-                row += 1
-    
-            # Show indicator if there are lines after
-            if end_line < len(host.score.lines):
-                row += 1
-                stdscr.addstr(
-                    row,
-                    0,
-                    f"    ... ({len(host.score.lines) - end_line} lines below) ..."[
-                        : width - 1
-                    ],
-                )
 
-            # Keep the score renderer intact while providing a compact player
-            # style playlist on wide terminals.
-            if width >= 90 and getattr(host, "playlist", None):
-                panel_width = min(34, max(24, width // 3))
-                panel_left = width - panel_width
-                panel_top = 0
-                try:
-                    stdscr.addstr(panel_top, panel_left, " Playlist "[: panel_width - 1], curses.A_BOLD)
-                    stdscr.addstr(panel_top + 1, panel_left, "-" * max(1, panel_width - 1))
-                    entries = host.playlist.visible_entries
-                    selected = host.playlist.visible_index
-                    for index, entry in enumerate(entries[: max(0, height - 5)]):
-                        marker = ">" if index == selected and getattr(host, "playlist_focus", False) else " "
-                        current = "*" if host.playlist.current is entry else " "
-                        label = f"{marker}{current} {index + 1:02d} {entry.title}"
-                        stdscr.addstr(panel_top + 2 + index, panel_left, label[: panel_width - 1])
-                    if not entries:
-                        stdscr.addstr(panel_top + 2, panel_left, "(empty) A add  / search"[: panel_width - 1])
-                    footer = "Tab focus  Enter load  N/P next/prev  D remove"
-                    stdscr.addstr(height - 2, panel_left, footer[: panel_width - 1])
-                except curses.error:
-                    pass
-                row += 1
-    
-            # Status line state and note-level progress (O(1) prefix sums)
-            finished = bool(host.player and host.player.is_finished())
-            if finished:
-                state = "FINISHED"
-            else:
-                state = (
-                    host.player.get_state().value.upper() if host.player else "STOPPED"
-                )
-    
-            played_notes = 0
-            total_notes = 0
-            if host.player and total_lines > 0:
-                played_notes, total_notes = host.player.get_note_progress()
-                if finished:
-                    played_notes = total_notes
-    
-            # The separator above the status doubles as a progress bar
-            row += 1
-            if total_notes > 0:
-                fraction = played_notes / total_notes
-            else:
-                fraction = 1.0 if finished else 0.0
-            filled = min(separator_width, max(0, int(separator_width * fraction)))
-            stdscr.addstr(row, 0, "=" * filled + "-" * (separator_width - filled))
-            row += 1
-    
-            if finished:
-                progress_text = (
-                    f"Status: {state} | Line {total_lines}/{total_lines} | "
-                    f"Note {total_notes}/{total_notes} | Progress: 100.0%"
-                )
-            elif total_notes > 0:
-                progress = played_notes / total_notes * 100
-                progress_text = f"Status: {state} | Line {current_line + 1}/{total_lines} | Note {played_notes}/{total_notes} | Progress: {progress:.1f}%"
-            else:
-                progress_text = f"Status: {state} | Line {current_line + 1}/{total_lines} | Progress: 0.0%"
-    
-            # Append the transient message while it is still active
-            if host._message and time.time() < host._message_until:
-                progress_text = f"{progress_text}  |  {host._message}"
-    
-            stdscr.addstr(
-                row,
-                0,
-                progress_text[: width - 1],
-            )
-            row += 2
-    
-            # Configuration panel
-            stdscr.addstr(row, 0, "Configuration:")
-            row += 1
-            stdscr.addstr(row, 0, "-" * separator_width)
-            row += 1
-    
-            # Render config lines
-            for config_line in config_lines:
-                stdscr.addstr(row, 0, config_line[: width - 1])
-                row += 1
-            row += 1
-    
-            if keyboard is not None:
-                # Show warning if hotkeys failed to register
-                if host._failed_hotkeys:
-                    failed_keys = ", ".join(
-                        key for key, _error in host._failed_hotkeys[:4]
-                    )
-                    more = "…" if len(host._failed_hotkeys) > 4 else ""
-                    warning_msg = (
-                        f"Warning: {len(host._failed_hotkeys)} hotkeys failed: "
-                        f"{failed_keys}{more}"
-                    )
-                    stdscr.addstr(
-                        row,
-                        0,
-                        warning_msg[: width - 1],
-                        curses.color_pair(2),  # Red color for warning
-                    )
-                    row += 1
-    
-                skip_small_unit = "note" if SKIP_SMALL == 1 else "notes"
-                skip_large_unit = "line" if SKIP_LARGE == 1 else "lines"
-                stdscr.addstr(
-                    row,
-                    0,
-                    f"Controls: [{host.hotkeys['play_pause']}] Play/Pause | [{host.hotkeys['quit']}] Quit | [{host.hotkeys['save']}] Save | [{host.hotkeys['open_settings']}] Settings"[
-                        : width - 1
-                    ],
-                )
-                row += 1
-                stdscr.addstr(
-                    row,
-                    0,
-                    f"          [{host.hotkeys['skip_backward']}/{host.hotkeys['skip_forward']}] Skip {SKIP_SMALL} {skip_small_unit} | [{host.hotkeys['skip_backward_large']}/{host.hotkeys['skip_forward_large']}] Skip {SKIP_LARGE} {skip_large_unit}"[
-                        : width - 1
-                    ],
-                )
-                row += 1
-                stdscr.addstr(
-                    row,
-                    0,
-                    f"          [{host.hotkeys['reload']}] Reload | [{host.hotkeys['reparse']}] Reparse | [{host.hotkeys['toggle_loop']}] Loop | [{host.hotkeys['jump_to_start']}/{host.hotkeys['jump_to_end']}] Start/End"[
-                        : width - 1
-                    ],
-                )
-    
-            # Refresh screen
-            stdscr.refresh()
-    
-        except (curses.error, UnicodeError):
-            # A narrow terminal or unsupported glyph can interrupt a late draw.
-            # The finally block still presents the content already rendered.
-            pass
+            self._render_header(host, surface, layout.header)
+            self._render_score(host, surface, layout.score)
+            if layout.playlist.height > 0:
+                self._render_playlist(host, surface, layout.playlist)
+            self._render_status(host, surface, layout.status)
+            self._render_details(host, surface, layout.details)
+            self._render_footer(host, surface, layout.footer)
         finally:
-            try:
-                stdscr.refresh()
-            except curses.error:
-                pass
-    
-    
-    
+            surface.refresh()
 
+    def _render_header(self, host: Any, surface: TerminalSurface, rect: Rect) -> None:
+        if rect.height <= 0:
+            return
+        surface.addstr(
+            rect.top,
+            rect.left,
+            clip_cells("GIPianoPlayer - Command Line Interface", rect.width - 1),
+            curses.A_BOLD,
+        )
+        if rect.height >= 2:
+            surface.addstr(rect.top + 1, rect.left, "=" * max(0, rect.width - 1))
+        if rect.height >= 3:
+            name = os.path.basename(host.file_path)
+            metadata = f"File: {name}  |  Lines: {len(host.score.lines)}"
+            surface.addstr(
+                rect.top + 2, rect.left, clip_cells(metadata, rect.width - 1)
+            )
 
+    def _render_score(self, host: Any, surface: TerminalSurface, rect: Rect) -> None:
+        if rect.height <= 0 or rect.width <= 1:
+            return
+        current_line = host.player.get_progress()[0] if host.player else 0
+        current_note = host.player.get_position()[1] if host.player else 0
+        top = rect.top
+        available = rect.height
+        warnings = host.score.warnings
+        if warnings and available:
+            preview = "; ".join(warnings[:2])
+            message = f"Warning: {len(warnings)} unknown characters ignored: {preview}"
+            surface.addstr(
+                top,
+                rect.left,
+                clip_cells(message, rect.width - 1),
+                curses.color_pair(2),
+            )
+            top += 1
+            available -= 1
+        if available <= 0:
+            return
 
+        total = len(host.score.lines)
+        start = max(0, min(current_line - available // 2, max(0, total - available)))
+        end = min(total, start + available)
+        for row, line_index in enumerate(range(start, end)):
+            line = host.score.lines[line_index]
+            line_number = f"[{line_index + 1:3d}] "
+            target_row = top + row
+            if line_index != current_line:
+                text = line_number + host._format_score_line(line)
+                attribute = curses.color_pair(1) if line_index < current_line else 0
+                surface.addstr(
+                    target_row, rect.left, clip_cells(text, rect.width - 1), attribute
+                )
+                continue
+            self._render_current_line(
+                host,
+                surface,
+                target_row,
+                rect.left,
+                rect.width,
+                line_number,
+                line,
+                current_note,
+            )
+
+    def _render_current_line(
+        self,
+        host: Any,
+        surface: TerminalSurface,
+        row: int,
+        left: int,
+        width: int,
+        line_number: str,
+        line: Any,
+        current_note: int,
+    ) -> None:
+        surface.addstr(row, left, clip_cells(line_number, width - 1))
+        column = left + cell_width(line_number)
+        right = left + width - 1
+        for note_index, note in enumerate(line):
+            note_text = host._format_note(note) + " "
+            clipped = clip_cells(note_text, right - column)
+            if not clipped:
+                break
+            if note_index < current_note:
+                attribute = curses.color_pair(2)
+            elif note_index == current_note:
+                attribute = curses.color_pair(3) | curses.A_BOLD
+            else:
+                attribute = 0
+            surface.addstr(row, column, clipped, attribute)
+            column += cell_width(clipped)
+
+    def _render_playlist(self, host: Any, surface: TerminalSurface, rect: Rect) -> None:
+        if not getattr(host, "playlist", None):
+            return
+        if rect.left > 0:
+            for row in range(rect.top, rect.top + rect.height):
+                surface.addstr(row, rect.left - 1, "│")
+        PlaylistTable(host.playlist).render(surface, rect)
+
+    def _render_status(self, host: Any, surface: TerminalSurface, rect: Rect) -> None:
+        if rect.height <= 0 or rect.width <= 1:
+            return
+        finished = bool(host.player and host.player.is_finished())
+        state = (
+            "FINISHED"
+            if finished
+            else (host.player.get_state().value.upper() if host.player else "STOPPED")
+        )
+        current_line, total_lines = (
+            host.player.get_progress() if host.player else (0, len(host.score.lines))
+        )
+        played_notes, total_notes = (
+            host.player.get_note_progress() if host.player else (0, 0)
+        )
+        if finished:
+            played_notes = total_notes
+        fraction = (
+            played_notes / total_notes if total_notes else (1.0 if finished else 0.0)
+        )
+        bar_width = max(0, rect.width - 1)
+        filled = min(bar_width, max(0, int(bar_width * fraction)))
+        surface.addstr(rect.top, rect.left, "=" * filled + "-" * (bar_width - filled))
+        if rect.height < 2:
+            return
+        percent = 100.0 if finished else fraction * 100
+        shown_line = total_lines if finished else min(total_lines, current_line + 1)
+        message = (
+            f"Status: {state} | Line {shown_line}/{total_lines} | "
+            f"Note {played_notes}/{total_notes} | Progress: {percent:.1f}%"
+        )
+        if host._message and time.time() < host._message_until:
+            message += f" | {host._message}"
+        surface.addstr(rect.top + 1, rect.left, clip_cells(message, rect.width - 1))
+
+    def _render_details(self, host: Any, surface: TerminalSurface, rect: Rect) -> None:
+        if rect.height <= 0 or not host.player:
+            return
+        keyboard_state = "LOCKED" if host._keyboard_locked else "active"
+        details = [
+            f"Speed {host.player._speed_multiplier:.2f}x  Note {host.player._interval_rating:.3f}s  Keyboard {keyboard_state}",
+            f"Loop {'ON' if host.player.get_loop_enabled() else 'OFF'}  Sustain {'ON' if host.player.get_sustain_enabled() else 'OFF'}  Arpeggio {'AUTO' if host.player.get_arpeggio_auto() else 'MANUAL'}",
+            f"Mapping {len(host.player.get_key_mapping())} key(s)  Playlist {len(host.playlist.entries)} track(s)",
+            "Tab focuses playlist; arrows move selection; Enter loads and pauses",
+        ]
+        for offset, detail in enumerate(details[: rect.height]):
+            surface.addstr(
+                rect.top + offset, rect.left, clip_cells(detail, rect.width - 1)
+            )
+
+    def _render_footer(self, host: Any, surface: TerminalSurface, rect: Rect) -> None:
+        if rect.height <= 0:
+            return
+        controls = (
+            f"[{host.hotkeys['play_pause']}] Play/Pause  [{host.hotkeys['quit']}] Quit  "
+            f"[{host.hotkeys['open_settings']}] Settings  [A] Add  [/] Search"
+        )
+        surface.addstr(rect.top, rect.left, clip_cells(controls, rect.width - 1))
+        if rect.height > 1:
+            navigation = (
+                "[N/P] Next/Previous  [D] Remove  [C] Clear  [Home/End] Navigate"
+            )
+            surface.addstr(
+                rect.top + 1, rect.left, clip_cells(navigation, rect.width - 1)
+            )

@@ -56,7 +56,7 @@ def test_display_refreshes_on_small_terminal_with_unicode_file_name(
 
     assert screen.refreshed
     assert "GIPianoPlayer - Command Line Interface" in screen.lines
-    assert any("????" in line for line in screen.lines)
+    assert any("繁星、新生，与你.qymusic" in line for line in screen.lines)
 
 
 def test_display_reports_finished_after_natural_completion(

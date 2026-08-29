@@ -32,15 +32,17 @@ class ScreenManager:
     def open(self, screen: Screen) -> None:
         self._stack.append(screen)
         if self._rect.width or self._rect.height:
-            screen.handle(
-                InputEvent.resize(self._rect.width, self._rect.height)
-            )
+            screen.handle(InputEvent.resize(self._rect.width, self._rect.height))
 
     def close(self) -> Screen | None:
         return self._stack.pop() if self._stack else None
 
     def handle(self, event: InputEvent) -> bool:
-        if event.kind == InputKind.RESIZE and event.width is not None and event.height is not None:
+        if (
+            event.kind == InputKind.RESIZE
+            and event.width is not None
+            and event.height is not None
+        ):
             self._rect = Rect(0, 0, event.height, event.width)
         screen = self.current
         return screen.handle(event) if screen is not None else False
