@@ -13,6 +13,7 @@ from typing import Any, Dict, Optional
 from src.application.config.constants import DEFAULT_HOTKEYS
 from src.application.config.profiles import ProfileStore
 from src.application.controller import ApplicationController
+from src.ui.cli.settings.controller import SettingsController
 from src.core.domain.score import ParsedScore
 from src.core.player.player import Player
 from src.ui.cli.input.adapters import CursesInputAdapter
@@ -50,6 +51,7 @@ class CLI(
         self._render_lock = Lock()
         self._refresh_requested = False
         self.profile_store = ProfileStore()
+        self.settings_controller = SettingsController(self.profile_store, self._apply_settings_session)
         self.hotkeys = self.profile_store.active_hotkeys()
         self.key_mapping = self.profile_store.active_mapping()
         self._keyboard_locked = False

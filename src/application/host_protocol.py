@@ -11,6 +11,8 @@ from src.core.domain.score import ParsedScore
 from src.core.player.player import Player
 from src.ui.cli.input.adapters import CursesInputAdapter
 from src.ui.cli.screen_manager import ScreenManager
+from src.ui.cli.settings.controller import SettingsController
+from src.ui.cli.settings.session import SettingsSession
 
 
 class ApplicationHost:
@@ -37,6 +39,7 @@ class ApplicationHost:
     controller: ApplicationController
     _curses_input: CursesInputAdapter | None
     screen_manager: ScreenManager
+    settings_controller: SettingsController
 
     def _display_score(self) -> None: ...
     def _render_frame(self, stdscr: Any) -> None: ...
@@ -82,3 +85,4 @@ class ApplicationHost:
     def save_config(self) -> None: ...
     def reload(self) -> None: ...
     def request_settings(self) -> None: ...
+    def _apply_settings_session(self, session: SettingsSession) -> None: ...
