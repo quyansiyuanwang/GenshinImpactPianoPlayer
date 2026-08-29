@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from typing import Any, Protocol, cast
 
+import curses
+
 from src.application.events import InputEvent, InputKind, KeyCode
 
 
@@ -34,6 +36,7 @@ class TerminalSurface:
 
     def __init__(self, window: Any) -> None:
         self.window = window
+        self.highlight_attr = curses.A_REVERSE
 
     def getmaxyx(self) -> tuple[int, int]:
         return cast(tuple[int, int], self.window.getmaxyx())

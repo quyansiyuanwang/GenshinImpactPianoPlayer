@@ -49,6 +49,7 @@ class SettingsRootScreen:
         self._build_tables()
 
     def _build_tables(self) -> None:
+        previous_row = self.table.cursor if hasattr(self, "table") else 0
         if self.mode == "hotkeys":
             rows = []
             descriptions = {
@@ -63,10 +64,11 @@ class SettingsRootScreen:
             self.profile_list = ProfileList(list(self.session.mappings))
             self.profile_list.cursor = list(self.session.mappings).index(self.session.active_mapping_profile)
             self.table = MappingTable(self.session.mapping_items)
+        self.table.cursor = min(previous_row, max(0, len(self.table.rows) - 1))
 
     def render(self, surface: SurfaceLike, rect: Rect) -> None:
         height, width = surface.getmaxyx()
-        self.layout = SettingsLayout.from_size(height, width)
+        self.layout = SettingsLayout.from_size(height, width, len(self.profile_list.rows))
         surface.erase()
         if width < 30 or height < 8:
             surface.addstr(0, 0, clip("Settings: terminal too small (minimum 30x8)", width))
@@ -88,10 +90,15 @@ class SettingsRootScreen:
         self.profile_list.render(surface, profile_rect)
         self.table.render(surface, self.layout.content)
         if self.editor and self.editor.active:
-            editor_rect = self._editor_rect()
-            self.editor.render(surface, editor_rect)
+            self.editor.render(surface, self.layout.hint)
+        else:
+            selected = self._selected_summary()
+            surface.addstr(self.layout.hint.top, 0, clip(selected, width))
+            if self.layout.hint.height > 1:
+                surface.addstr(self.layout.hint.top + 1, 0, clip(self.status.message, width))
         surface.addstr(self.layout.footer.top, 0, clip("-" * max(0, width - 1), width))
-        surface.addstr(self.layout.footer.top + 1, 0, clip(self.status.message, width))
+        controls = "Up/Down Move  PgUp/PgDn Page  Home/End Jump  Enter/E Edit  Tab Focus  N New  R Rename  D Delete  S Save  Esc Cancel  Q Quit"
+        surface.addstr(self.layout.footer.top + 1, 0, clip(controls, width))
         surface.refresh()
 
     def handle(self, event: InputEvent) -> bool:
@@ -118,7 +125,7 @@ class SettingsRootScreen:
         if _character(event, "s"):
             return self._save()
         if _character(event, "?"):
-            self.status.set_message("↑↓ move  PgUp/PgDn page  Home/End jump  Enter/E edit  Tab focus  N/R/D profile  A mapping  S save  Esc cancel")
+            self.status.set_message("Up/Down move  PgUp/PgDn page  Home/End jump  Enter/E edit  Tab focus  N/R/D profile  A mapping  S save  Esc cancel")
             return True
         if _is_tab(event):
             self.focus = "table" if self.focus == "profiles" else "profiles"
@@ -297,11 +304,16 @@ class SettingsRootScreen:
         self.status.set_message("Settings saved")
         return True
 
-    def _editor_rect(self) -> Rect:
-        row = self.table.selected_row() + self.layout.content.top + 2
-        max_row = self.layout.footer.top - 2
-        top = min(max(self.layout.content.top, row), max(self.layout.content.top, max_row))
-        return Rect(top, self.layout.content.left, min(2, self.layout.content.height), self.layout.content.width)
+    def _selected_summary(self) -> str:
+        if self.focus == "profiles":
+            name = self.profile_list.selected_name or "(none)"
+            return f"Profile: {name}  |  [H] Hotkeys  [M] Mapping"
+        if not self.table.rows:
+            return "No entries  |  Press A to add a mapping"
+        row = self.table.rows[self.table.selected_row()]
+        if self.mode == "hotkeys":
+            return f"Selected: {row[0]} = {row[1]}  |  Press Enter to edit"
+        return f"Selected: {row[0]} -> {row[1]}  |  Press Enter to edit"
 
 
 class HotkeyProfileScreen(SettingsRootScreen):

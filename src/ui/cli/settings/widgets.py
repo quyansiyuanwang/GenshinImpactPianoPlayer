@@ -79,7 +79,16 @@ class TableComponent(Component):
             index = self.offset + visible
             marker = "> " if index == self.cursor and self.focused else "  "
             cells = [clip(row[column] if column < len(row) else "", widths[column]) for column in range(len(widths))]
-            surface.addstr(rect.top + visible + 1, rect.left, clip(marker + "  ".join(cells), rect.width))
+            line = clip(marker + "  ".join(cells), rect.width)
+            if index == self.cursor and self.focused:
+                surface.addstr(
+                    rect.top + visible + 1,
+                    rect.left,
+                    line,
+                    getattr(surface, "highlight_attr", 0),
+                )
+            else:
+                surface.addstr(rect.top + visible + 1, rect.left, line)
 
     def _column_widths(self, width: int) -> list[int]:
         if not self.columns:
@@ -128,7 +137,12 @@ class InlineEditor(Component):
     def render(self, surface: SurfaceLike, rect: Rect) -> None:
         if not self.active or rect.height <= 0:
             return
-        surface.addstr(rect.top, rect.left, clip(f"{self.title}: {self.value}", rect.width))
+        surface.addstr(
+            rect.top,
+            rect.left,
+            clip(f"{self.title}: {self.value}", rect.width),
+            getattr(surface, "highlight_attr", 0),
+        )
         if self.error and rect.height > 1:
             surface.addstr(rect.top + 1, rect.left, clip(self.error, rect.width))
 

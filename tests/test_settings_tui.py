@@ -15,15 +15,18 @@ class Surface:
         self.height = height
         self.width = width
         self.lines: list[tuple[int, int, str]] = []
+        self.attributes: list[tuple[int, ...]] = []
 
     def getmaxyx(self) -> tuple[int, int]:
         return self.height, self.width
 
     def erase(self) -> None:
         self.lines.clear()
+        self.attributes.clear()
 
     def addstr(self, row: int, col: int, text: str, *_attrs: int) -> None:
         self.lines.append((row, col, text))
+        self.attributes.append(tuple(_attrs))
 
     def refresh(self) -> None:
         return
@@ -93,6 +96,28 @@ def test_render_recalculates_layout_after_resize(tmp_path: Path) -> None:
     screen.render(TerminalSurface(surface), screen.layout.bounds)
     assert screen.layout.bounds == screen.layout.bounds.__class__(0, 0, 12, 40)
     assert screen.result == ScreenResult.NONE
+
+
+def test_compact_layout_stacks_panels_and_reserves_hint_area(tmp_path: Path) -> None:
+    session = SettingsSession(ProfileStore(tmp_path / "profiles.json"))
+    screen = SettingsRootScreen(session)
+    surface = Surface(12, 40)
+    screen.render(TerminalSurface(surface), screen.layout.bounds)
+    assert screen.layout.stacked
+    assert screen.layout.content.left == 0
+    assert screen.layout.content.top >= screen.layout.sidebar.top + screen.layout.sidebar.height
+    assert screen.layout.content.top + screen.layout.content.height <= screen.layout.hint.top
+    assert screen.layout.hint.top + screen.layout.hint.height <= screen.layout.footer.top
+    assert all(row < surface.height for row, _col, _text in surface.lines)
+
+
+def test_focused_table_row_uses_highlight_attribute(tmp_path: Path) -> None:
+    session = SettingsSession(ProfileStore(tmp_path / "profiles.json"))
+    screen = SettingsRootScreen(session)
+    surface = Surface()
+    screen.focus = "table"
+    screen.render(TerminalSurface(surface), screen.layout.bounds)
+    assert any(attributes for attributes in surface.attributes)
 
 
 def test_escape_after_save_keeps_committed_profile(tmp_path: Path) -> None:
