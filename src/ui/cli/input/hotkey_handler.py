@@ -4,6 +4,8 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 import keyboard
+from src.application.events import InputEvent
+from src.ui.cli.input.adapters import KeyboardInputAdapter
 
 if TYPE_CHECKING:
     from keyboard import KeyboardEvent
@@ -27,6 +29,16 @@ class HotkeyHandler:
         self._scan_code_hotkeys: dict[int, Callable[[], None]] = {}
         self._modifier_state = {"shift": False, "ctrl": False, "alt": False}
         self._hooked = False
+        self._locked = False
+        self._unlock_binding = "f12"
+        self._event_dispatcher: Callable[[InputEvent], object] | None = None
+        self._input_adapter = KeyboardInputAdapter()
+
+    def set_event_dispatcher(
+        self, dispatcher: Callable[[InputEvent], object] | None
+    ) -> None:
+        """Route normalized events to an application controller when configured."""
+        self._event_dispatcher = dispatcher
 
     def register(self, key: str, callback: Callable[[], None]) -> None:
         """Register a binding, selecting a scan code for physical symbol keys."""
@@ -46,8 +58,19 @@ class HotkeyHandler:
         """Register a physical scan-code binding."""
         self._scan_code_hotkeys[scan_code] = callback
 
+    def set_locked(self, locked: bool, unlock_binding: str | None = None) -> None:
+        """Ignore all registered callbacks while locked except the unlock key."""
+        self._locked = bool(locked)
+        if unlock_binding:
+            self._unlock_binding = unlock_binding.lower()
+
+    def is_locked(self) -> bool:
+        """Return whether user control input is currently locked."""
+        return self._locked
+
     def _on_key_event(self, event: "KeyboardEvent") -> None:
         """Track modifier state and dispatch key-down callbacks."""
+        normalized = self._input_adapter.read_event(event)
         name = event.name.lower()
         modifier = self._modifier_name(name)
         if event.event_type == "up":
@@ -60,16 +83,22 @@ class HotkeyHandler:
             self._modifier_state[modifier] = True
             return
 
+        if self._event_dispatcher and normalized.key is not None:
+            self._event_dispatcher(normalized)
+            return
+
         if not any(self._modifier_state.values()):
             callback = self._scan_code_hotkeys.get(event.scan_code)
             if callback:
-                self._dispatch(callback)
+                if self._allowed_while_locked(name, event.scan_code):
+                    self._dispatch(callback)
                 return
 
         key_name = self._qualified_name(name)
         callback = self._hotkeys.get(key_name)
         if callback:
-            self._dispatch(callback)
+            if self._allowed_while_locked(name, event.scan_code, key_name):
+                self._dispatch(callback)
         elif self._modifier_state["shift"] and not (
             self._modifier_state["ctrl"] or self._modifier_state["alt"]
         ):
@@ -77,7 +106,22 @@ class HotkeyHandler:
             # physical scan code, so fall back to its base-key binding.
             callback = self._scan_code_hotkeys.get(event.scan_code)
             if callback:
-                self._dispatch(callback)
+                if self._allowed_while_locked(name, event.scan_code):
+                    self._dispatch(callback)
+
+    def _allowed_while_locked(
+        self, name: str, scan_code: int, qualified_name: str | None = None
+    ) -> bool:
+        if not self._locked:
+            return True
+        binding = self._unlock_binding
+        if binding in SCAN_CODES:
+            return scan_code == SCAN_CODES[binding] and not any(
+                self._modifier_state.values()
+            )
+        return qualified_name == binding or (
+            qualified_name is None and self._qualified_name(name) == binding
+        )
 
     @staticmethod
     def _dispatch(callback: Callable[[], None]) -> None:
@@ -102,9 +146,13 @@ class HotkeyHandler:
         """Return the registered representation of a key combination."""
         if name == "+":
             name = "="
-        for modifier in ("ctrl", "shift", "alt"):
-            if self._modifier_state[modifier]:
-                return f"{modifier}+{name}"
+        modifiers = [
+            modifier
+            for modifier in ("ctrl", "shift", "alt")
+            if self._modifier_state[modifier]
+        ]
+        if modifiers:
+            return "+".join([*modifiers, name])
         return name
 
     def start(self) -> None:

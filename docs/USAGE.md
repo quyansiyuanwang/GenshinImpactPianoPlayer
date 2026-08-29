@@ -41,7 +41,8 @@ Supported piano keys are `QWERTYU`, `ASDFGHJ`, and `ZXCVBNM`. A single letter is
 | `Ctrl+Backspace` | Clear the A-B range |
 | `Ctrl+K` | Bookmark the current position |
 | `Ctrl+L` | Jump back to the bookmark |
-| `F12` | Lock or unlock simulated key output |
+| `F10` | Open the runtime settings UI |
+| `F12` | Lock or unlock GIPianoPlayer control input |
 | `+` / `-` | Adjust speed by 0.01x |
 | `Ctrl+=` / `Ctrl+-` | Adjust speed by 0.1x |
 | `,` / `.` | Adjust note interval |
@@ -64,7 +65,9 @@ For practicing a section, mark the current position as the range start with `Ctr
 
 `Ctrl+K` bookmarks the current position and `Ctrl+L` seeks back to it. The bookmark is stored as a line and note pair, so it survives reload and reparse as long as that position still exists.
 
-`F12` is a panic switch: while the key output is locked no simulated keys are sent, which is handy when a menu or dialog takes focus mid-song. The playback position keeps advancing, so unlocking resumes exactly where the score would be; locking also releases any keys held by sustain mode.
+`F12` locks GIPianoPlayer's control input. While locked, user key presses cannot change playback, timing, navigation, or save settings; playback continues to send score keys. Press `F12` again to unlock.
+
+Press `F10` to open the runtime settings UI. It supports independent hotkey and score-mapping profiles, including creating, selecting, renaming, and deleting profiles. Settings are saved to `gipianoplayer_profiles.json` in the current project directory. A mapping such as `A -> J` changes only the key sent to the target application; the score display remains unchanged.
 
 Empty line interval changes (and segment length or strict mode changes) reparse the score so blank lines are added or removed to match the new setting; the file's configuration header is updated at the same time. Pressing the shifted `+` key works the same as `=` for speed.
 

@@ -8,6 +8,8 @@ DEFAULT_HOTKEYS = {
     # Playback control
     "play_pause": "f8",
     "quit": "f2",
+    "open_settings": "f10",
+    "save": "f9",
     # Speed adjustment (use physical keys for better compatibility)
     "speed_up": "=",  # = key (not +)
     "speed_down": "-",
