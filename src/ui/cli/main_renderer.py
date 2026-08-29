@@ -9,6 +9,11 @@ from typing import Any
 
 from src.ui.cli.components import Rect, TerminalSurface
 from src.ui.cli.main_layout import MainLayout
+from src.ui.cli.playback_context import (
+    configuration_lines,
+    control_hints,
+    visible_configuration,
+)
 from src.ui.cli.playlist.widgets import PlaylistTable
 from src.ui.cli.terminal_text import cell_width, clip_cells
 
@@ -177,13 +182,7 @@ class MainRenderer:
     def _render_details(self, host: Any, surface: TerminalSurface, rect: Rect) -> None:
         if rect.height <= 0 or not host.player:
             return
-        keyboard_state = "LOCKED" if host._keyboard_locked else "active"
-        details = [
-            f"Speed {host.player._speed_multiplier:.2f}x  Note {host.player._interval_rating:.3f}s  Keyboard {keyboard_state}",
-            f"Loop {'ON' if host.player.get_loop_enabled() else 'OFF'}  Sustain {'ON' if host.player.get_sustain_enabled() else 'OFF'}  Arpeggio {'AUTO' if host.player.get_arpeggio_auto() else 'MANUAL'}",
-            f"Mapping {len(host.player.get_key_mapping())} key(s)  Playlist {len(host.playlist.entries)} track(s)",
-            "Tab focuses playlist; arrows move selection; Enter loads and pauses",
-        ]
+        details = visible_configuration(configuration_lines(host), rect.height)
         for offset, detail in enumerate(details[: rect.height]):
             surface.addstr(
                 rect.top + offset, rect.left, clip_cells(detail, rect.width - 1)
@@ -192,15 +191,7 @@ class MainRenderer:
     def _render_footer(self, host: Any, surface: TerminalSurface, rect: Rect) -> None:
         if rect.height <= 0:
             return
-        controls = (
-            f"[{host.hotkeys['play_pause']}] Play/Pause  [{host.hotkeys['quit']}] Quit  "
-            f"[{host.hotkeys['open_settings']}] Settings  [A] Add  [/] Search"
-        )
-        surface.addstr(rect.top, rect.left, clip_cells(controls, rect.width - 1))
-        if rect.height > 1:
-            navigation = (
-                "[N/P] Next/Previous  [D] Remove  [C] Clear  [Home/End] Navigate"
-            )
+        for offset, hint in enumerate(control_hints(host)[: rect.height]):
             surface.addstr(
-                rect.top + 1, rect.left, clip_cells(navigation, rect.width - 1)
+                rect.top + offset, rect.left, clip_cells(hint, rect.width - 1)
             )

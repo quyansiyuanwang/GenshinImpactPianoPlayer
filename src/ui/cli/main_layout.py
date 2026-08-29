@@ -26,8 +26,19 @@ class MainLayout:
         bounds = Rect(0, 0, height, width)
         tiny = width < 36 or height < 10
         header_height = min(height, 3 if not tiny else 2)
-        footer_height = 0 if height < 8 else (2 if height >= 16 else 1)
-        details_height = 4 if height >= 25 else (2 if height >= 18 else 0)
+        footer_height = (
+            0 if height < 8 else (3 if height >= 20 else (2 if height >= 14 else 1))
+        )
+        if height >= 36:
+            details_height = 15
+        elif height >= 28:
+            details_height = 8
+        elif height >= 20:
+            details_height = 5
+        elif height >= 16:
+            details_height = 2
+        else:
+            details_height = 0
         status_height = 2 if height >= 7 else 1
         body_height = max(
             0,

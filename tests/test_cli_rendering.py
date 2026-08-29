@@ -86,6 +86,21 @@ def test_display_shows_transient_status_message(
     assert any("Configuration saved" in line for line in screen.lines)
 
 
+def test_display_keeps_configuration_and_key_hints(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cli, screen = _make_cli_with_screen()
+    monkeypatch.setattr(curses, "color_pair", lambda _number: 0)
+    monkeypatch.setattr(curses, "A_BOLD", 0)
+
+    cli._display_score()
+
+    assert "Configuration:" in screen.lines
+    assert any("Speed:" in line and "Adjust" in line for line in screen.lines)
+    assert any("Controls:" in line and "Play/Pause" in line for line in screen.lines)
+    assert any("Navigate:" in line for line in screen.lines)
+
+
 def test_display_lists_parse_warnings(monkeypatch: pytest.MonkeyPatch) -> None:
     cli, screen = _make_cli_with_screen()
     assert cli.score is not None
