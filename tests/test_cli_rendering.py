@@ -55,7 +55,9 @@ def test_display_refreshes_on_small_terminal_with_unicode_file_name(
     cli._display_score()
 
     assert screen.refreshed
-    assert "GIPianoPlayer - Command Line Interface" in screen.lines
+    assert any(
+        "GIPianoPlayer - Command Line Interface" in line for line in screen.lines
+    )
     assert any("繁星、新生，与你.qymusic" in line for line in screen.lines)
 
 
@@ -153,11 +155,11 @@ def test_separator_fills_as_playback_progresses(
         return sum(1 for line in screen.lines if line and set(line) == {"="})
 
     cli._display_score()
-    assert full_bars() == 1  # only the header separator
+    assert full_bars() == 0
 
     cli.player.jump_to_end()
     cli._display_score()
-    assert full_bars() == 2  # header separator + completed progress bar
+    assert full_bars() == 1  # completed progress bar
 
 
 def test_save_config_rounds_float_dust(tmp_path: Path) -> None:

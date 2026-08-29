@@ -19,6 +19,7 @@ class KeyCode(Enum):
     ENTER = "enter"
     ESCAPE = "escape"
     BACKSPACE = "backspace"
+    TAB = "tab"
     UP = "up"
     DOWN = "down"
     LEFT = "left"

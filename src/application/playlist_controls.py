@@ -59,8 +59,13 @@ class PlaylistControlsMixin:
     def handle_playlist_event(self, event: InputEvent) -> bool:
         if event.kind != InputKind.KEY:
             return False
-        if event.key == KeyCode.CHARACTER and event.text == "\t":
+        if event.key == KeyCode.TAB:
             self.playlist_focus = not self.playlist_focus
+            self._flash(
+                "Playlist focused - arrows navigate, Enter loads"
+                if self.playlist_focus
+                else "Score controls focused"
+            )
             return True
         if not self.playlist_focus:
             return False
@@ -80,6 +85,17 @@ class PlaylistControlsMixin:
             return True
         if event.key == KeyCode.END:
             self.playlist.move_visible(max(0, len(self.playlist.visible_entries) - 1))
+            return True
+        if event.key == KeyCode.PAGE_UP:
+            self.playlist.move_visible(max(0, self.playlist.visible_index - 8))
+            return True
+        if event.key == KeyCode.PAGE_DOWN:
+            self.playlist.move_visible(
+                min(
+                    len(self.playlist.visible_entries) - 1,
+                    self.playlist.visible_index + 8,
+                )
+            )
             return True
         if event.key == KeyCode.ENTER:
             self.playlist_play_selected(event)

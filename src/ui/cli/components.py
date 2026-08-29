@@ -38,6 +38,7 @@ class TerminalSurface:
     def __init__(self, window: Any) -> None:
         self.window = window
         self.highlight_attr = curses.A_REVERSE
+        self.active_attr = curses.A_BOLD
 
     def getmaxyx(self) -> tuple[int, int]:
         return cast(tuple[int, int], self.window.getmaxyx())

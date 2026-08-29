@@ -73,12 +73,11 @@ class LifecycleMixin(ApplicationHost):
         except curses.error:
             pass
 
-        # Non-blocking input - but we don't actually use curses for input
-        # since we use keyboard library for global hotkeys
+        # Non-blocking terminal input is used for focus-sensitive TUI controls.
         stdscr.nodelay(True)
 
-        # Disable curses input to avoid interfering with keyboard library
-        stdscr.keypad(False)
+        # Decode arrows, paging keys and function keys into semantic events.
+        stdscr.keypad(True)
 
         # Initialize player
         if self.score is None:
@@ -131,6 +130,8 @@ class LifecycleMixin(ApplicationHost):
                                 )
                                 continue
                         handled = getattr(self, "handle_playlist_event")(terminal_event)
+                        if handled:
+                            self._request_refresh()
                         result = (
                             None
                             if handled
@@ -140,6 +141,7 @@ class LifecycleMixin(ApplicationHost):
                             self._flash(result.message)
                 if current_time - last_refresh >= 0.5:
                     self._display_score()
+                    last_refresh = current_time
                 if self._settings_requested:
                     self._settings_requested = False
                     self._run_settings_ui(stdscr)
@@ -231,7 +233,7 @@ class LifecycleMixin(ApplicationHost):
             except (TypeError, ValueError) as error:
                 failures.append((key, str(error)))
 
-        handler.set_event_dispatcher(self.controller.dispatch_event)
+        handler.set_event_dispatcher(self._dispatch_global_event)
 
         if not failures:
             try:
@@ -244,6 +246,23 @@ class LifecycleMixin(ApplicationHost):
         handler.set_locked(
             self._keyboard_locked, self.hotkeys.get("toggle_output_lock", "f12")
         )
+
+    def _dispatch_global_event(self, event: InputEvent) -> CommandResult | None:
+        """Keep global playback bindings from stealing playlist navigation."""
+        playlist_keys = {
+            KeyCode.UP,
+            KeyCode.DOWN,
+            KeyCode.HOME,
+            KeyCode.END,
+            KeyCode.PAGE_UP,
+            KeyCode.PAGE_DOWN,
+            KeyCode.ENTER,
+        }
+        if event.key == KeyCode.TAB or (
+            self.playlist_focus and event.key in playlist_keys
+        ):
+            return CommandResult.ok()
+        return self.controller.dispatch_event(event)
 
     def _rebuild_hotkeys(self) -> None:
         """Replace the global handler after a profile change."""

@@ -7,7 +7,11 @@ import os
 import time
 from typing import Any
 
-from src.application.config.constants import DISPLAY_LINES_AFTER, DISPLAY_LINES_BEFORE
+from src.application.config.constants import (
+    DISPLAY_LINES_AFTER,
+    DISPLAY_LINES_BEFORE,
+    DISPLAY_MAX_SCORE_LINES,
+)
 from src.ui.cli.components import Rect, TerminalSurface
 from src.ui.cli.main_layout import MainLayout
 from src.ui.cli.playback_context import (
@@ -16,7 +20,7 @@ from src.ui.cli.playback_context import (
     visible_configuration,
 )
 from src.ui.cli.playlist.widgets import PlaylistTable
-from src.ui.cli.terminal_text import cell_width, clip_cells
+from src.ui.cli.terminal_text import cell_width, clip_cells, fit_cells
 
 
 class MainRenderer:
@@ -50,17 +54,20 @@ class MainRenderer:
         surface.addstr(
             rect.top,
             rect.left,
-            clip_cells("GIPianoPlayer - Command Line Interface", rect.width - 1),
-            curses.A_BOLD,
+            fit_cells(" GIPianoPlayer - Command Line Interface", rect.width - 1),
+            curses.A_REVERSE,
         )
         if rect.height >= 2:
-            surface.addstr(rect.top + 1, rect.left, "=" * max(0, rect.width - 1))
-        if rect.height >= 3:
             name = os.path.basename(host.file_path)
-            metadata = f"File: {name}  |  Lines: {len(host.score.lines)}"
+            metadata = f" Track  {name}  |  {len(host.score.lines)} lines"
             surface.addstr(
-                rect.top + 2, rect.left, clip_cells(metadata, rect.width - 1)
+                rect.top + 1,
+                rect.left,
+                clip_cells(metadata, rect.width - 1),
+                curses.A_BOLD,
             )
+        if rect.height >= 3:
+            surface.addstr(rect.top + 2, rect.left, "-" * max(0, rect.width - 1))
 
     def _render_score(self, host: Any, surface: TerminalSurface, rect: Rect) -> None:
         if rect.height <= 0 or rect.width <= 1:
@@ -69,6 +76,17 @@ class MainRenderer:
         current_note = host.player.get_position()[1] if host.player else 0
         top = rect.top
         available = rect.height
+        total = len(host.score.lines)
+        score_title = f" Score  Line {min(current_line + 1, total)}/{total} "
+        title_attr = curses.A_REVERSE if not host.playlist_focus else curses.A_BOLD
+        surface.addstr(
+            top,
+            rect.left,
+            fit_cells(score_title, rect.width - 1),
+            title_attr,
+        )
+        top += 1
+        available -= 1
         warnings = host.score.warnings
         if warnings and available:
             preview = "; ".join(warnings[:2])
@@ -84,7 +102,6 @@ class MainRenderer:
         if available <= 0:
             return
 
-        total = len(host.score.lines)
         start, end, hidden_before, hidden_after = self._score_window(
             total, current_line, available
         )
@@ -129,7 +146,7 @@ class MainRenderer:
     def _score_window(
         self, total: int, current: int, available: int
     ) -> tuple[int, int, bool, bool]:
-        maximum = DISPLAY_LINES_BEFORE + 1 + DISPLAY_LINES_AFTER
+        maximum = min(DISPLAY_MAX_SCORE_LINES, max(1, available))
         capacity = min(maximum, available, total)
         start, end = self._score_bounds(total, current, capacity)
         hidden_before = start > 0
@@ -185,8 +202,8 @@ class MainRenderer:
             return
         if rect.left > 0:
             for row in range(rect.top, rect.top + rect.height):
-                surface.addstr(row, rect.left - 1, "│")
-        PlaylistTable(host.playlist).render(surface, rect)
+                surface.addstr(row, rect.left - 1, "|")
+        PlaylistTable(host.playlist, focused=host.playlist_focus).render(surface, rect)
 
     def _render_status(self, host: Any, surface: TerminalSurface, rect: Rect) -> None:
         if rect.height <= 0 or rect.width <= 1:
@@ -226,11 +243,41 @@ class MainRenderer:
     def _render_details(self, host: Any, surface: TerminalSurface, rect: Rect) -> None:
         if rect.height <= 0 or not host.player:
             return
-        details = visible_configuration(configuration_lines(host), rect.height)
+        all_details = configuration_lines(host)
+        if rect.width >= 100 and rect.height >= 8 and len(all_details) >= 15:
+            self._render_detail_columns(surface, rect, all_details)
+            return
+        details = visible_configuration(all_details, rect.height)
         for offset, detail in enumerate(details[: rect.height]):
+            attribute = curses.A_BOLD if offset == 0 else 0
             surface.addstr(
-                rect.top + offset, rect.left, clip_cells(detail, rect.width - 1)
+                rect.top + offset,
+                rect.left,
+                clip_cells(detail, rect.width - 1),
+                attribute,
             )
+
+    def _render_detail_columns(
+        self, surface: TerminalSurface, rect: Rect, details: list[str]
+    ) -> None:
+        surface.addstr(rect.top, rect.left, "Configuration:", curses.A_BOLD)
+        column_width = max(1, (rect.width - 3) // 2)
+        items = details[1:]
+        split = (len(items) + 1) // 2
+        for row in range(min(rect.height - 1, split)):
+            left = items[row]
+            surface.addstr(
+                rect.top + row + 1,
+                rect.left,
+                clip_cells(left, column_width - 1),
+            )
+            right_index = split + row
+            if right_index < len(items):
+                surface.addstr(
+                    rect.top + row + 1,
+                    rect.left + column_width + 2,
+                    clip_cells(items[right_index], column_width - 1),
+                )
 
     def _render_footer(self, host: Any, surface: TerminalSurface, rect: Rect) -> None:
         if rect.height <= 0:
