@@ -371,4 +371,4 @@ def _character(event: InputEvent, value: str) -> bool:
 
 
 def _is_tab(event: InputEvent) -> bool:
-    return _character(event, "\t")
+    return event.key == KeyCode.TAB or _character(event, "\t")
