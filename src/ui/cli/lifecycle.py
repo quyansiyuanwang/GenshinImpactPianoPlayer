@@ -11,6 +11,7 @@ from src.application.command_bus import CommandResult
 from src.application.events import InputEvent, InputKind, KeyCode
 from src.application.config.constants import DEFAULT_HOTKEYS
 from src.ui.cli.input.adapters import CursesInputAdapter
+from src.ui.cli.input.input_isolation import WindowsInputIsolation
 from src.application.host_protocol import ApplicationHost
 
 
@@ -112,6 +113,9 @@ class LifecycleMixin(ApplicationHost):
 
                 # Periodic refresh (every 0.5 seconds) to catch any missed updates
                 current_time = time.time()
+                isolation = getattr(self, "_input_isolation", None)
+                if isolation:
+                    isolation.pump()
                 if self._curses_input:
                     terminal_event = self._curses_input.read_available()
                     if terminal_event.kind == InputKind.RESIZE:
@@ -166,6 +170,7 @@ class LifecycleMixin(ApplicationHost):
                 self._hotkey_handler.stop()
             except Exception:
                 pass
+        self._stop_input_isolation()
 
         self.display_active = False
 
@@ -239,6 +244,7 @@ class LifecycleMixin(ApplicationHost):
             try:
                 handler.start()
                 self._hotkey_handler = handler
+                self._start_input_isolation()
             except (OSError, RuntimeError) as error:
                 failures.append(("global hook", str(error)))
         self._failed_hotkeys = failures
@@ -266,12 +272,37 @@ class LifecycleMixin(ApplicationHost):
 
     def _rebuild_hotkeys(self) -> None:
         """Replace the global handler after a profile change."""
+        self._stop_input_isolation()
         if hasattr(self, "_hotkey_handler"):
             try:
                 self._hotkey_handler.stop()
             except Exception:
                 pass
         self._setup_hotkeys()
+
+    def _start_input_isolation(self) -> None:
+        self._stop_input_isolation()
+        scan_codes: set[int] = set()
+        for entry in self.key_mapping_scans.values():
+            code = entry.get("target_scan_code")
+            if isinstance(code, int) and code > 0:
+                scan_codes.add(code)
+        try:
+            for binding in self.hotkeys.values():
+                key_name = binding.split("+")[-1].strip()
+                codes = keyboard.key_to_scan_codes(key_name, error_if_missing=False)
+                scan_codes.update(int(code) for code in codes if int(code) > 0)
+        except (AttributeError, KeyError, TypeError, ValueError):
+            pass
+        isolation = WindowsInputIsolation(scan_codes)
+        if isolation.start():
+            setattr(self, "_input_isolation", isolation)
+
+    def _stop_input_isolation(self) -> None:
+        isolation = getattr(self, "_input_isolation", None)
+        if isolation:
+            isolation.stop()
+            setattr(self, "_input_isolation", None)
 
     def request_settings(self) -> None:
         """Request the curses thread to open the settings UI."""

@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 import keyboard
 from src.application.events import InputEvent
 from src.ui.cli.input.adapters import KeyboardInputAdapter
+from src.ui.cli.input.injection_state import is_injected
 
 if TYPE_CHECKING:
     from keyboard import KeyboardEvent
@@ -70,6 +71,12 @@ class HotkeyHandler:
 
     def _on_key_event(self, event: "KeyboardEvent") -> None:
         """Track modifier state and dispatch key-down callbacks."""
+        if (
+            getattr(event, "is_injected", False)
+            or getattr(event, "flags", 0) & 0x10
+            or is_injected(getattr(event, "scan_code", None))
+        ):
+            return
         normalized = self._input_adapter.read_event(event)
         name = event.name.lower()
         modifier = self._modifier_name(name)

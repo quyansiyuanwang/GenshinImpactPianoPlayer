@@ -91,7 +91,7 @@ class KeyboardInputAdapter:
         if event.event_type == "up":
             if modifier:
                 self._modifier_state.discard(modifier)
-            return InputEvent(InputKind.KEY)
+            return InputEvent(InputKind.KEY, scan_code=getattr(event, "scan_code", None))
         if modifier:
             self._modifier_state.add(modifier)
             return InputEvent(InputKind.KEY)
@@ -101,6 +101,7 @@ class KeyboardInputAdapter:
                 KeyCode.FUNCTION,
                 modifiers=frozenset(self._modifier_state),
                 function_number=int(name[1:]),
+                scan_code=getattr(event, "scan_code", None),
             )
         special = {
             "enter": KeyCode.ENTER,
@@ -118,8 +119,15 @@ class KeyboardInputAdapter:
         }
         if name in special:
             return InputEvent(
-                InputKind.KEY, special[name], modifiers=frozenset(self._modifier_state)
+                InputKind.KEY,
+                special[name],
+                modifiers=frozenset(self._modifier_state),
+                scan_code=getattr(event, "scan_code", None),
             )
         if name == "+":
             name = "="
-        return InputEvent.character(name, frozenset(self._modifier_state))
+        return InputEvent.character(
+            name,
+            frozenset(self._modifier_state),
+            getattr(event, "scan_code", None),
+        )

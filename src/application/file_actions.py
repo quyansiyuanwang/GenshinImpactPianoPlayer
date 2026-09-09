@@ -193,7 +193,12 @@ class FileActionsMixin(ApplicationHost):
 
             # Create new player with new score (uses config from parsed score)
             keyboard_controller = KeyboardController()
-            self.player = Player(self.score, keyboard_controller, self.key_mapping)
+            self.player = Player(
+                self.score,
+                keyboard_controller,
+                self.key_mapping,
+                self.key_mapping_scans,
+            )
             self.player.set_progress_callback(self._on_progress)
             if sustain_enabled:
                 self.player.toggle_sustain()
@@ -281,7 +286,12 @@ class FileActionsMixin(ApplicationHost):
 
             # Create new player with reparsed score
             keyboard_controller = KeyboardController()
-            self.player = Player(self.score, keyboard_controller, self.key_mapping)
+            self.player = Player(
+                self.score,
+                keyboard_controller,
+                self.key_mapping,
+                self.key_mapping_scans,
+            )
             self.player.set_progress_callback(self._on_progress)
 
             plugin_errors = self._reinitialize_plugins()

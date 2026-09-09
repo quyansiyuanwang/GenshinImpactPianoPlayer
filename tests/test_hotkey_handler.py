@@ -33,6 +33,33 @@ def test_handler_dispatches_scan_codes_and_combinations() -> None:
     assert calls == ["speed", "line-back"]
 
 
+def test_keyboard_input_adapter_preserves_scan_code() -> None:
+    from src.ui.cli.input.adapters import KeyboardInputAdapter
+
+    normalized = KeyboardInputAdapter().read_event(_event(",", 51))
+    assert normalized.text == ","
+    assert normalized.scan_code == 51
+
+
+def test_injected_keyboard_event_does_not_trigger_hotkey() -> None:
+    calls: list[str] = []
+    handler = HotkeyHandler()
+    handler.register("f8", lambda: calls.append("play"))
+    injected = _event("f8", 66)
+    setattr(injected, "is_injected", True)
+    handler._on_key_event(injected)
+    assert calls == []
+
+
+def test_input_isolation_only_suppresses_physical_configured_keys() -> None:
+    from src.ui.cli.input.input_isolation import WindowsInputIsolation
+
+    isolation = WindowsInputIsolation([51])
+    assert isolation.should_suppress(51)
+    assert not isolation.should_suppress(51, injected=True)
+    assert not isolation.should_suppress(52)
+
+
 def test_handler_normalizes_ctrl_plus_to_ctrl_equals() -> None:
     calls: list[str] = []
     handler = HotkeyHandler()

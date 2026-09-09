@@ -36,6 +36,10 @@ class SettingsSession:
         return self.data["mapping_profiles"]  # type: ignore[return-value]
 
     @property
+    def mapping_scans(self) -> dict[str, dict[str, dict[str, int]]]:
+        return self.data.setdefault("mapping_scan_profiles", {})  # type: ignore[return-value]
+
+    @property
     def active_hotkey_profile(self) -> str:
         return str(self.data["active_hotkey_profile"])
 
@@ -58,6 +62,10 @@ class SettingsSession:
     @property
     def mapping_items(self) -> list[tuple[str, str]]:
         return list(self.active_mapping.items())
+
+    @property
+    def active_mapping_scans(self) -> dict[str, dict[str, int]]:
+        return self.mapping_scans.setdefault(self.active_mapping_profile, {})
 
     def _changed(self) -> None:
         self.dirty = True
@@ -88,6 +96,7 @@ class SettingsSession:
         if not name or name in self.mappings:
             raise ValueError("profile name is empty or already exists")
         self.mappings[name] = self.active_mapping.copy()
+        self.mapping_scans[name] = copy.deepcopy(self.active_mapping_scans)
         self.data["active_mapping_profile"] = name
         self._changed()
 
@@ -97,7 +106,9 @@ class SettingsSession:
         self._changed()
 
     def rename_mapping_profile(self, name: str) -> None:
+        old = self.active_mapping_profile
         self._rename(self.mappings, self.active_mapping_profile, name)
+        self.mapping_scans[name.strip()] = self.mapping_scans.pop(old, {})
         self.data["active_mapping_profile"] = name.strip()
         self._changed()
 
@@ -114,7 +125,9 @@ class SettingsSession:
         self._changed()
 
     def delete_mapping_profile(self) -> None:
+        name = self.active_mapping_profile
         self._delete(self.mappings, self.active_mapping_profile)
+        self.mapping_scans.pop(name, None)
         self.data["active_mapping_profile"] = "default"
         self._changed()
 
@@ -136,9 +149,16 @@ class SettingsSession:
         self.active_hotkeys[action] = normalized
         self._changed()
 
-    def set_mapping(self, source: str, target: str) -> None:
+    def set_mapping(
+        self,
+        source: str,
+        target: str,
+        *,
+        source_scan_code: int | None = None,
+        target_scan_code: int | None = None,
+    ) -> None:
         source = source.strip().upper()
-        target = target.strip().upper()
+        target = target.strip()
         validated = ProfileStore.validate_mapping({source: target})
         if not validated:
             raise ValueError("source and target must be valid piano keys")
@@ -147,11 +167,32 @@ class SettingsSession:
                 raise ValueError(
                     f"Output key {target} already used by {existing_source}"
                 )
-        self.active_mapping[source] = target
+        if source_scan_code is None or target_scan_code is None:
+            import keyboard
+            source_codes = keyboard.key_to_scan_codes(source.lower())
+            target_codes = keyboard.key_to_scan_codes(target.lower())
+            if not source_codes or not target_codes:
+                raise ValueError("source or target has no physical scan code")
+            source_scan_code = int(source_codes[0])
+            target_scan_code = int(target_codes[0])
+        if target_scan_code <= 0 or source_scan_code <= 0:
+            raise ValueError("scan codes must be positive")
+        for existing_source, metadata in self.active_mapping_scans.items():
+            if existing_source != source and metadata.get("target_scan_code") == target_scan_code:
+                raise ValueError(
+                    f"Output scan code {target_scan_code} already used by {existing_source}"
+                )
+        self.active_mapping[source] = target.upper() if target.isalpha() else target
+        self.active_mapping_scans[source] = {
+            "source_scan_code": source_scan_code,
+            "target_scan_code": target_scan_code,
+        }
         self._changed()
 
     def delete_mapping(self, source: str) -> None:
-        self.active_mapping.pop(source.strip().upper(), None)
+        source = source.strip().upper()
+        self.active_mapping.pop(source, None)
+        self.active_mapping_scans.pop(source, None)
         self._changed()
 
     def save(self) -> None:

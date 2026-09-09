@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import keyboard
 import tempfile
 from pathlib import Path
 from typing import Mapping, cast
@@ -23,11 +24,12 @@ class ProfileStore:
     @staticmethod
     def _defaults() -> dict[str, object]:
         return {
-            "version": 1,
+            "version": 2,
             "active_hotkey_profile": "default",
             "active_mapping_profile": "default",
             "hotkey_profiles": {"default": DEFAULT_HOTKEYS.copy()},
             "mapping_profiles": {"default": {}},
+            "mapping_scan_profiles": {"default": {}},
         }
 
     def load(self) -> None:
@@ -103,6 +105,52 @@ class ProfileStore:
                 clean_mappings.setdefault("default", {})
                 result["mapping_profiles"] = clean_mappings
 
+        scan_profiles = raw.get("mapping_scan_profiles")
+        if isinstance(scan_profiles, dict):
+            clean_scans: dict[str, dict[str, dict[str, int]]] = {}
+            for name, values in scan_profiles.items():
+                if not isinstance(name, str) or not name or not isinstance(values, dict):
+                    continue
+                entries: dict[str, dict[str, int]] = {}
+                for source, entry in values.items():
+                    if not isinstance(source, str) or source.upper() not in VALID_KEYS:
+                        continue
+                    if isinstance(entry, dict):
+                        source_code = entry.get("source_scan_code")
+                        target_code = entry.get("target_scan_code")
+                        if isinstance(source_code, int) and isinstance(target_code, int):
+                            entries[source.upper()] = {
+                                "source_scan_code": source_code,
+                                "target_scan_code": target_code,
+                            }
+                clean_scans[name] = entries
+            if clean_scans:
+                clean_scans.setdefault("default", {})
+                result["mapping_scan_profiles"] = clean_scans
+        scan_profiles = result["mapping_scan_profiles"]
+        mappings = result["mapping_profiles"]
+        if isinstance(scan_profiles, dict) and isinstance(mappings, dict):
+            for profile, values in mappings.items():
+                if not isinstance(values, dict):
+                    continue
+                scans = scan_profiles.setdefault(profile, {})
+                if not isinstance(scans, dict):
+                    scans = {}
+                    scan_profiles[profile] = scans
+                for source, target in values.items():
+                    if source in scans or not isinstance(target, str):
+                        continue
+                    try:
+                        source_codes = keyboard.key_to_scan_codes(source.lower())
+                        target_codes = keyboard.key_to_scan_codes(target.lower())
+                    except (ValueError, KeyError):
+                        continue
+                    if source_codes and target_codes:
+                        scans[source] = {
+                            "source_scan_code": int(source_codes[0]),
+                            "target_scan_code": int(target_codes[0]),
+                        }
+
         active_hotkeys = raw.get("active_hotkey_profile")
         hotkey_profiles = result["hotkey_profiles"]
         if (
@@ -127,14 +175,16 @@ class ProfileStore:
         for source, target in mapping.items():
             if not isinstance(source, str) or not isinstance(target, str):
                 continue
-            source, target = source.upper(), target.upper()
-            if (
-                len(source) == 1
-                and len(target) == 1
-                and source in VALID_KEYS
-                and target in VALID_KEYS
-            ):
-                clean[source] = target
+            source = source.upper()
+            target = target.strip().lower()
+            if len(source) != 1 or source not in VALID_KEYS or not target:
+                continue
+            try:
+                scan_codes = keyboard.key_to_scan_codes(target)
+            except (KeyError, ValueError):
+                continue
+            if scan_codes:
+                clean[source] = target.upper() if target.isalpha() else target
         return clean
 
     def save(self) -> None:
@@ -165,6 +215,12 @@ class ProfileStore:
         name = self.data["active_mapping_profile"]
         return self.mapping_profiles()[str(name)].copy()
 
+    def mapping_scans(self, name: str | None = None) -> dict[str, dict[str, int]]:
+        profile = name or str(self.data["active_mapping_profile"])
+        profiles = self.data.get("mapping_scan_profiles", {})
+        values = profiles.get(profile, {}) if isinstance(profiles, dict) else {}
+        return cast(dict[str, dict[str, int]], values).copy()
+
     def select_hotkeys(self, name: str) -> None:
         if name not in self.hotkey_profiles():
             raise KeyError(name)
@@ -185,6 +241,9 @@ class ProfileStore:
     ) -> None:
         candidate = cast(Mapping[object, object], values or self.active_mapping())
         self._add(self.mapping_profiles(), name, self.validate_mapping(candidate))
+        scans = self.data.setdefault("mapping_scan_profiles", {})
+        if isinstance(scans, dict):
+            scans[name.strip()] = {}
 
     @staticmethod
     def _add(
@@ -202,6 +261,9 @@ class ProfileStore:
 
     def rename_mapping_profile(self, old: str, new: str) -> None:
         self._rename(self.mapping_profiles(), old, new)
+        scans = self.data.setdefault("mapping_scan_profiles", {})
+        if isinstance(scans, dict) and old in scans:
+            scans[new] = scans.pop(old)
         if self.data["active_mapping_profile"] == old:
             self.data["active_mapping_profile"] = new
 
@@ -219,6 +281,9 @@ class ProfileStore:
 
     def delete_mapping_profile(self, name: str) -> None:
         self._delete(self.mapping_profiles(), name)
+        scans = self.data.get("mapping_scan_profiles", {})
+        if isinstance(scans, dict):
+            scans.pop(name, None)
         if self.data["active_mapping_profile"] == name:
             self.data["active_mapping_profile"] = "default"
 

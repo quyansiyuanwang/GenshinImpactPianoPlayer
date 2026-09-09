@@ -65,6 +65,7 @@ class CLI(
         )
         self.hotkeys = self.profile_store.active_hotkeys()
         self.key_mapping = self.profile_store.active_mapping()
+        self.key_mapping_scans = self.profile_store.mapping_scans()
         self._keyboard_locked = False
         self._settings_requested = False
         self.controller = ApplicationController()

@@ -42,12 +42,13 @@ class InputEvent:
     function_number: int | None = None
     width: int | None = None
     height: int | None = None
+    scan_code: int | None = None
 
     @classmethod
     def character(
-        cls, value: str, modifiers: frozenset[str] = frozenset()
+        cls, value: str, modifiers: frozenset[str] = frozenset(), scan_code: int | None = None
     ) -> "InputEvent":
-        return cls(InputKind.KEY, KeyCode.CHARACTER, value, modifiers)
+        return cls(InputKind.KEY, KeyCode.CHARACTER, value, modifiers, scan_code=scan_code)
 
     @classmethod
     def resize(cls, width: int, height: int) -> "InputEvent":

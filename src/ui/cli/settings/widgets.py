@@ -138,10 +138,13 @@ class BindingTable(TableComponent):
 class MappingTable(TableComponent):
     """Source/output mapping table."""
 
-    def __init__(self, rows: Sequence[tuple[str, str]]) -> None:
+    def __init__(self, rows: Sequence[tuple[str, str, int | None]]) -> None:
         super().__init__(
-            ["Source key", "Output key", "Status"],
-            [[source, target, "active"] for source, target in rows],
+            ["Source key", "Output key", "Scan code"],
+            [
+                [source, target, str(scan_code) if scan_code is not None else "legacy"]
+                for source, target, scan_code in rows
+            ],
         )
 
 
@@ -232,6 +235,46 @@ class KeyCaptureComponent(InlineEditor):
             name = event.key.value if event.key else ""
         prefix = "+".join(sorted(event.modifiers))
         return f"{prefix}+{name}" if prefix else name
+
+
+class ScanCodeCaptureComponent(KeyCaptureComponent):
+    """Capture one physical key and retain its scan code for score mapping."""
+
+    def __init__(
+        self,
+        on_submit: Callable[[str, int | None], str | None] | None = None,
+    ) -> None:
+        super().__init__()
+        self.title = "Recording output key (press key, Enter to confirm)"
+        self._scan_submit = on_submit
+        self.scan_code: int | None = None
+
+    def handle(self, event: InputEvent) -> bool:
+        if self.capturing and event.kind == InputKind.KEY and event.key not in {
+            None,
+            KeyCode.ENTER,
+            KeyCode.BACKSPACE,
+        }:
+            if event.scan_code is None or event.scan_code <= 0:
+                if event.key == KeyCode.CHARACTER and event.text.isprintable():
+                    self.value = event.text.lower()
+                    self.capturing = False
+                    return True
+                self.error = "physical scan code is unavailable; type a key name instead"
+                self.capturing = False
+                return True
+            self.value = self._binding_name(event)
+            self.scan_code = event.scan_code
+            self.capturing = False
+            return True
+        if event.key == KeyCode.ENTER and not self.capturing and self.value:
+            error = self._scan_submit(self.value, self.scan_code) if self._scan_submit else None
+            if error:
+                self.error = error
+            else:
+                self.active = False
+            return True
+        return super().handle(event)
 
 
 class StatusBar(Component):

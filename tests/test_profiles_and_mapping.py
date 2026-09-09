@@ -37,6 +37,34 @@ def test_player_maps_single_and_deduplicates_chord_output() -> None:
     player._playback_loop()
     assert keyboard_controller.operations == [("tap", ("J",))]
 
+
+def test_symbol_mapping_round_trips_with_scan_metadata(tmp_path: Path) -> None:
+    store = ProfileStore(tmp_path / "profiles.json")
+    store.data["mapping_profiles"] = {"default": {"A": ","}}
+    store.data["mapping_scan_profiles"] = {
+        "default": {"A": {"source_scan_code": 30, "target_scan_code": 51}}
+    }
+    store.save()
+    loaded = ProfileStore(tmp_path / "profiles.json")
+    assert loaded.active_mapping() == {"A": ","}
+    assert loaded.mapping_scans()["A"]["target_scan_code"] == 51
+
+
+def test_player_prefers_target_scan_code_when_available() -> None:
+    class ScanKeyboard(FakeKeyboard):
+        def tap_scan_code(self, scan_code: int) -> None:
+            self._record("tap_scan", [str(scan_code)])
+
+    scan_keyboard = ScanKeyboard()
+    player = Player(
+        make_score([["A"]]),
+        scan_keyboard,  # type: ignore[arg-type]
+        {"A": ","},
+        {"A": {"target_scan_code": 51}},
+    )
+    player._playback_loop()
+    assert scan_keyboard.operations == [("tap_scan", ("51",))]
+
     keyboard_controller = FakeKeyboard()
     player = Player(make_score([["A", "Q"]]), keyboard_controller, {"a": "j", "q": "j"})
     player._play_keys(["A", "Q"], 0)
