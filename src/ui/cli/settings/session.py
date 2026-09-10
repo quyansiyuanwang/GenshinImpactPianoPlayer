@@ -169,6 +169,7 @@ class SettingsSession:
                 )
         if source_scan_code is None or target_scan_code is None:
             import keyboard
+
             source_codes = keyboard.key_to_scan_codes(source.lower())
             target_codes = keyboard.key_to_scan_codes(target.lower())
             if not source_codes or not target_codes:
@@ -178,7 +179,10 @@ class SettingsSession:
         if target_scan_code <= 0 or source_scan_code <= 0:
             raise ValueError("scan codes must be positive")
         for existing_source, metadata in self.active_mapping_scans.items():
-            if existing_source != source and metadata.get("target_scan_code") == target_scan_code:
+            if (
+                existing_source != source
+                and metadata.get("target_scan_code") == target_scan_code
+            ):
                 raise ValueError(
                     f"Output scan code {target_scan_code} already used by {existing_source}"
                 )

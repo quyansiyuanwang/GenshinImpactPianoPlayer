@@ -109,7 +109,11 @@ class ProfileStore:
         if isinstance(scan_profiles, dict):
             clean_scans: dict[str, dict[str, dict[str, int]]] = {}
             for name, values in scan_profiles.items():
-                if not isinstance(name, str) or not name or not isinstance(values, dict):
+                if (
+                    not isinstance(name, str)
+                    or not name
+                    or not isinstance(values, dict)
+                ):
                     continue
                 entries: dict[str, dict[str, int]] = {}
                 for source, entry in values.items():
@@ -118,7 +122,9 @@ class ProfileStore:
                     if isinstance(entry, dict):
                         source_code = entry.get("source_scan_code")
                         target_code = entry.get("target_scan_code")
-                        if isinstance(source_code, int) and isinstance(target_code, int):
+                        if isinstance(source_code, int) and isinstance(
+                            target_code, int
+                        ):
                             entries[source.upper()] = {
                                 "source_scan_code": source_code,
                                 "target_scan_code": target_code,

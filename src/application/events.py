@@ -46,9 +46,14 @@ class InputEvent:
 
     @classmethod
     def character(
-        cls, value: str, modifiers: frozenset[str] = frozenset(), scan_code: int | None = None
+        cls,
+        value: str,
+        modifiers: frozenset[str] = frozenset(),
+        scan_code: int | None = None,
     ) -> "InputEvent":
-        return cls(InputKind.KEY, KeyCode.CHARACTER, value, modifiers, scan_code=scan_code)
+        return cls(
+            InputKind.KEY, KeyCode.CHARACTER, value, modifiers, scan_code=scan_code
+        )
 
     @classmethod
     def resize(cls, width: int, height: int) -> "InputEvent":

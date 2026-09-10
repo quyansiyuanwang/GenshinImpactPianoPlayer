@@ -72,7 +72,13 @@ class SettingsRootScreen:
             )
             self.table = MappingTable(
                 [
-                    (source, target, self.session.active_mapping_scans.get(source, {}).get("target_scan_code"))
+                    (
+                        source,
+                        target,
+                        self.session.active_mapping_scans.get(source, {}).get(
+                            "target_scan_code"
+                        ),
+                    )
                     for source, target in self.session.mapping_items
                 ]
             )
@@ -240,7 +246,9 @@ class SettingsRootScreen:
                     self.status.set_message(str(error))
                     return str(error)
                 self._build_tables()
-                self.status.set_message(f"Mapped {source} to {value} (scan {scan_code})")
+                self.status.set_message(
+                    f"Mapped {source} to {value} (scan {scan_code})"
+                )
                 return None
 
             self.editor = ScanCodeCaptureComponent(submit_mapping)

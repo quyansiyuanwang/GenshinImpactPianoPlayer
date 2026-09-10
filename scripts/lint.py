@@ -50,7 +50,7 @@ def main() -> None:
     print("=" * 70)
     print(f"Mode: {'Check only' if check_only else 'Fix and format'}\n")
 
-    results = {}
+    results: dict[str, bool] = {}
 
     # 1. Unit tests
     results["Pytest"] = run_command("Pytest", ["uv", "run", "pytest"])

@@ -91,7 +91,9 @@ class KeyboardInputAdapter:
         if event.event_type == "up":
             if modifier:
                 self._modifier_state.discard(modifier)
-            return InputEvent(InputKind.KEY, scan_code=getattr(event, "scan_code", None))
+            return InputEvent(
+                InputKind.KEY, scan_code=getattr(event, "scan_code", None)
+            )
         if modifier:
             self._modifier_state.add(modifier)
             return InputEvent(InputKind.KEY)

@@ -1,0 +1,54 @@
+{
+  "version": 2,
+  "active_hotkey_profile": "default",
+  "active_mapping_profile": "default",
+  "hotkey_profiles": {
+    "default": {
+      "play_pause": "f8",
+      "quit": "f2",
+      "open_settings": "f10",
+      "save": "f9",
+      "speed_up": "=",
+      "speed_down": "-",
+      "speed_up_large": "ctrl+=",
+      "speed_down_large": "ctrl+-",
+      "interval_shorter": ",",
+      "interval_longer": ".",
+      "arpeggio_shorter": "[",
+      "arpeggio_longer": "]",
+      "toggle_arpeggio_auto": "f3",
+      "line_interval_less": "down",
+      "line_interval_more": "up",
+      "space_interval_less": "shift+down",
+      "space_interval_more": "shift+up",
+      "empty_line_interval_less": "ctrl+down",
+      "empty_line_interval_more": "ctrl+up",
+      "segment_length_less": "page down",
+      "segment_length_more": "page up",
+      "skip_backward": "left",
+      "skip_forward": "right",
+      "skip_backward_large": "ctrl+left",
+      "skip_forward_large": "ctrl+right",
+      "jump_to_start": "home",
+      "jump_to_end": "end",
+      "toggle_loop": "insert",
+      "toggle_line_loop": "delete",
+      "set_range_a": "ctrl+home",
+      "set_range_b": "ctrl+end",
+      "clear_range": "ctrl+backspace",
+      "set_bookmark": "ctrl+k",
+      "jump_to_bookmark": "ctrl+l",
+      "toggle_output_lock": "f12",
+      "reload": "f5",
+      "reparse": "f6",
+      "toggle_sustain": "f7",
+      "toggle_segment_strict": "f4"
+    }
+  },
+  "mapping_profiles": {
+    "default": {}
+  },
+  "mapping_scan_profiles": {
+    "default": {}
+  }
+}

@@ -23,7 +23,9 @@ class WindowsInputIsolation:
     WM_SYSKEYDOWN = 0x0104
     WM_SYSKEYUP = 0x0105
 
-    def __init__(self, scan_codes: Iterable[int], on_key: Callable[[int], None] | None = None) -> None:
+    def __init__(
+        self, scan_codes: Iterable[int], on_key: Callable[[int], None] | None = None
+    ) -> None:
         self.scan_codes = {int(code) for code in scan_codes if int(code) > 0}
         self.on_key = on_key
         self._hook = None
@@ -64,10 +66,14 @@ class WindowsInputIsolation:
 
             def callback(n_code: int, w_param: int, l_param: int) -> int:
                 if n_code < 0:
-                    return int(user32.CallNextHookEx(self._hook, n_code, w_param, l_param))
+                    return int(
+                        user32.CallNextHookEx(self._hook, n_code, w_param, l_param)
+                    )
                 data = ctypes.cast(l_param, ctypes.POINTER(KBDLLHOOKSTRUCT)).contents
                 if data.flags & self.LLKHF_INJECTED:
-                    return int(user32.CallNextHookEx(self._hook, n_code, w_param, l_param))
+                    return int(
+                        user32.CallNextHookEx(self._hook, n_code, w_param, l_param)
+                    )
                 if self.should_suppress(int(data.scanCode)) and w_param in {
                     self.WM_KEYDOWN,
                     self.WM_SYSKEYDOWN,

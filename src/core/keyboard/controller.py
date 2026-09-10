@@ -23,7 +23,9 @@ class KeyboardController:
         Args:
             key: Key to press
         """
-        with mark_injected(keyboard.key_to_scan_codes(key.lower(), error_if_missing=False)):
+        with mark_injected(
+            keyboard.key_to_scan_codes(key.lower(), error_if_missing=False)
+        ):
             keyboard.press(key.lower())
 
     def release_key(self, key: str) -> None:
@@ -32,7 +34,9 @@ class KeyboardController:
         Args:
             key: Key to release
         """
-        with mark_injected(keyboard.key_to_scan_codes(key.lower(), error_if_missing=False)):
+        with mark_injected(
+            keyboard.key_to_scan_codes(key.lower(), error_if_missing=False)
+        ):
             keyboard.release(key.lower())
 
     def tap_key(self, key: str) -> None:
@@ -41,7 +45,9 @@ class KeyboardController:
         Args:
             key: Key to tap
         """
-        with mark_injected(keyboard.key_to_scan_codes(key.lower(), error_if_missing=False)):
+        with mark_injected(
+            keyboard.key_to_scan_codes(key.lower(), error_if_missing=False)
+        ):
             keyboard.press_and_release(key.lower())
 
     def press_keys_simultaneously(self, keys: List[str]) -> None:

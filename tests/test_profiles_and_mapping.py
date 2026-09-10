@@ -58,7 +58,7 @@ def test_player_prefers_target_scan_code_when_available() -> None:
     scan_keyboard = ScanKeyboard()
     player = Player(
         make_score([["A"]]),
-        scan_keyboard,  # type: ignore[arg-type]
+        scan_keyboard,
         {"A": ","},
         {"A": {"target_scan_code": 51}},
     )

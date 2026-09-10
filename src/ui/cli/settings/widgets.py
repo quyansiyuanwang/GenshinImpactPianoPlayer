@@ -250,17 +250,24 @@ class ScanCodeCaptureComponent(KeyCaptureComponent):
         self.scan_code: int | None = None
 
     def handle(self, event: InputEvent) -> bool:
-        if self.capturing and event.kind == InputKind.KEY and event.key not in {
-            None,
-            KeyCode.ENTER,
-            KeyCode.BACKSPACE,
-        }:
+        if (
+            self.capturing
+            and event.kind == InputKind.KEY
+            and event.key
+            not in {
+                None,
+                KeyCode.ENTER,
+                KeyCode.BACKSPACE,
+            }
+        ):
             if event.scan_code is None or event.scan_code <= 0:
                 if event.key == KeyCode.CHARACTER and event.text.isprintable():
                     self.value = event.text.lower()
                     self.capturing = False
                     return True
-                self.error = "physical scan code is unavailable; type a key name instead"
+                self.error = (
+                    "physical scan code is unavailable; type a key name instead"
+                )
                 self.capturing = False
                 return True
             self.value = self._binding_name(event)
@@ -268,7 +275,11 @@ class ScanCodeCaptureComponent(KeyCaptureComponent):
             self.capturing = False
             return True
         if event.key == KeyCode.ENTER and not self.capturing and self.value:
-            error = self._scan_submit(self.value, self.scan_code) if self._scan_submit else None
+            error = (
+                self._scan_submit(self.value, self.scan_code)
+                if self._scan_submit
+                else None
+            )
             if error:
                 self.error = error
             else:
