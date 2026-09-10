@@ -67,7 +67,7 @@ For practicing a section, mark the current position as the range start with `Ctr
 
 `F12` locks GIPianoPlayer's control input. While locked, user key presses cannot change playback, timing, navigation, or save settings; playback continues to send score keys. Press `F12` again to unlock.
 
-Press `F10` to open the runtime settings UI. It supports independent hotkey and score-mapping profiles, including creating, selecting, renaming, and deleting profiles. Settings are saved to `gipianoplayer_profiles.json` in the current project directory. A mapping such as `A -> J` changes only the key sent to the target application; the score display remains unchanged.
+Press `F10` to open the runtime settings UI. It supports independent hotkey and score-mapping profiles, including creating, selecting, renaming, and deleting profiles. Settings are saved to `gipianoplayer_profiles.json` in the current project directory. A mapping such as `A -> J` changes only the key sent to the target application; the score display remains unchanged. Mapping targets are captured by physical scan code, so punctuation keys such as `,`, `.`, and `/` are supported regardless of keyboard layout. On Windows, configured application keys are suppressed for physical input while injected playback events are allowed through to the target application.
 
 Empty line interval changes (and segment length or strict mode changes) reparse the score so blank lines are added or removed to match the new setting; the file's configuration header is updated at the same time. Pressing the shifted `+` key works the same as `=` for speed.
 

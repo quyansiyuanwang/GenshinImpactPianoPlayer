@@ -24,10 +24,23 @@ class MainLayout:
         height = max(0, height)
         width = max(0, width)
         bounds = Rect(0, 0, height, width)
-        tiny = width < 36 or height < 10
+        tiny = width < 36 or height < 14
         header_height = min(height, 3 if not tiny else 2)
-        footer_height = 0 if height < 8 else (2 if height >= 16 else 1)
-        details_height = 4 if height >= 25 else (2 if height >= 18 else 0)
+        footer_height = (
+            0 if height < 8 else (3 if height >= 24 else (2 if height >= 14 else 1))
+        )
+        if height >= 36:
+            details_height = 8 if width >= 100 else 15
+        elif height >= 30:
+            details_height = 8
+        elif height >= 28:
+            details_height = 5
+        elif height >= 22:
+            details_height = 3
+        elif height >= 18:
+            details_height = 2
+        else:
+            details_height = 0
         status_height = 2 if height >= 7 else 1
         body_height = max(
             0,
@@ -49,7 +62,7 @@ class MainLayout:
                 body_top + score_height, 0, body_height - score_height, width
             )
         elif stacked:
-            playlist_height = min(8, max(4, body_height // 3))
+            playlist_height = min(7, max(3, body_height // 3))
             score = Rect(body_top, 0, max(0, body_height - playlist_height - 1), width)
             playlist = Rect(score.top + score.height + 1, 0, playlist_height, width)
         else:

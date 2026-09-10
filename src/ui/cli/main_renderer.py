@@ -7,10 +7,20 @@ import os
 import time
 from typing import Any
 
+from src.application.config.constants import (
+    DISPLAY_LINES_AFTER,
+    DISPLAY_LINES_BEFORE,
+    DISPLAY_MAX_SCORE_LINES,
+)
 from src.ui.cli.components import Rect, TerminalSurface
 from src.ui.cli.main_layout import MainLayout
+from src.ui.cli.playback_context import (
+    configuration_lines,
+    control_hints,
+    visible_configuration,
+)
 from src.ui.cli.playlist.widgets import PlaylistTable
-from src.ui.cli.terminal_text import cell_width, clip_cells
+from src.ui.cli.terminal_text import cell_width, clip_cells, fit_cells
 
 
 class MainRenderer:
@@ -44,17 +54,20 @@ class MainRenderer:
         surface.addstr(
             rect.top,
             rect.left,
-            clip_cells("GIPianoPlayer - Command Line Interface", rect.width - 1),
-            curses.A_BOLD,
+            fit_cells(" GIPianoPlayer - Command Line Interface", rect.width - 1),
+            curses.A_REVERSE,
         )
         if rect.height >= 2:
-            surface.addstr(rect.top + 1, rect.left, "=" * max(0, rect.width - 1))
-        if rect.height >= 3:
             name = os.path.basename(host.file_path)
-            metadata = f"File: {name}  |  Lines: {len(host.score.lines)}"
+            metadata = f" Track  {name}  |  {len(host.score.lines)} lines"
             surface.addstr(
-                rect.top + 2, rect.left, clip_cells(metadata, rect.width - 1)
+                rect.top + 1,
+                rect.left,
+                clip_cells(metadata, rect.width - 1),
+                curses.A_BOLD,
             )
+        if rect.height >= 3:
+            surface.addstr(rect.top + 2, rect.left, "-" * max(0, rect.width - 1))
 
     def _render_score(self, host: Any, surface: TerminalSurface, rect: Rect) -> None:
         if rect.height <= 0 or rect.width <= 1:
@@ -63,6 +76,17 @@ class MainRenderer:
         current_note = host.player.get_position()[1] if host.player else 0
         top = rect.top
         available = rect.height
+        total = len(host.score.lines)
+        score_title = f" Score  Line {min(current_line + 1, total)}/{total} "
+        title_attr = curses.A_REVERSE if not host.playlist_focus else curses.A_BOLD
+        surface.addstr(
+            top,
+            rect.left,
+            fit_cells(score_title, rect.width - 1),
+            title_attr,
+        )
+        top += 1
+        available -= 1
         warnings = host.score.warnings
         if warnings and available:
             preview = "; ".join(warnings[:2])
@@ -78,19 +102,28 @@ class MainRenderer:
         if available <= 0:
             return
 
-        total = len(host.score.lines)
-        start = max(0, min(current_line - available // 2, max(0, total - available)))
-        end = min(total, start + available)
-        for row, line_index in enumerate(range(start, end)):
+        start, end, hidden_before, hidden_after = self._score_window(
+            total, current_line, available
+        )
+        row = top
+        if hidden_before:
+            surface.addstr(
+                row,
+                rect.left,
+                clip_cells(f"  ... {start} lines above ...", rect.width - 1),
+            )
+            row += 1
+        for line_index in range(start, end):
             line = host.score.lines[line_index]
             line_number = f"[{line_index + 1:3d}] "
-            target_row = top + row
+            target_row = row
             if line_index != current_line:
                 text = line_number + host._format_score_line(line)
                 attribute = curses.color_pair(1) if line_index < current_line else 0
                 surface.addstr(
                     target_row, rect.left, clip_cells(text, rect.width - 1), attribute
                 )
+                row += 1
                 continue
             self._render_current_line(
                 host,
@@ -102,6 +135,39 @@ class MainRenderer:
                 line,
                 current_note,
             )
+            row += 1
+        if hidden_after and row < top + available:
+            surface.addstr(
+                row,
+                rect.left,
+                clip_cells(f"  ... {total - end} lines below ...", rect.width - 1),
+            )
+
+    def _score_window(
+        self, total: int, current: int, available: int
+    ) -> tuple[int, int, bool, bool]:
+        maximum = min(DISPLAY_MAX_SCORE_LINES, max(1, available))
+        capacity = min(maximum, available, total)
+        start, end = self._score_bounds(total, current, capacity)
+        hidden_before = start > 0
+        hidden_after = end < total
+        indicator_rows = int(hidden_before) + int(hidden_after)
+        capacity = min(maximum, max(1, available - indicator_rows), total)
+        start, end = self._score_bounds(total, current, capacity)
+        return start, end, start > 0, end < total
+
+    def _score_bounds(self, total: int, current: int, capacity: int) -> tuple[int, int]:
+        if total <= 0 or capacity <= 0:
+            return 0, 0
+        current = min(max(0, current), total - 1)
+        before = min(DISPLAY_LINES_BEFORE, current, capacity - 1)
+        after = min(DISPLAY_LINES_AFTER, total - current - 1, capacity - before - 1)
+        remaining = capacity - before - after - 1
+        extra_after = min(remaining, total - current - after - 1)
+        after += extra_after
+        remaining -= extra_after
+        before += min(remaining, current - before)
+        return current - before, current + after + 1
 
     def _render_current_line(
         self,
@@ -136,8 +202,8 @@ class MainRenderer:
             return
         if rect.left > 0:
             for row in range(rect.top, rect.top + rect.height):
-                surface.addstr(row, rect.left - 1, "│")
-        PlaylistTable(host.playlist).render(surface, rect)
+                surface.addstr(row, rect.left - 1, "|")
+        PlaylistTable(host.playlist, focused=host.playlist_focus).render(surface, rect)
 
     def _render_status(self, host: Any, surface: TerminalSurface, rect: Rect) -> None:
         if rect.height <= 0 or rect.width <= 1:
@@ -177,30 +243,46 @@ class MainRenderer:
     def _render_details(self, host: Any, surface: TerminalSurface, rect: Rect) -> None:
         if rect.height <= 0 or not host.player:
             return
-        keyboard_state = "LOCKED" if host._keyboard_locked else "active"
-        details = [
-            f"Speed {host.player._speed_multiplier:.2f}x  Note {host.player._interval_rating:.3f}s  Keyboard {keyboard_state}",
-            f"Loop {'ON' if host.player.get_loop_enabled() else 'OFF'}  Sustain {'ON' if host.player.get_sustain_enabled() else 'OFF'}  Arpeggio {'AUTO' if host.player.get_arpeggio_auto() else 'MANUAL'}",
-            f"Mapping {len(host.player.get_key_mapping())} key(s)  Playlist {len(host.playlist.entries)} track(s)",
-            "Tab focuses playlist; arrows move selection; Enter loads and pauses",
-        ]
+        all_details = configuration_lines(host)
+        if rect.width >= 100 and rect.height >= 8 and len(all_details) >= 15:
+            self._render_detail_columns(surface, rect, all_details)
+            return
+        details = visible_configuration(all_details, rect.height)
         for offset, detail in enumerate(details[: rect.height]):
+            attribute = curses.A_BOLD if offset == 0 else 0
             surface.addstr(
-                rect.top + offset, rect.left, clip_cells(detail, rect.width - 1)
+                rect.top + offset,
+                rect.left,
+                clip_cells(detail, rect.width - 1),
+                attribute,
             )
+
+    def _render_detail_columns(
+        self, surface: TerminalSurface, rect: Rect, details: list[str]
+    ) -> None:
+        surface.addstr(rect.top, rect.left, "Configuration:", curses.A_BOLD)
+        column_width = max(1, (rect.width - 3) // 2)
+        items = details[1:]
+        split = (len(items) + 1) // 2
+        for row in range(min(rect.height - 1, split)):
+            left = items[row]
+            surface.addstr(
+                rect.top + row + 1,
+                rect.left,
+                clip_cells(left, column_width - 1),
+            )
+            right_index = split + row
+            if right_index < len(items):
+                surface.addstr(
+                    rect.top + row + 1,
+                    rect.left + column_width + 2,
+                    clip_cells(items[right_index], column_width - 1),
+                )
 
     def _render_footer(self, host: Any, surface: TerminalSurface, rect: Rect) -> None:
         if rect.height <= 0:
             return
-        controls = (
-            f"[{host.hotkeys['play_pause']}] Play/Pause  [{host.hotkeys['quit']}] Quit  "
-            f"[{host.hotkeys['open_settings']}] Settings  [A] Add  [/] Search"
-        )
-        surface.addstr(rect.top, rect.left, clip_cells(controls, rect.width - 1))
-        if rect.height > 1:
-            navigation = (
-                "[N/P] Next/Previous  [D] Remove  [C] Clear  [Home/End] Navigate"
-            )
+        for offset, hint in enumerate(control_hints(host)[: rect.height]):
             surface.addstr(
-                rect.top + 1, rect.left, clip_cells(navigation, rect.width - 1)
+                rect.top + offset, rect.left, clip_cells(hint, rect.width - 1)
             )

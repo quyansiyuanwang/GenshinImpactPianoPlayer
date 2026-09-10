@@ -1,6 +1,7 @@
 """Unicode width and responsive playback layout tests."""
 
 from src.ui.cli.main_layout import MainLayout
+from src.ui.cli.main_renderer import MainRenderer
 from src.ui.cli.terminal_text import cell_width, clip_cells, fit_cells
 
 
@@ -40,3 +41,18 @@ def test_resize_recalculates_wide_and_stacked_geometry() -> None:
     assert wide.playlist.left > wide.score.left
     assert narrow.stacked
     assert narrow.playlist.top > narrow.score.top
+
+
+def test_score_viewport_grows_with_height_but_remains_bounded() -> None:
+    renderer = MainRenderer()
+    small_start, small_end, _before, _after = renderer._score_window(100, 50, 7)
+    large_start, large_end, _before, _after = renderer._score_window(100, 50, 30)
+    assert small_end - small_start < large_end - large_start
+    assert large_end - large_start <= 18
+
+
+def test_compact_layout_preserves_score_rows() -> None:
+    medium = MainLayout.from_size(20, 70, has_playlist=True)
+    compact = MainLayout.from_size(12, 45, has_playlist=True)
+    assert medium.score.height >= 6
+    assert compact.score.height >= 3

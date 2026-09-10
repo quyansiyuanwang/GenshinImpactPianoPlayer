@@ -2,7 +2,7 @@
 
 import time
 from threading import Event, RLock, Thread
-from typing import Callable, List, Mapping, Optional, Protocol
+from typing import Callable, List, Mapping, Optional, Protocol, TypeAlias
 
 from src.application.config.constants import (
     MAX_ARPEGGIO_INTERVAL,
@@ -27,6 +27,7 @@ PlayerState = PSM_State
 __all__ = ["Player", "PlayerState"]
 
 SUSTAIN_RETRIGGER_INTERVAL = 0.02
+OutputKey: TypeAlias = str | int
 
 
 class KeyboardControllerProtocol(Protocol):
@@ -49,6 +50,7 @@ class Player:
         score: ParsedScore,
         keyboard_controller: KeyboardControllerProtocol,
         key_mapping: Mapping[str, str] | None = None,
+        mapping_scans: Mapping[str, Mapping[str, int]] | None = None,
     ):
         self.score = score
         self.keyboard = keyboard_controller
@@ -107,7 +109,7 @@ class Player:
 
         # Sustain mode
         self._sustain_enabled = False
-        self._sustained_keys: List[str] = []  # Keys currently being held
+        self._sustained_keys: List[OutputKey] = []  # Keys currently being held
 
         # True when the last playback ran to the end of the score naturally
         self._playback_completed = False
@@ -125,6 +127,7 @@ class Player:
         # Panic switch: suppress all simulated key output while locked
         self._output_locked = False
         self._key_mapping = self._validate_key_mapping(key_mapping or {})
+        self._mapping_scans = self._validate_mapping_scans(mapping_scans or {})
 
         # Playback thread
         self._playback_thread: Optional[Thread] = None
@@ -399,33 +402,53 @@ class Player:
     def _validate_key_mapping(mapping: Mapping[str, str]) -> dict[str, str]:
         """Normalize a score-to-output mapping and discard invalid entries."""
         return {
-            source.upper(): target.upper()
+            source.upper(): target.upper() if target.isalpha() else target.lower()
             for source, target in mapping.items()
             if isinstance(source, str)
             and isinstance(target, str)
             and len(source) == 1
-            and len(target) == 1
             and source.upper() in VALID_KEYS
-            and target.upper() in VALID_KEYS
+            and bool(target.strip())
         }
 
-    def set_key_mapping(self, mapping: Mapping[str, str]) -> None:
+    @staticmethod
+    def _validate_mapping_scans(
+        mapping_scans: Mapping[str, Mapping[str, int]],
+    ) -> dict[str, int]:
+        return {
+            source.upper(): entry["target_scan_code"]
+            for source, entry in mapping_scans.items()
+            if isinstance(source, str)
+            and source.upper() in VALID_KEYS
+            and isinstance(entry, Mapping)
+            and isinstance(entry.get("target_scan_code"), int)
+            and entry["target_scan_code"] > 0
+        }
+
+    def set_key_mapping(
+        self,
+        mapping: Mapping[str, str],
+        mapping_scans: Mapping[str, Mapping[str, int]] | None = None,
+    ) -> None:
         """Set the score-key to output-key mapping for future notes."""
         with self._control_lock:
             self._key_mapping = self._validate_key_mapping(mapping)
+            self._mapping_scans = self._validate_mapping_scans(mapping_scans or {})
 
     def get_key_mapping(self) -> dict[str, str]:
         """Return a copy of the active score-key mapping."""
         with self._control_lock:
             return self._key_mapping.copy()
 
-    def _map_keys(self, keys: List[str]) -> List[str]:
+    def _map_keys(self, keys: List[str]) -> List[OutputKey]:
         """Map output keys once and remove duplicate physical keys in chords."""
         with self._control_lock:
             mapping = self._key_mapping.copy()
-        mapped: List[str] = []
+            mapping_scans = self._mapping_scans.copy()
+        mapped: List[OutputKey] = []
         for key in keys:
-            output = mapping.get(key.upper(), key)
+            source = key.upper()
+            output: OutputKey = mapping_scans.get(source, mapping.get(source, key))
             if output not in mapped:
                 mapped.append(output)
         return mapped
@@ -484,7 +507,40 @@ class Player:
             self._sustained_keys.clear()
 
         for key in keys:
-            self.keyboard.release_key(key)
+            self._release_output(key)
+
+    def _tap_output(self, key: OutputKey) -> None:
+        if isinstance(key, int) and hasattr(self.keyboard, "tap_scan_code"):
+            self.keyboard.tap_scan_code(key)
+        else:
+            self.keyboard.tap_key(str(key))
+
+    def _press_output(self, key: OutputKey) -> None:
+        if isinstance(key, int) and hasattr(self.keyboard, "press_scan_code"):
+            self.keyboard.press_scan_code(key)
+        else:
+            self.keyboard.press_key(str(key))
+
+    def _release_output(self, key: OutputKey) -> None:
+        if isinstance(key, int) and hasattr(self.keyboard, "release_scan_code"):
+            self.keyboard.release_scan_code(key)
+        else:
+            self.keyboard.release_key(str(key))
+
+    def _press_outputs_simultaneously(self, keys: List[OutputKey]) -> None:
+        if all(isinstance(key, int) for key in keys) and hasattr(
+            self.keyboard, "press_scan_codes_simultaneously"
+        ):
+            self.keyboard.press_scan_codes_simultaneously([int(key) for key in keys])
+            return
+        if all(isinstance(key, str) for key in keys):
+            self.keyboard.press_keys_simultaneously([str(key) for key in keys])
+            return
+        for key in keys:
+            self._press_output(key)
+        time.sleep(0.005)
+        for key in keys:
+            self._release_output(key)
 
     def jump_to_line(self, line_number: int) -> None:
         """Jump to a specific line."""
@@ -667,7 +723,7 @@ class Player:
 
         return True
 
-    def _next_pending_keys(self, generation: int) -> List[str]:
+    def _next_pending_keys(self, generation: int) -> List[OutputKey]:
         """Return the first physical keys of the next score event."""
         with self._control_lock:
             if self._cursor_generation != generation or self._cursor >= len(
@@ -692,7 +748,7 @@ class Player:
         return [key for key in item.keys if isinstance(key, str)]
 
     def _wait_before_next(
-        self, duration: float, generation: int, next_keys: List[str]
+        self, duration: float, generation: int, next_keys: List[OutputKey]
     ) -> bool:
         """Use an existing gap to release keys that must be retriggered next."""
         with self._sustain_lock:
@@ -716,7 +772,7 @@ class Player:
         return self._wait(release_lead * speed, generation)
 
     def _wait_repeated_before_next(
-        self, duration: float, count: int, generation: int, next_keys: List[str]
+        self, duration: float, count: int, generation: int, next_keys: List[OutputKey]
     ) -> bool:
         """Wait for virtual rests while preserving time for a repeated next key."""
         for _ in range(max(0, count - 1)):
@@ -889,8 +945,8 @@ class Player:
 
     def _play_keys(self, keys: List[str], _generation: int) -> bool:
         """Dispatch a single key or chord, honoring output lock and sustain."""
-        keys = self._map_keys(keys)
-        if not keys:
+        output_keys: List[OutputKey] = self._map_keys(keys)
+        if not output_keys:
             return True
 
         with self._sustain_lock:
@@ -898,26 +954,26 @@ class Player:
                 return True
             sustain_enabled = self._sustain_enabled
         if not sustain_enabled:
-            if len(keys) == 1:
-                self.keyboard.tap_key(keys[0])
+            if len(output_keys) == 1:
+                self._tap_output(output_keys[0])
             else:
-                self.keyboard.press_keys_simultaneously(keys)
+                self._press_outputs_simultaneously(output_keys)
             return True
 
         self._release_sustained_keys()
         with self._sustain_lock:
             if not self._sustain_enabled:
-                if len(keys) == 1:
-                    self.keyboard.tap_key(keys[0])
+                if len(output_keys) == 1:
+                    self._tap_output(output_keys[0])
                 else:
-                    self.keyboard.press_keys_simultaneously(keys)
+                    self._press_outputs_simultaneously(output_keys)
                 return True
-            for key in keys:
-                self.keyboard.press_key(key)
+            for key in output_keys:
+                self._press_output(key)
                 self._sustained_keys.append(key)
         return True
 
-    def _release_repeated_sustained_keys(self, next_keys: List[str]) -> None:
+    def _release_repeated_sustained_keys(self, next_keys: List[OutputKey]) -> None:
         """Release only held keys that the upcoming event must retrigger."""
         next_key_set = set(next_keys)
         with self._sustain_lock:
@@ -929,4 +985,4 @@ class Player:
             ]
 
         for key in keys_to_release:
-            self.keyboard.release_key(key)
+            self._release_output(key)

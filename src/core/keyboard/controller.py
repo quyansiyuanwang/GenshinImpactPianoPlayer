@@ -3,6 +3,7 @@
 import time
 import keyboard
 from typing import List
+from src.ui.cli.input.injection_state import mark_injected
 
 
 class KeyboardController:
@@ -22,7 +23,10 @@ class KeyboardController:
         Args:
             key: Key to press
         """
-        keyboard.press(key.lower())
+        with mark_injected(
+            keyboard.key_to_scan_codes(key.lower(), error_if_missing=False)
+        ):
+            keyboard.press(key.lower())
 
     def release_key(self, key: str) -> None:
         """Release a single key.
@@ -30,7 +34,10 @@ class KeyboardController:
         Args:
             key: Key to release
         """
-        keyboard.release(key.lower())
+        with mark_injected(
+            keyboard.key_to_scan_codes(key.lower(), error_if_missing=False)
+        ):
+            keyboard.release(key.lower())
 
     def tap_key(self, key: str) -> None:
         """Press and immediately release a key.
@@ -38,7 +45,10 @@ class KeyboardController:
         Args:
             key: Key to tap
         """
-        keyboard.press_and_release(key.lower())
+        with mark_injected(
+            keyboard.key_to_scan_codes(key.lower(), error_if_missing=False)
+        ):
+            keyboard.press_and_release(key.lower())
 
     def press_keys_simultaneously(self, keys: List[str]) -> None:
         """Press multiple keys at the same time (chord).
@@ -47,15 +57,17 @@ class KeyboardController:
             keys: List of keys to press simultaneously
         """
         # Press all keys
-        for key in keys:
-            keyboard.press(key.lower())
-
-        # Minimal delay to ensure all keys are registered
-        time.sleep(0.005)
-
-        # Release all keys
-        for key in keys:
-            keyboard.release(key.lower())
+        scan_codes = [
+            code
+            for key in keys
+            for code in keyboard.key_to_scan_codes(key.lower(), error_if_missing=False)
+        ]
+        with mark_injected(scan_codes):
+            for key in keys:
+                keyboard.press(key.lower())
+            time.sleep(0.005)
+            for key in keys:
+                keyboard.release(key.lower())
 
     def press_keys_arpeggio(self, keys: List[str], interval: float) -> None:
         """Press keys in rapid succession (arpeggio).
@@ -76,3 +88,23 @@ class KeyboardController:
         """
         for key in keys:
             self.release_key(key)
+
+    def press_scan_code(self, scan_code: int) -> None:
+        with mark_injected([scan_code]):
+            keyboard.press(scan_code)
+
+    def release_scan_code(self, scan_code: int) -> None:
+        with mark_injected([scan_code]):
+            keyboard.release(scan_code)
+
+    def tap_scan_code(self, scan_code: int) -> None:
+        with mark_injected([scan_code]):
+            keyboard.press_and_release(scan_code)
+
+    def press_scan_codes_simultaneously(self, scan_codes: List[int]) -> None:
+        with mark_injected(scan_codes):
+            for scan_code in scan_codes:
+                keyboard.press(scan_code)
+            time.sleep(0.005)
+            for scan_code in scan_codes:
+                keyboard.release(scan_code)

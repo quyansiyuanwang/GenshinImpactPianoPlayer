@@ -60,11 +60,27 @@ def test_table_keeps_wide_character_columns_aligned() -> None:
 def test_hotkey_enter_edits_selected_action(tmp_path: Path) -> None:
     session = SettingsSession(ProfileStore(tmp_path / "profiles.json"))
     screen = SettingsRootScreen(session)
-    screen.handle(InputEvent.character("\t"))
+    assert screen.handle(InputEvent(InputEvent.character("x").kind, KeyCode.TAB))
+    assert screen.focus == "table"
     screen.handle(InputEvent(InputEvent.character("x").kind, KeyCode.DOWN))
     screen.handle(InputEvent(InputEvent.character("x").kind, KeyCode.ENTER))
     assert screen.editor is not None
     assert screen.editor.value == session.active_hotkeys["quit"]
+
+
+def test_tab_switches_back_to_profiles_and_legacy_tab_is_supported(
+    tmp_path: Path,
+) -> None:
+    session = SettingsSession(ProfileStore(tmp_path / "profiles.json"))
+    screen = SettingsRootScreen(session)
+
+    screen.handle(InputEvent(InputEvent.character("x").kind, KeyCode.TAB))
+    assert screen.focus == "table"
+    screen.handle(InputEvent(InputEvent.character("x").kind, KeyCode.TAB))
+    assert screen.focus == "profiles"
+
+    screen.handle(InputEvent.character("\t"))
+    assert screen.focus == "table"
 
 
 def test_hotkey_conflict_keeps_editor_open(tmp_path: Path) -> None:

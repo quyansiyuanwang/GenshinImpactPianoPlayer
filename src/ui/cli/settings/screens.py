@@ -16,6 +16,7 @@ from src.ui.cli.settings.widgets import (
     KeyCaptureComponent,
     MappingTable,
     ProfileList,
+    ScanCodeCaptureComponent,
     StatusBar,
     TableComponent,
 )
@@ -69,7 +70,18 @@ class SettingsRootScreen:
             self.profile_list.cursor = list(self.session.mappings).index(
                 self.session.active_mapping_profile
             )
-            self.table = MappingTable(self.session.mapping_items)
+            self.table = MappingTable(
+                [
+                    (
+                        source,
+                        target,
+                        self.session.active_mapping_scans.get(source, {}).get(
+                            "target_scan_code"
+                        ),
+                    )
+                    for source, target in self.session.mapping_items
+                ]
+            )
         self.table.cursor = min(previous_row, max(0, len(self.table.rows) - 1))
 
     def render(self, surface: SurfaceLike, rect: Rect) -> None:
@@ -223,17 +235,24 @@ class SettingsRootScreen:
         else:
             source, target, _ = self.table.rows[row]
 
-            def submit(value: str) -> str | None:
+            def submit_mapping(value: str, scan_code: int | None) -> str | None:
                 try:
-                    self.session.set_mapping(source, value)
+                    self.session.set_mapping(
+                        source,
+                        value,
+                        target_scan_code=scan_code,
+                    )
                 except ValueError as error:
                     self.status.set_message(str(error))
                     return str(error)
                 self._build_tables()
-                self.status.set_message(f"Mapped {source} to {value.upper()}")
+                self.status.set_message(
+                    f"Mapped {source} to {value} (scan {scan_code})"
+                )
                 return None
 
-            self.editor = InlineEditor(target, f"Output for {source}", submit)
+            self.editor = ScanCodeCaptureComponent(submit_mapping)
+            self.editor.value = target
 
     def _add_mapping(self) -> None:
         def submit(value: str) -> str | None:
@@ -371,4 +390,4 @@ def _character(event: InputEvent, value: str) -> bool:
 
 
 def _is_tab(event: InputEvent) -> bool:
-    return _character(event, "\t")
+    return event.key == KeyCode.TAB or _character(event, "\t")

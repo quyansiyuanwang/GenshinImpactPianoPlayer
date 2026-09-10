@@ -23,7 +23,12 @@ class TrackController:
             with path.open("r", encoding="utf-8-sig") as stream:
                 host.original_content = stream.read()
             score = ScoreParser(str(path)).parse()
-            player = Player(score, KeyboardController(), host.key_mapping)
+            player = Player(
+                score,
+                KeyboardController(),
+                host.key_mapping,
+                host.key_mapping_scans,
+            )
             player.set_progress_callback(host._on_progress)
             host.score = score
             host.player = player

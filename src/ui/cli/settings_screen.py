@@ -30,6 +30,7 @@ class SettingsScreenMixin(ApplicationHost):
         handler = getattr(self, "_hotkey_handler", None)
         if handler:
             handler.stop()
+        self._stop_input_isolation()
         stdscr.nodelay(False)
         stdscr.keypad(True)
 
@@ -55,8 +56,9 @@ class SettingsScreenMixin(ApplicationHost):
                 self.profile_store.data = original_profiles
             self.hotkeys = self.profile_store.active_hotkeys()
             self.key_mapping = self.profile_store.active_mapping()
+            self.key_mapping_scans = self.profile_store.mapping_scans()
             if self.player:
-                self.player.set_key_mapping(self.key_mapping)
+                self.player.set_key_mapping(self.key_mapping, self.key_mapping_scans)
             self._rebuild_hotkeys()
             if was_playing and self.player:
                 self.player.resume()
@@ -66,8 +68,9 @@ class SettingsScreenMixin(ApplicationHost):
         """Apply a saved session to runtime services."""
         self.hotkeys = session.active_hotkeys.copy()
         self.key_mapping = session.active_mapping.copy()
+        self.key_mapping_scans = copy.deepcopy(session.active_mapping_scans)
         if self.player:
-            self.player.set_key_mapping(self.key_mapping)
+            self.player.set_key_mapping(self.key_mapping, self.key_mapping_scans)
         self._rebuild_hotkeys()
 
 

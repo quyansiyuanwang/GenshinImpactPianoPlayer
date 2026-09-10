@@ -11,18 +11,20 @@ from src.ui.cli.settings.layout import clip
 
 
 class PlaylistTable(Component):
-    def __init__(self, playlist: Playlist) -> None:
+    def __init__(self, playlist: Playlist, *, focused: bool = False) -> None:
         self.playlist = playlist
         self.offset = 0
+        self.focused = focused
 
     def render(self, surface: SurfaceLike, rect: Rect) -> None:
         if rect.height <= 0 or rect.width <= 1:
             return
-        title = "Playlist" + (
-            f"  /{self.playlist.query}" if self.playlist.query else ""
-        )
-        surface.addstr(rect.top, rect.left, clip(title, rect.width))
-        capacity = max(0, rect.height - 1)
+        focus_label = " [FOCUSED]" if self.focused else ""
+        query = f"  /{self.playlist.query}" if self.playlist.query else ""
+        title = f" Playlist ({len(self.playlist.visible_entries)}){focus_label}{query} "
+        title_attr = getattr(surface, "highlight_attr", 0) if self.focused else 0
+        surface.addstr(rect.top, rect.left, clip(title, rect.width), title_attr)
+        capacity = max(0, rect.height - 2)
         selected = self.playlist.visible_index
         if selected < self.offset:
             self.offset = selected
@@ -33,14 +35,28 @@ class PlaylistTable(Component):
         entries = self.playlist.visible_entries[self.offset : self.offset + capacity]
         for row, entry in enumerate(entries, 1):
             index = self.offset + row - 1
-            marker = ">" if index == self.playlist.visible_index else " "
+            selected = index == self.playlist.visible_index
+            marker = ">" if selected else " "
             current = "*" if entry is self.playlist.current else " "
             line = f"{marker}{current} {index + 1:02d}  {entry.title}"
-            attr = getattr(surface, "highlight_attr", 0) if marker == ">" else 0
+            attr = (
+                getattr(surface, "highlight_attr", 0)
+                if selected and self.focused
+                else getattr(surface, "active_attr", 0)
+                if entry is self.playlist.current
+                else 0
+            )
             surface.addstr(rect.top + row, rect.left, clip(line, rect.width), attr)
         if not entries:
             surface.addstr(
                 rect.top + 1, rect.left, clip("(empty)  A add  / search", rect.width)
+            )
+        if rect.height > 1:
+            hint = " Up/Down Move  Enter Load " if self.focused else " Tab Focus "
+            surface.addstr(
+                rect.top + rect.height - 1,
+                rect.left,
+                clip(hint, rect.width),
             )
 
     def handle(self, event: InputEvent) -> bool:

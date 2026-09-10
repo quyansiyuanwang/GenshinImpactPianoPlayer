@@ -11,6 +11,7 @@ from src.application.command_bus import CommandResult
 from src.application.events import InputEvent, InputKind, KeyCode
 from src.application.config.constants import DEFAULT_HOTKEYS
 from src.ui.cli.input.adapters import CursesInputAdapter
+from src.ui.cli.input.input_isolation import WindowsInputIsolation
 from src.application.host_protocol import ApplicationHost
 
 
@@ -73,12 +74,11 @@ class LifecycleMixin(ApplicationHost):
         except curses.error:
             pass
 
-        # Non-blocking input - but we don't actually use curses for input
-        # since we use keyboard library for global hotkeys
+        # Non-blocking terminal input is used for focus-sensitive TUI controls.
         stdscr.nodelay(True)
 
-        # Disable curses input to avoid interfering with keyboard library
-        stdscr.keypad(False)
+        # Decode arrows, paging keys and function keys into semantic events.
+        stdscr.keypad(True)
 
         # Initialize player
         if self.score is None:
@@ -113,6 +113,9 @@ class LifecycleMixin(ApplicationHost):
 
                 # Periodic refresh (every 0.5 seconds) to catch any missed updates
                 current_time = time.time()
+                isolation = getattr(self, "_input_isolation", None)
+                if isolation:
+                    isolation.pump()
                 if self._curses_input:
                     terminal_event = self._curses_input.read_available()
                     if terminal_event.kind == InputKind.RESIZE:
@@ -131,6 +134,8 @@ class LifecycleMixin(ApplicationHost):
                                 )
                                 continue
                         handled = getattr(self, "handle_playlist_event")(terminal_event)
+                        if handled:
+                            self._request_refresh()
                         result = (
                             None
                             if handled
@@ -140,6 +145,7 @@ class LifecycleMixin(ApplicationHost):
                             self._flash(result.message)
                 if current_time - last_refresh >= 0.5:
                     self._display_score()
+                    last_refresh = current_time
                 if self._settings_requested:
                     self._settings_requested = False
                     self._run_settings_ui(stdscr)
@@ -164,6 +170,7 @@ class LifecycleMixin(ApplicationHost):
                 self._hotkey_handler.stop()
             except Exception:
                 pass
+        self._stop_input_isolation()
 
         self.display_active = False
 
@@ -231,12 +238,13 @@ class LifecycleMixin(ApplicationHost):
             except (TypeError, ValueError) as error:
                 failures.append((key, str(error)))
 
-        handler.set_event_dispatcher(self.controller.dispatch_event)
+        handler.set_event_dispatcher(self._dispatch_global_event)
 
         if not failures:
             try:
                 handler.start()
                 self._hotkey_handler = handler
+                self._start_input_isolation()
             except (OSError, RuntimeError) as error:
                 failures.append(("global hook", str(error)))
         self._failed_hotkeys = failures
@@ -245,14 +253,56 @@ class LifecycleMixin(ApplicationHost):
             self._keyboard_locked, self.hotkeys.get("toggle_output_lock", "f12")
         )
 
+    def _dispatch_global_event(self, event: InputEvent) -> CommandResult | None:
+        """Keep global playback bindings from stealing playlist navigation."""
+        playlist_keys = {
+            KeyCode.UP,
+            KeyCode.DOWN,
+            KeyCode.HOME,
+            KeyCode.END,
+            KeyCode.PAGE_UP,
+            KeyCode.PAGE_DOWN,
+            KeyCode.ENTER,
+        }
+        if event.key == KeyCode.TAB or (
+            self.playlist_focus and event.key in playlist_keys
+        ):
+            return CommandResult.ok()
+        return self.controller.dispatch_event(event)
+
     def _rebuild_hotkeys(self) -> None:
         """Replace the global handler after a profile change."""
+        self._stop_input_isolation()
         if hasattr(self, "_hotkey_handler"):
             try:
                 self._hotkey_handler.stop()
             except Exception:
                 pass
         self._setup_hotkeys()
+
+    def _start_input_isolation(self) -> None:
+        self._stop_input_isolation()
+        scan_codes: set[int] = set()
+        for entry in self.key_mapping_scans.values():
+            code = entry.get("target_scan_code")
+            if isinstance(code, int) and code > 0:
+                scan_codes.add(code)
+        try:
+            for binding in self.hotkeys.values():
+                key_name = binding.split("+")[-1].strip()
+                codes = keyboard.key_to_scan_codes(key_name, error_if_missing=False)
+                scan_codes.update(int(code) for code in codes if int(code) > 0)
+        except (AttributeError, KeyError, TypeError, ValueError):
+            pass
+        isolation = WindowsInputIsolation(scan_codes)
+        if isolation.start():
+            setattr(self, "_input_isolation", isolation)
+
+    def _stop_input_isolation(self) -> None:
+        isolation = getattr(self, "_input_isolation", None)
+        if isolation:
+            isolation.stop()
+            setattr(self, "_input_isolation", None)
 
     def request_settings(self) -> None:
         """Request the curses thread to open the settings UI."""
